@@ -1,0 +1,57 @@
+---
+import ThresholdSymbol from './ThresholdSymbol.astro';
+
+type SymbolName =
+  | 'stair-descent'
+  | 'trail-entrance'
+  | 'bridge'
+  | 'underpass'
+  | 'park-edge'
+  | 'path-ending'
+  | 'slope-overlook';
+
+interface Props {
+  symbol: SymbolName;
+  selected?: boolean;
+  size?: number;
+}
+
+const { symbol, selected = false, size = 32 } = Astro.props;
+---
+
+<span
+  class:list={['threshold-marker', { 'threshold-marker--selected': selected }]}
+  aria-hidden="true"
+  style={`--marker-size: ${size}px`}
+>
+  <ThresholdSymbol name={symbol} size={Math.round(size * 0.5)} aria-hidden="true" />
+</span>
+
+<style>
+  .threshold-marker {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--marker-size, 32px);
+    height: var(--marker-size, 32px);
+    border-radius: 50%;
+    background-color: var(--threshold);
+    color: #ffffff;
+    border: 1.5px solid var(--ink);
+    box-shadow: 2px 2px 0 var(--ink);
+    flex-shrink: 0;
+    transition: background-color 0.1s ease, transform 0.1s ease;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .threshold-marker {
+      transition: none;
+    }
+  }
+
+  .threshold-marker--selected {
+    background-color: var(--threshold-active);
+    border-color: #ffffff;
+    box-shadow: 2px 2px 0 var(--ink), 0 0 0 2px var(--threshold-active);
+  }
+</style>

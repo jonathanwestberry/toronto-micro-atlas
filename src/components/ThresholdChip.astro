@@ -1,0 +1,42 @@
+---
+import ThresholdMarker from './ThresholdMarker.astro';
+
+type SymbolName =
+  | 'stair-descent'
+  | 'trail-entrance'
+  | 'bridge'
+  | 'underpass'
+  | 'park-edge'
+  | 'path-ending'
+  | 'slope-overlook';
+
+interface Props {
+  symbol: SymbolName;
+  label: string;
+}
+
+const { symbol, label } = Astro.props;
+---
+
+<span class="threshold-chip">
+  <ThresholdMarker symbol={symbol} size={20} />
+  <span class="threshold-chip__label">{label}</span>
+</span>
+
+<style>
+  .threshold-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--threshold);
+  }
+
+  .threshold-chip__label {
+    color: var(--threshold);
+  }
+</style>
