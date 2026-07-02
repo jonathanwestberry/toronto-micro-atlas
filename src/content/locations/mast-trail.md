@@ -16,7 +16,7 @@ sources:
     url: "https://www.toronto.ca/city-government/planning-development/official-plan-guidelines/rouge-park/"
 ---
 
-The Mast Trail drops into the Rouge River valley at a point where the suburban street grid ends abruptly. The transition is clean: one moment Scarborough residential, the next a valley wide enough to muffle the city entirely. The Rouge National Urban Park designation means the forest management is different here — older trees, less intervention, more deadfall.
+The Mast Trail drops into the Rouge River valley at a point where the suburban street grid ends abruptly. The transition is clean: one moment Scarborough residential, the next a valley wide enough to muffle the city entirely. The Rouge National Urban Park designation means the forest management is different here: older trees, less intervention, more deadfall.
 
 The Rouge is one of the last rivers in the Toronto area that retains a largely unimpeded connection to Lake Ontario. The valley at the Mast Trail entrance shows this: the river moves freely, the banks have not been armoured, and the floodplain is active.
 

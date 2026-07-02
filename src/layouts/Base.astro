@@ -6,7 +6,7 @@ interface Props {
 
 const { title, description = 'An independent web publication of Field Guides about noticing Toronto.' } = Astro.props;
 const siteTitle = 'Toronto Micro-Atlas';
-const pageTitle = title ? `${title} — ${siteTitle}` : siteTitle;
+const pageTitle = title ? `${title} | ${siteTitle}` : siteTitle;
 const base = import.meta.env.BASE_URL;
 ---
 
