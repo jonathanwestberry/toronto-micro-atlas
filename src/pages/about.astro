@@ -1,21 +1,100 @@
 ---
 import Base from '../layouts/Base.astro';
+
+const base = import.meta.env.BASE_URL;
 ---
 
-<Base title="About">
-  <h1>About Toronto Micro-Atlas</h1>
+<Base
+  title="About"
+  description="Toronto Micro-Atlas is an independent publication by Jonathan Westberry, a mapmaker and designer based in Toronto."
+>
+  <div class="page-wrapper">
+    <article class="about-article">
+      <header class="about-header">
+        <h1 class="about-title">About</h1>
+        <div class="about-rule" role="presentation" aria-hidden="true"></div>
+      </header>
 
-  <p>Toronto Micro-Atlas is an independent web publication of Field Guides about noticing Toronto. Each guide maps a set of located observations: places where something specific is happening with the landscape, the infrastructure, or the city's relationship to its own topography.</p>
+      <div class="about-body">
+        <p>Toronto Micro-Atlas is an independent publication by Jonathan Westberry, a mapmaker and designer based in Toronto.</p>
 
-  <p>The guides are written from direct observation. Sources are cited. Nothing is reviewed; things are described.</p>
+        <p>The atlas is organized as Field Guides. Each one explores a specific way of noticing or using the city. A guide is a curated collection, not an exhaustive database: it takes a position on what is worth paying attention to and why, and it makes that position readable through interactive maps and location entries built on real geographic data. The maps are drawn to be read as objects, not just used for navigation.</p>
 
-  <section>
-    <h2>Field Guide 01: Hidden Landscapes</h2>
-    <p>An interactive illustrated map of eight threshold locations (ravines, bridges, stair descents, underpasses, and trail entrances) where Toronto steps through a gap in its own surface into something older.</p>
-  </section>
+        <p>Field Guides take time. The atlas grows as guides are finished, and existing guides keep improving after they ship. The work is made in Toronto.</p>
+      </div>
 
-  <section>
-    <h2>Made by</h2>
-    <p>Jonathan Westberry. Toronto.</p>
-  </section>
+      <nav class="about-nav" aria-label="Site navigation">
+        <a href={`${base}/`} class="about-back">Toronto Micro-Atlas</a>
+        <a href={`${base}/guides/hidden-landscapes/`} class="about-guide-link">Field Guide 01: Hidden Landscapes</a>
+      </nav>
+    </article>
+  </div>
 </Base>
+
+<style>
+  .about-article {
+    max-width: var(--measure);
+  }
+
+  .about-header {
+    margin-bottom: var(--space-12);
+  }
+
+  .about-title {
+    font-family: var(--font-heading);
+    font-weight: 900;
+    font-size: var(--text-4xl);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    margin-bottom: var(--space-6);
+  }
+
+  .about-rule {
+    width: 3rem;
+    height: 2px;
+    background-color: var(--landscape);
+  }
+
+  .about-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    margin-bottom: var(--space-12);
+  }
+
+  .about-body p {
+    font-family: var(--font-body);
+    font-size: var(--text-xl);
+    line-height: 1.7;
+    color: var(--ink);
+  }
+
+  .about-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4) var(--space-8);
+    padding-top: var(--space-8);
+    border-top: 1px solid var(--street-minor);
+  }
+
+  .about-back,
+  .about-guide-link {
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--ink-2);
+    text-decoration: none;
+  }
+
+  .about-back:hover,
+  .about-guide-link:hover {
+    color: var(--threshold);
+  }
+
+  .about-back:focus-visible,
+  .about-guide-link:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: var(--focus-ring-offset);
+  }
+</style>

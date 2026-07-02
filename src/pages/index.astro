@@ -4,17 +4,237 @@ import Base from '../layouts/Base.astro';
 const base = import.meta.env.BASE_URL;
 ---
 
-<Base title="Home">
-  <h1>Toronto Micro-Atlas</h1>
-  <p>An independent web publication of Field Guides about noticing Toronto.</p>
+<Base
+  title={undefined}
+  description="An independent web publication of Field Guides about noticing and using Toronto."
+>
+  <div class="home-wrapper">
 
-  <section>
-    <h2>Field Guides</h2>
-    <ul>
-      <li>
-        <a href={`${base}/guides/hidden-landscapes/`}>Field Guide 01: Hidden Landscapes</a>
-        <p>Eight threshold locations where Toronto's surface cracks open into something older.</p>
-      </li>
-    </ul>
-  </section>
+    <!-- Publication intro -->
+    <section class="home-intro" aria-labelledby="intro-heading">
+      <div class="home-intro-inner">
+        <p class="home-intro-text">Toronto Micro-Atlas is an independent web publication of Field Guides about noticing and using Toronto. Each guide takes one specific way the city works, where it hides things, what it shows someone paying attention, and builds it into an interactive map with careful editorial research.</p>
+      </div>
+    </section>
+
+    <!-- Field Guide 01 feature block -->
+    <section class="feature-block" id="field-guides" aria-labelledby="feature-title">
+      <div class="feature-inner">
+        <span class="feature-kicker">Field Guide 01</span>
+        <h2 class="feature-title" id="feature-title">Hidden Landscapes</h2>
+        <p class="feature-blurb">Hidden Landscapes documents eight threshold moments where Toronto's orderly street grid suddenly gives way to valleys, ravines, escarpments, and watercourses. Each entry is a specific place, a specific crossing, and a specific reason to look twice at what the city is built on top of.</p>
+        <a href={`${base}/guides/hidden-landscapes/`} class="feature-cta">Open the Field Guide</a>
+      </div>
+    </section>
+
+    <!-- Under observation -->
+    <section class="under-observation" aria-labelledby="observation-heading">
+      <div class="under-observation-inner">
+        <h2 class="section-label" id="observation-heading">Under observation</h2>
+        <ul class="observation-list">
+          <li class="observation-item">
+            <span class="observation-name">Farmers Markets</span>
+            <span class="observation-desc">A rotating atlas of Toronto's outdoor markets, mapped by neighbourhood and season.</span>
+          </li>
+          <li class="observation-item">
+            <span class="observation-name">Quiet Third Places</span>
+            <span class="observation-desc">The libraries, reading rooms, lobbies, and garden corners where the city allows you to sit still.</span>
+          </li>
+          <li class="observation-item">
+            <span class="observation-name">Shade and Cooling</span>
+            <span class="observation-desc">Where to find cover on a hot day: a taxonomy of trees, awnings, tunnels, and water in the urban surface.</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+  </div>
 </Base>
+
+<style>
+  /* ============================================================
+     Home wrapper
+     ============================================================ */
+
+  .home-wrapper {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ============================================================
+     Publication intro
+     ============================================================ */
+
+  .home-intro {
+    padding: var(--space-16) var(--space-6) var(--space-12);
+    border-bottom: 1px solid var(--street-minor);
+  }
+
+  .home-intro-inner {
+    max-width: var(--measure);
+    margin: 0 auto;
+  }
+
+  .home-intro-text {
+    font-family: var(--font-body);
+    font-size: var(--text-xl);
+    line-height: 1.65;
+    color: var(--ink);
+  }
+
+  /* ============================================================
+     Feature block
+     ============================================================ */
+
+  .feature-block {
+    background-color: var(--landscape);
+    padding: var(--space-16) var(--space-6);
+  }
+
+  .feature-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+  }
+
+  .feature-kicker {
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(250, 246, 236, 0.65);
+  }
+
+  .feature-title {
+    font-family: var(--font-heading);
+    font-weight: 900;
+    font-size: clamp(var(--text-4xl), 9vw, var(--text-5xl));
+    line-height: 1.0;
+    letter-spacing: -0.01em;
+    color: var(--paper);
+    text-transform: uppercase;
+  }
+
+  .feature-blurb {
+    font-family: var(--font-body);
+    font-size: var(--text-lg);
+    line-height: 1.65;
+    color: rgba(250, 246, 236, 0.88);
+    max-width: 58ch;
+  }
+
+  .feature-cta {
+    display: inline-block;
+    background-color: var(--threshold);
+    color: var(--paper);
+    font-family: var(--font-ui);
+    font-size: var(--text-base);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    padding: var(--space-4) var(--space-8);
+    border: 1.5px solid transparent;
+    align-self: flex-start;
+    transition: background-color 0.1s ease, border-color 0.1s ease;
+  }
+
+  .feature-cta:hover {
+    background-color: var(--threshold-active);
+    color: var(--paper);
+  }
+
+  .feature-cta:focus-visible {
+    outline: 2px solid var(--paper);
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .feature-cta {
+      transition: none;
+    }
+  }
+
+  /* ============================================================
+     Under observation
+     ============================================================ */
+
+  .under-observation {
+    padding: var(--space-16) var(--space-6);
+    border-top: 1px solid var(--street-minor);
+  }
+
+  .under-observation-inner {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .section-label {
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: var(--space-8);
+  }
+
+  .observation-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+  }
+
+  .observation-item {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35em var(--space-3);
+    align-baseline: start;
+    border-top: 1px solid var(--street-minor);
+    padding-top: var(--space-6);
+  }
+
+  .observation-item:first-child {
+    border-top: none;
+    padding-top: 0;
+  }
+
+  .observation-name {
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink);
+    flex-shrink: 0;
+  }
+
+  .observation-name::after {
+    content: '.';
+  }
+
+  .observation-desc {
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    color: var(--ink-2);
+    line-height: 1.55;
+  }
+
+  /* ============================================================
+     Responsive
+     ============================================================ */
+
+  @media (min-width: 768px) {
+    .feature-block {
+      padding: var(--space-24) var(--space-8);
+    }
+
+    .observation-item {
+      flex-wrap: nowrap;
+      align-items: baseline;
+    }
+  }
+</style>
