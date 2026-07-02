@@ -1,0 +1,56 @@
+/* Survey Document design tokens */
+
+/* Font faces */
+@import "@fontsource-variable/archivo/wght.css";
+@import "@fontsource-variable/source-serif-4/wght.css";
+
+:root {
+  /* Colour palette */
+  --paper: #FAF6EC;
+  --ink: #27241D;
+  --ink-2: #625D52;
+  --ink-3: #857F72;
+  --street-minor: #D3CEC4;
+  --street-major: #B8B2A7;
+  --landscape: #147D64;
+  --landscape-edge: #0C6B58;
+  --water: #3994C1;
+  --lake: hsl(200, 55%, 88%);
+  --threshold: #DE3A11;
+  --threshold-active: #C52707;
+  --card: #FFFDF8;
+
+  /* Spacing scale (px as rem) */
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-12: 3rem;     /* 48px */
+  --space-16: 4rem;     /* 64px */
+  --space-24: 6rem;     /* 96px */
+
+  /* Type scale */
+  --text-xs: 0.8125rem;  /* 13px */
+  --text-sm: 0.875rem;   /* 14px */
+  --text-base: 1rem;     /* 16px */
+  --text-lg: 1.125rem;   /* 18px */
+  --text-xl: 1.3125rem;  /* 21px */
+  --text-2xl: 1.625rem;  /* 26px */
+  --text-3xl: 2rem;      /* 32px */
+  --text-4xl: 2.75rem;   /* 44px */
+  --text-5xl: 3.75rem;   /* 60px */
+
+  /* Font families */
+  --font-heading: "Archivo Variable", system-ui, sans-serif;
+  --font-body: "Source Serif 4 Variable", Georgia, serif;
+  --font-ui: "Archivo Variable", system-ui, sans-serif;
+
+  /* Focus ring */
+  --focus-ring: 2px solid var(--ink);
+  --focus-ring-offset: 2px;
+
+  /* Measure for prose */
+  --measure: 66ch;
+}
