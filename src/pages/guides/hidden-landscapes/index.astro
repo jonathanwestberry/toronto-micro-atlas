@@ -9,6 +9,19 @@ const allLocations = await getCollection('locations', ({ data }) => data.guide =
 const locations = allLocations.sort((a, b) => a.data.order - b.data.order);
 
 type SymbolName = 'stair-descent' | 'trail-entrance' | 'bridge' | 'underpass' | 'park-edge' | 'path-ending' | 'slope-overlook';
+
+// Serialized for the map island (read from the JSON script block in the map row)
+const mapLocations = locations.map((loc) => ({
+  slug: loc.data.slug,
+  title: loc.data.title,
+  thresholdLabel: loc.data.thresholdLabel,
+  thresholdType: loc.data.thresholdType,
+  lat: loc.data.lat,
+  lng: loc.data.lng,
+  preview: loc.data.preview,
+  url: `${base}/guides/hidden-landscapes/${loc.data.slug}/`,
+  order: loc.data.order,
+}));
 ---
 
 <Base
@@ -30,6 +43,12 @@ type SymbolName = 'stair-descent' | 'trail-entrance' | 'bridge' | 'underpass' | 
           <p class="guide-map-noscript">Enable JavaScript to load the interactive map. Location entries are listed below.</p>
         </noscript>
       </div>
+
+      <!-- Location data island for the map script -->
+      <script is:inline type="application/json" id="guide-map-data" set:html={JSON.stringify(mapLocations)}></script>
+
+      <!-- Live region announcing map selection changes to assistive tech -->
+      <div class="visually-hidden" id="guide-map-announcer" role="status" aria-live="polite"></div>
 
       <!-- Welcome panel (shown by default, hidden when location selected) -->
       <aside
@@ -152,7 +171,27 @@ type SymbolName = 'stair-descent' | 'trail-entrance' | 'bridge' | 'underpass' | 
   </div>
 </Base>
 
+<script>
+  import { initGuideMap } from '../../../scripts/guide-map';
+  initGuideMap();
+</script>
+
 <style>
+  /* ============================================================
+     Utility (Base.astro's copy is scoped to its own template and
+     does not reach slotted page content)
+     ============================================================ */
+
+  .visually-hidden {
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+  }
+
   /* ============================================================
      Guide layout
      ============================================================ */
