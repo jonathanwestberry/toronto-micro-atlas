@@ -370,10 +370,26 @@ export class GuideMap {
       },
     });
 
+    // Buried watercourses (culverted creeks) draw dashed beneath surface water:
+    // the hidden hydrology the guide documents, distinguished honestly from
+    // daylighted streams.
+    this.map.addLayer({
+      id: 'waterways-buried',
+      type: 'line',
+      source: 'waterways',
+      filter: ['==', ['get', 'buried'], true],
+      paint: {
+        'line-color': '#3994C1',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.8, 16, 1.6],
+        'line-dasharray': [2.5, 2],
+      },
+    });
+
     this.map.addLayer({
       id: 'waterways',
       type: 'line',
       source: 'waterways',
+      filter: ['==', ['get', 'buried'], false],
       paint: {
         'line-color': '#3994C1',
         'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1, 16, 2],

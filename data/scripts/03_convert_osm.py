@@ -33,7 +33,7 @@ def dump(fc, name):
     print(f"{name}: {len(fc['features'])} features")
 
 
-def ways_to_lines(data, keep_tags, tier_fn):
+def ways_to_lines(data, keep_tags, tier_fn, extra_props_fn=None):
     feats = []
     for el in data.get("elements", []):
         if el.get("type") != "way":
@@ -44,10 +44,20 @@ def ways_to_lines(data, keep_tags, tier_fn):
         tags = el.get("tags", {})
         props = {t: tags[t] for t in keep_tags if t in tags}
         props["tier"] = tier_fn(tags)
+        if extra_props_fn:
+            props.update(extra_props_fn(tags))
         feats.append({"type": "Feature",
                       "geometry": {"type": "LineString", "coordinates": coords},
                       "properties": props})
     return {"type": "FeatureCollection", "features": feats}
+
+
+def waterway_buried(tags):
+    """True when OSM marks the watercourse as buried/culverted:
+    tunnel=culvert / tunnel=yes / tunnel=building_passage or
+    location=underground (e.g. Castle Frank Brook)."""
+    return (tags.get("tunnel") in ("culvert", "yes", "building_passage")
+            or tags.get("location") == "underground")
 
 
 # ---------------------------------------------------------------- lake ------
@@ -123,10 +133,12 @@ def main():
         "osm-rail.geojson")
 
     # Waterways: keep name for labels; rivers vs everything else.
+    # buried=true/false marks culverted/underground segments (tunnel=* tags).
     dump(ways_to_lines(
         load("osm-waterways-raw.json"),
         keep_tags=["name", "waterway"],
-        tier_fn=lambda t: "river" if t.get("waterway") == "river" else "stream"),
+        tier_fn=lambda t: "river" if t.get("waterway") == "river" else "stream",
+        extra_props_fn=lambda t: {"buried": waterway_buried(t)}),
         "osm-waterways.geojson")
 
     # Major streets: motorway/trunk vs primary/secondary. Keep names.

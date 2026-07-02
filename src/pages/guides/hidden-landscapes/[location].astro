@@ -7,7 +7,7 @@ const base = import.meta.env.BASE_URL;
 
 export async function getStaticPaths() {
   const allLocations = await getCollection('locations', ({ data }) => data.guide === 'hidden-landscapes');
-  // Sort by name (alphabetical) for prev/next as spec requires
+  // Curated sequence: prev/next follow the order field, displayed by name
   const sorted = allLocations.sort((a, b) => a.data.order - b.data.order);
 
   return sorted.map((loc, index) => {
@@ -66,17 +66,16 @@ const mapsUrl = `https://www.google.com/maps?q=${entry.data.lat},${entry.data.ln
         <span class="location-neighbourhood">{entry.data.neighbourhood}</span>
       </div>
 
-      <!-- Contextual map slot (static placeholder for build-time SVG, populated later) -->
-      <div
-        class="location-map-slot"
-        aria-label={`Map showing ${entry.data.title} and surrounding area`}
-        role="img"
-      >
-        <!-- build-contextual-maps.mjs will place a static SVG here at build time -->
-        <div class="location-map-placeholder" aria-hidden="true">
-          <span class="location-map-placeholder-label">Contextual map</span>
-          <span class="location-map-placeholder-coords">{entry.data.lat.toFixed(4)}, {entry.data.lng.toFixed(4)}</span>
-        </div>
+      <!-- Contextual map: build-time SVG from scripts/build-contextual-maps.mjs -->
+      <div class="location-map-slot">
+        <img
+          src={`${base}/maps/context-${entry.data.slug}.svg`}
+          alt={`Map of the streets and hidden landscape around ${entry.data.title}, threshold point marked at the centre`}
+          width="800"
+          height="600"
+          loading="eager"
+          decoding="async"
+        />
       </div>
       <p class="location-map-caption">Street-to-landscape relationship at a glance.</p>
 
@@ -248,29 +247,10 @@ const mapsUrl = `https://www.google.com/maps?q=${entry.data.lat},${entry.data.ln
     margin-bottom: var(--space-2);
   }
 
-  .location-map-placeholder {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-2);
-  }
-
-  .location-map-placeholder-label {
-    font-family: var(--font-ui);
-    font-size: var(--text-xs);
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--street-major);
-  }
-
-  .location-map-placeholder-coords {
-    font-family: var(--font-ui);
-    font-size: var(--text-xs);
-    color: var(--street-minor);
-    letter-spacing: 0.04em;
+  .location-map-slot img {
+    display: block;
+    width: 100%;
+    height: auto;
   }
 
   .location-map-caption {

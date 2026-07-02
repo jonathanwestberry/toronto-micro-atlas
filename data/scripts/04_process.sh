@@ -73,10 +73,10 @@ $MS "${RAW}/osm-lake.geojson" \
   -clean \
   -o format=geojson $PREC "${PROC}/lake-ontario.geojson"
 
-echo "== 6. Watercourses (rivers & creeks; drains/ditches dropped) =="
+echo "== 6. Watercourses (rivers & creeks; drains/ditches dropped; buried flag kept) =="
 $MS "${RAW}/osm-waterways.geojson" \
   -filter 'waterway == "river" || waterway == "stream" || waterway == "canal"' \
-  -filter-fields name,tier \
+  -filter-fields name,tier,buried \
   -simplify 30% \
   -clip bbox=${BBOX} \
   -filter remove-empty \

@@ -6,7 +6,8 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "maps": "node scripts/build-contextual-maps.mjs"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "^5.2.8",
@@ -16,6 +17,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",
+    "d3-geo": "^3.1.1",
     "typescript": "^5.8.3"
   }
 }
