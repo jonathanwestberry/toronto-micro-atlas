@@ -1,4 +1,10 @@
 import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import '../styles/guide-map.css';
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 export interface LocationData {
   slug: string;
@@ -12,13 +18,137 @@ export interface LocationData {
   order: number;
 }
 
+interface OrientationLabelFeature {
+  geometry: { type: string; coordinates: [number, number] };
+  properties: { name: string; kind: string };
+}
+
+interface OrientationLabelCollection {
+  features: OrientationLabelFeature[];
+}
+
+interface PanelRefs {
+  welcome: HTMLElement;
+  selected: HTMLElement;
+  chip: HTMLElement;
+  name: HTMLElement;
+  preview: HTMLElement;
+  viewBtn: HTMLAnchorElement;
+  mapsLink: HTMLAnchorElement;
+  closeBtn: HTMLButtonElement | null;
+  announcer: HTMLElement | null;
+}
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const INITIAL_BOUNDS: maplibregl.LngLatBoundsLike = [
+  [-79.65, 43.57],
+  [-79.1, 43.87],
+];
+
+/** Zoom applied when easing to a selected marker (never zooms out past current). */
+const SELECT_ZOOM = 12;
+
+/** Below this zoom the densest orientation labels are hidden. */
+const DENSE_LABEL_MIN_ZOOM = 10.5;
+
+/** Horizontal pixel shift so a selected marker clears the floating desktop panel. */
+const DESKTOP_CENTER_OFFSET_X = 206;
+
+const DESKTOP_QUERY = '(min-width: 1024px)';
+const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
+
+/**
+ * Threshold glyph inner SVG markup, 24px viewBox.
+ * Mirrors src/components/ThresholdSymbol.astro exactly.
+ */
+const THRESHOLD_GLYPHS: Record<string, string> = {
+  'stair-descent': `
+    <line x1="4" y1="6" x2="10" y2="6"/>
+    <line x1="10" y1="6" x2="10" y2="11"/>
+    <line x1="10" y1="11" x2="16" y2="11"/>
+    <line x1="16" y1="11" x2="16" y2="16"/>
+    <line x1="16" y1="16" x2="20" y2="16"/>
+    <polyline points="14,14 20,14 20,20"/>
+  `,
+  'trail-entrance': `
+    <polygon points="5,18 8,8 11,18" fill="none"/>
+    <polygon points="13,18 16,8 19,18" fill="none"/>
+    <line x1="9" y1="18" x2="9" y2="20"/>
+    <line x1="15" y1="18" x2="15" y2="20"/>
+    <line x1="11" y1="19" x2="13" y2="19"/>
+    <line x1="12" y1="14" x2="12" y2="24"/>
+  `,
+  bridge: `
+    <line x1="2" y1="10" x2="22" y2="10"/>
+    <line x1="7" y1="10" x2="7" y2="16"/>
+    <line x1="17" y1="10" x2="17" y2="16"/>
+    <line x1="5" y1="16" x2="9" y2="16"/>
+    <line x1="15" y1="16" x2="19" y2="16"/>
+    <line x1="2" y1="9" x2="2" y2="11"/>
+    <line x1="22" y1="9" x2="22" y2="11"/>
+  `,
+  underpass: `
+    <path d="M4,18 L4,10 Q12,2 20,10 L20,18" fill="none"/>
+    <line x1="4" y1="18" x2="20" y2="18"/>
+    <line x1="8" y1="18" x2="8" y2="14"/>
+    <line x1="16" y1="18" x2="16" y2="14"/>
+  `,
+  'park-edge': `
+    <line x1="2" y1="14" x2="22" y2="14"/>
+    <polyline points="2,14 5,9 8,12 11,7 14,10 17,8 20,11 22,14" fill="none"/>
+    <line x1="4" y1="17" x2="4" y2="20"/>
+    <line x1="8" y1="17" x2="8" y2="20"/>
+    <line x1="12" y1="17" x2="12" y2="20"/>
+    <line x1="16" y1="17" x2="16" y2="20"/>
+    <line x1="20" y1="17" x2="20" y2="20"/>
+  `,
+  'path-ending': `
+    <line x1="4" y1="12" x2="17" y2="12"/>
+    <circle cx="20" cy="12" r="3" fill="none"/>
+    <circle cx="20" cy="12" r="1" fill="currentColor"/>
+    <line x1="4" y1="10" x2="4" y2="14"/>
+  `,
+  'slope-overlook': `
+    <line x1="3" y1="20" x2="18" y2="6"/>
+    <circle cx="18" cy="6" r="2.5" fill="none"/>
+    <line x1="18" y1="3.5" x2="18" y2="1"/>
+    <line x1="20.5" y1="6" x2="23" y2="6"/>
+    <line x1="3" y1="20" x2="21" y2="20"/>
+  `,
+};
+
+function thresholdGlyphSvg(type: string, size: number): string {
+  const paths = THRESHOLD_GLYPHS[type] ?? '';
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" ` +
+    `width="${size}" height="${size}" fill="none" stroke="currentColor" ` +
+    `stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ` +
+    `aria-hidden="true">${paths}</svg>`
+  );
+}
+
+/**
+ * Labels hidden below DENSE_LABEL_MIN_ZOOM. Crossroads and landmarks are the
+ * smallest, densest names. East York is added by name: at citywide zoom its
+ * label crowds Don Valley, which carries more of the map's argument.
+ */
+function isDenseLabel(props: { name: string; kind: string }): boolean {
+  return (
+    props.kind === 'crossroad' ||
+    props.kind === 'landmark' ||
+    props.name === 'East York'
+  );
+}
+
 // ---------------------------------------------------------------------------
 // ResetControl - custom IControl that restores the initial map extent
 // ---------------------------------------------------------------------------
 
 class ResetControl implements maplibregl.IControl {
   private _container: HTMLDivElement | undefined;
-  private _button: HTMLButtonElement | undefined;
   private _guideMap: GuideMap;
 
   constructor(guideMap: GuideMap) {
@@ -29,12 +159,11 @@ class ResetControl implements maplibregl.IControl {
     this._container = document.createElement('div');
     this._container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
 
-    this._button = document.createElement('button');
-    this._button.type = 'button';
-    this._button.className = 'maplibregl-ctrl-icon';
-    this._button.setAttribute('aria-label', 'Reset map view');
-    // Inline SVG: a simple home/reset icon (target reticle)
-    this._button.innerHTML =
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'gm-reset-btn';
+    button.setAttribute('aria-label', 'Reset map view');
+    button.innerHTML =
       '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">' +
       '<circle cx="10" cy="10" r="5" stroke="currentColor" stroke-width="1.5"/>' +
       '<line x1="10" y1="1" x2="10" y2="5" stroke="currentColor" stroke-width="1.5"/>' +
@@ -43,34 +172,31 @@ class ResetControl implements maplibregl.IControl {
       '<line x1="15" y1="10" x2="19" y2="10" stroke="currentColor" stroke-width="1.5"/>' +
       '</svg>';
 
-    this._button.addEventListener('click', () => {
+    button.addEventListener('click', () => {
       this._guideMap.resetView();
     });
 
-    this._container.appendChild(this._button);
+    this._container.appendChild(button);
     return this._container;
   }
 
   onRemove(): void {
-    if (this._container?.parentNode) {
-      this._container.parentNode.removeChild(this._container);
-    }
+    this._container?.parentNode?.removeChild(this._container);
     this._container = undefined;
-    this._button = undefined;
   }
 }
 
 // ---------------------------------------------------------------------------
-// GuideMap - main class
+// GuideMap
 // ---------------------------------------------------------------------------
-
-const INITIAL_BOUNDS: maplibregl.LngLatBoundsLike = [[-79.65, 43.57], [-79.10, 43.87]];
-const FIT_BOUNDS_OPTIONS: maplibregl.FitBoundsOptions = { padding: 40 };
 
 export class GuideMap {
   private map: maplibregl.Map;
   private baseUrl: string;
   private locations: LocationData[] = [];
+  private markerButtons = new Map<string, HTMLButtonElement>();
+  private refs: PanelRefs | null = null;
+  private selectedSlug: string | null = null;
 
   constructor(containerId: string, baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -89,7 +215,7 @@ export class GuideMap {
         ],
       },
       bounds: INITIAL_BOUNDS,
-      fitBoundsOptions: FIT_BOUNDS_OPTIONS,
+      fitBoundsOptions: { padding: this.fitPadding() },
       minZoom: 9.3,
       maxZoom: 16,
       dragRotate: false,
@@ -103,12 +229,13 @@ export class GuideMap {
     this.map.addControl(
       new maplibregl.AttributionControl({
         compact: false,
-        customAttribution: 'Map data © OpenStreetMap contributors, City of Toronto',
+        customAttribution:
+          'Map data © OpenStreetMap contributors, City of Toronto',
       }),
       'bottom-right',
     );
 
-    // Navigation control (no compass - rotation is disabled)
+    // Navigation control (zoom only; rotation is disabled)
     this.map.addControl(
       new maplibregl.NavigationControl({ showCompass: false }),
       'top-right',
@@ -117,25 +244,24 @@ export class GuideMap {
     // Reset control - added after NavigationControl so it sits below it
     this.map.addControl(new ResetControl(this), 'top-right');
 
-    // Kick off source + layer setup
-    void this.initMap();
-  }
-
-  // -------------------------------------------------------------------------
-  // Private: wire up sources and layers once the map canvas is ready
-  // -------------------------------------------------------------------------
-
-  private initMap(): Promise<void> {
-    return new Promise((resolve) => {
-      this.map.on('load', () => {
-        this.addSources();
-        this.addLayers();
-        resolve();
-      });
+    this.map.on('load', () => {
+      this.addSourcesAndLayers();
     });
   }
 
-  private addSources(): void {
+  // -------------------------------------------------------------------------
+  // Sources and layers
+  // -------------------------------------------------------------------------
+
+  /**
+   * All sources are added in one pass: MapLibre fetches every GeoJSON in
+   * parallel and paints each layer independently as its data arrives, so
+   * first paint (paper background, then lake and landscape, the smallest
+   * of the heavy files) is never blocked by streets-minor (2.5 MB).
+   * Sources are declared in priority order so constrained connections
+   * queue the landscape argument first.
+   */
+  private addSourcesAndLayers(): void {
     const src = (filename: string): maplibregl.GeoJSONSourceSpecification => ({
       type: 'geojson',
       data: `${this.baseUrl}data/${filename}`,
@@ -143,21 +269,22 @@ export class GuideMap {
       tolerance: 0.375,
     });
 
+    // Priority group: the figure/ground argument (lake + hidden landscape)
     this.map.addSource('lake', src('lake-ontario.geojson'));
-    this.map.addSource('streets-minor', src('streets-minor.geojson'));
-    this.map.addSource('streets-major', src('streets-major.geojson'));
-    this.map.addSource('rail', src('rail.geojson'));
     this.map.addSource('rnfp', src('ravine-rnfp.geojson'));
     this.map.addSource('esa', src('esa.geojson'));
+
+    // Context group: streets, water, rail (arrive as they load)
     this.map.addSource('waterways', src('watercourses.geojson'));
-    // Source for orientation labels - consumed by Task 2
-    this.map.addSource('orientation-labels', src('orientation-labels.geojson'));
-  }
+    this.map.addSource('streets-major', src('streets-major.geojson'));
+    this.map.addSource('rail', src('rail.geojson'));
+    this.map.addSource('streets-minor', src('streets-minor.geojson'));
 
-  private addLayers(): void {
-    // Layer 1: background - already in base style object passed to Map constructor
+    // Layer order, bottom to top:
+    // background (in base style), lake, lake-shore, streets-minor, rail,
+    // streets-major, hidden-landscape, hidden-landscape-esa,
+    // hidden-landscape-edge, waterways
 
-    // Layer 2: lake fill
     this.map.addLayer({
       id: 'lake',
       type: 'fill',
@@ -168,7 +295,6 @@ export class GuideMap {
       },
     });
 
-    // Layer 2b: lake shoreline
     this.map.addLayer({
       id: 'lake-shore',
       type: 'line',
@@ -180,7 +306,6 @@ export class GuideMap {
       },
     });
 
-    // Layer 3: streets-minor
     this.map.addLayer({
       id: 'streets-minor',
       type: 'line',
@@ -191,7 +316,6 @@ export class GuideMap {
       },
     });
 
-    // Layer 4: rail
     this.map.addLayer({
       id: 'rail',
       type: 'line',
@@ -203,7 +327,6 @@ export class GuideMap {
       },
     });
 
-    // Layer 5: streets-major
     this.map.addLayer({
       id: 'streets-major',
       type: 'line',
@@ -214,7 +337,8 @@ export class GuideMap {
       },
     });
 
-    // Layer 6: hidden-landscape fill (rnfp)
+    // The hidden-landscape fill sits above major streets at 0.95 opacity:
+    // streets ghost through where they bridge the ravines.
     this.map.addLayer({
       id: 'hidden-landscape',
       type: 'fill',
@@ -225,7 +349,7 @@ export class GuideMap {
       },
     });
 
-    // Layer 7: hidden-landscape-esa fill (esa) - same paint, reads as one visual layer
+    // ESA fill with identical paint: reads as one layer with the RNFP fill.
     this.map.addLayer({
       id: 'hidden-landscape-esa',
       type: 'fill',
@@ -236,7 +360,6 @@ export class GuideMap {
       },
     });
 
-    // Layer 8: hidden-landscape edge (rnfp outline)
     this.map.addLayer({
       id: 'hidden-landscape-edge',
       type: 'line',
@@ -247,7 +370,6 @@ export class GuideMap {
       },
     });
 
-    // Layer 9: waterways
     this.map.addLayer({
       id: 'waterways',
       type: 'line',
@@ -257,53 +379,321 @@ export class GuideMap {
         'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1, 16, 2],
       },
     });
-
-    // Orientation labels and threshold markers sit above waterways but are
-    // HTML markers, not MapLibre layers - see stubs below.
   }
 
   // -------------------------------------------------------------------------
-  // Stubs: to be implemented in later tasks
+  // Orientation labels (HTML markers, not MapLibre symbol layers)
   // -------------------------------------------------------------------------
 
-  /** TODO: Task 2 - add HTML marker labels for orientation-labels.geojson points */
-  addOrientationLabels(): void {
-    // TODO: Task 2
+  private async addOrientationLabels(): Promise<void> {
+    try {
+      const res = await fetch(`${this.baseUrl}data/orientation-labels.geojson`);
+      if (!res.ok) return;
+      const collection = (await res.json()) as OrientationLabelCollection;
+
+      for (const feature of collection.features) {
+        const { name, kind } = feature.properties;
+        const el = document.createElement('div');
+        el.className = `gm-label gm-label--${kind}`;
+        if (isDenseLabel(feature.properties)) {
+          el.classList.add('gm-label--dense');
+        }
+        el.textContent = name;
+        el.setAttribute('aria-hidden', 'true');
+
+        new maplibregl.Marker({ element: el, anchor: 'center' })
+          .setLngLat(feature.geometry.coordinates)
+          .addTo(this.map);
+      }
+
+      this.updateLabelDensity();
+    } catch {
+      // Labels are decorative orientation aids; fail silently.
+    }
   }
 
-  /** TODO: Task 3 - create HTML marker buttons for each LocationData entry */
-  addThresholdMarkers(_locations: LocationData[]): void {
-    // TODO: Task 3
+  private updateLabelDensity(): void {
+    const zoomedOut = this.map.getZoom() < DENSE_LABEL_MIN_ZOOM;
+    this.map.getContainer().classList.toggle('gm-zoomed-out', zoomedOut);
   }
 
-  /** TODO: Task 5 - highlight the selected location on map and in the panel */
-  selectLocation(_slug: string): void {
-    // TODO: Task 5
+  // -------------------------------------------------------------------------
+  // Threshold markers
+  // -------------------------------------------------------------------------
+
+  private addThresholdMarkers(): void {
+    for (const loc of this.locations) {
+      const wrap = document.createElement('div');
+      wrap.className = 'gm-marker-wrap';
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'gm-marker';
+      button.setAttribute('aria-label', `${loc.title}, ${loc.thresholdLabel}`);
+      button.setAttribute('aria-pressed', 'false');
+      button.dataset.slug = loc.slug;
+      button.innerHTML = thresholdGlyphSvg(loc.thresholdType, 16);
+
+      button.addEventListener('click', (event) => {
+        // Keep the click from bubbling to the map (which clears selection).
+        event.stopPropagation();
+        this.selectLocation(loc.slug);
+      });
+
+      wrap.appendChild(button);
+
+      new maplibregl.Marker({ element: wrap, anchor: 'center' })
+        .setLngLat([loc.lng, loc.lat])
+        .addTo(this.map);
+
+      this.markerButtons.set(loc.slug, button);
+    }
   }
 
-  /** TODO: Task 5 - clear active selection state */
+  // -------------------------------------------------------------------------
+  // Selection
+  // -------------------------------------------------------------------------
+
+  selectLocation(slug: string, options: { animate?: boolean } = {}): void {
+    const { animate = true } = options;
+    const loc = this.locations.find((l) => l.slug === slug);
+    if (!loc) return;
+
+    this.selectedSlug = slug;
+
+    for (const [buttonSlug, button] of this.markerButtons) {
+      const isSelected = buttonSlug === slug;
+      button.classList.toggle('gm-marker--selected', isSelected);
+      button.setAttribute('aria-pressed', String(isSelected));
+    }
+
+    this.populatePanel(loc);
+    this.showSelectedPanel();
+    this.setPlaceParam(slug);
+    this.announce(`Selected: ${loc.title}, ${loc.thresholdLabel}`);
+    this.moveToLocation(loc, animate);
+  }
+
   clearSelection(): void {
-    // TODO: Task 5
+    if (this.selectedSlug === null) return;
+
+    const previousSlug = this.selectedSlug;
+    this.selectedSlug = null;
+
+    const focusWasInPanel =
+      this.refs !== null &&
+      document.activeElement !== null &&
+      this.refs.selected.contains(document.activeElement);
+
+    for (const button of this.markerButtons.values()) {
+      button.classList.remove('gm-marker--selected');
+      button.setAttribute('aria-pressed', 'false');
+    }
+
+    this.showWelcomePanel();
+    this.setPlaceParam(null);
+    this.announce('Selection cleared');
+
+    if (focusWasInPanel) {
+      this.markerButtons.get(previousSlug)?.focus();
+    }
   }
 
-  /** Reset map to initial extent and clear any active selection */
+  /** Reset map to the citywide extent and clear any active selection */
   resetView(): void {
-    this.map.fitBounds(INITIAL_BOUNDS, FIT_BOUNDS_OPTIONS);
+    this.map.fitBounds(INITIAL_BOUNDS, { padding: this.fitPadding() });
     this.clearSelection();
+  }
+
+  private moveToLocation(loc: LocationData, animate: boolean): void {
+    const zoom = Math.max(this.map.getZoom(), SELECT_ZOOM);
+    let center: [number, number] = [loc.lng, loc.lat];
+
+    // On desktop the floating panel covers the left edge of the map; shift
+    // the camera so the marker lands in the clear area right of the panel.
+    if (this.isDesktop()) {
+      const worldSize = 512 * Math.pow(2, zoom);
+      const degPerPx = 360 / worldSize;
+      center = [loc.lng - DESKTOP_CENTER_OFFSET_X * degPerPx, loc.lat];
+    }
+
+    if (animate && !this.prefersReducedMotion()) {
+      this.map.easeTo({ center, zoom, duration: 800 });
+    } else {
+      this.map.jumpTo({ center, zoom });
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Panel wiring
+  // -------------------------------------------------------------------------
+
+  private populatePanel(loc: LocationData): void {
+    if (!this.refs) return;
+
+    this.refs.chip.innerHTML =
+      `<span class="gm-chip">` +
+      `<span class="gm-chip-marker" aria-hidden="true">${thresholdGlyphSvg(loc.thresholdType, 10)}</span>` +
+      `<span class="gm-chip-label"></span>` +
+      `</span>`;
+    const label = this.refs.chip.querySelector('.gm-chip-label');
+    if (label) label.textContent = loc.thresholdLabel;
+
+    this.refs.name.textContent = loc.title;
+    this.refs.preview.textContent = loc.preview;
+    this.refs.viewBtn.href = loc.url;
+    this.refs.mapsLink.href = `https://www.google.com/maps?q=${loc.lat},${loc.lng}`;
+  }
+
+  private showSelectedPanel(): void {
+    if (!this.refs) return;
+    this.refs.welcome.hidden = true;
+    this.refs.selected.hidden = false;
+    this.refs.selected.removeAttribute('aria-hidden');
+  }
+
+  private showWelcomePanel(): void {
+    if (!this.refs) return;
+    this.refs.selected.hidden = true;
+    this.refs.selected.setAttribute('aria-hidden', 'true');
+    this.refs.welcome.hidden = false;
+  }
+
+  private setPlaceParam(slug: string | null): void {
+    const url = new URL(window.location.href);
+    if (slug === null) {
+      url.searchParams.delete('place');
+    } else {
+      url.searchParams.set('place', slug);
+    }
+    history.replaceState(null, '', url);
+  }
+
+  private announce(message: string): void {
+    if (this.refs?.announcer) {
+      this.refs.announcer.textContent = message;
+    }
+  }
+
+  private collectPanelRefs(): PanelRefs | null {
+    const welcome = document.getElementById('guide-welcome-panel');
+    const selected = document.getElementById('guide-selected-panel');
+    const chip = document.getElementById('guide-selected-chip');
+    const name = document.getElementById('guide-selected-name');
+    const preview = document.getElementById('guide-selected-preview');
+    const viewBtn = document.getElementById('guide-selected-view-btn');
+    const mapsLink = document.getElementById('guide-selected-maps-link');
+    const closeBtn = document.getElementById('guide-panel-close');
+    const announcer = document.getElementById('guide-map-announcer');
+
+    if (
+      !welcome ||
+      !selected ||
+      !chip ||
+      !name ||
+      !preview ||
+      !(viewBtn instanceof HTMLAnchorElement) ||
+      !(mapsLink instanceof HTMLAnchorElement)
+    ) {
+      return null;
+    }
+
+    return {
+      welcome,
+      selected,
+      chip,
+      name,
+      preview,
+      viewBtn,
+      mapsLink,
+      closeBtn: closeBtn instanceof HTMLButtonElement ? closeBtn : null,
+      announcer,
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // Helpers
+  // -------------------------------------------------------------------------
+
+  private fitPadding(): maplibregl.PaddingOptions | number {
+    // The floating desktop panel (380px wide, 32px inset) overlays the left
+    // side of the map; pad the citywide fit so markers clear it.
+    if (this.isDesktop()) {
+      return { top: 48, right: 48, bottom: 48, left: 452 };
+    }
+    return 40;
+  }
+
+  private isDesktop(): boolean {
+    return window.matchMedia(DESKTOP_QUERY).matches;
+  }
+
+  private prefersReducedMotion(): boolean {
+    return window.matchMedia(REDUCED_MOTION_QUERY).matches;
   }
 
   // -------------------------------------------------------------------------
   // Public init entry point
   // -------------------------------------------------------------------------
 
-  /**
-   * Call after constructing GuideMap. Stores location data for use by marker
-   * and selection tasks (Tasks 3-5). Orientation labels and threshold markers
-   * are deferred to their respective tasks.
-   */
-  async init(locations: LocationData[]): Promise<void> {
-    this.locations = locations;
-    // TODO: Task 3 - call this.addThresholdMarkers(this.locations) once implemented
-    // TODO: Task 2 - call this.addOrientationLabels() once implemented
+  init(locations: LocationData[]): void {
+    this.locations = [...locations].sort((a, b) => a.order - b.order);
+    this.refs = this.collectPanelRefs();
+
+    // Markers and labels are HTML overlays; they do not wait for style load.
+    this.addThresholdMarkers();
+    void this.addOrientationLabels();
+
+    this.map.on('zoom', () => this.updateLabelDensity());
+    this.updateLabelDensity();
+
+    // Clicking empty map space clears the selection. Marker buttons stop
+    // propagation, so this only fires for genuine empty-space clicks.
+    this.map.on('click', () => this.clearSelection());
+
+    // Escape anywhere clears the selection.
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') this.clearSelection();
+    });
+
+    this.refs?.closeBtn?.addEventListener('click', () => this.clearSelection());
+
+    // Preselect from ?place= without animation.
+    const place = new URLSearchParams(window.location.search).get('place');
+    if (place !== null) {
+      this.selectLocation(place, { animate: false });
+    }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Page entry point
+// ---------------------------------------------------------------------------
+
+export function initGuideMap(): void {
+  const container = document.getElementById('guide-map');
+  const dataEl = document.getElementById('guide-map-data');
+  if (!container || !dataEl) return;
+
+  let locations: LocationData[];
+  try {
+    locations = JSON.parse(dataEl.textContent ?? '[]') as LocationData[];
+  } catch {
+    return;
+  }
+  if (!Array.isArray(locations) || locations.length === 0) return;
+
+  // MapLibre warns when the container is not empty; the placeholder and
+  // noscript children are only meaningful without JS, so drop them.
+  container.replaceChildren();
+
+  // The static shell exposes the div as an image; once interactive it is a
+  // labelled region containing focusable marker buttons.
+  container.setAttribute('role', 'region');
+
+  const rawBase = import.meta.env.BASE_URL;
+  const baseUrl = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
+
+  const guideMap = new GuideMap('guide-map', baseUrl);
+  guideMap.init(locations);
 }

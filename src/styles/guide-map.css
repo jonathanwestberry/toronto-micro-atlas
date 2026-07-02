@@ -1,0 +1,181 @@
+/* ============================================================
+   Guide map island: markers, orientation labels, controls
+   Loaded globally via src/scripts/guide-map.ts
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   Threshold markers (real buttons inside MapLibre markers)
+   ------------------------------------------------------------ */
+
+.gm-marker-wrap {
+  /* MapLibre positions this wrapper; the button transforms freely inside. */
+  line-height: 0;
+}
+
+.gm-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 50%;
+  background-color: var(--threshold);
+  color: #ffffff;
+  border: 1.5px solid var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
+  cursor: pointer;
+  transition:
+    background-color 0.1s ease,
+    transform 0.1s ease,
+    box-shadow 0.1s ease;
+}
+
+.gm-marker:hover {
+  transform: scale(1.08);
+  box-shadow:
+    2px 2px 0 var(--ink),
+    0 0 0 6px rgba(222, 58, 17, 0.18);
+}
+
+.gm-marker--selected {
+  background-color: var(--threshold-active);
+  border-color: #ffffff;
+  box-shadow:
+    2px 2px 0 var(--ink),
+    0 0 0 2px var(--threshold-active);
+}
+
+.gm-marker--selected:hover {
+  box-shadow:
+    2px 2px 0 var(--ink),
+    0 0 0 2px var(--threshold-active),
+    0 0 0 7px rgba(197, 39, 7, 0.18);
+}
+
+.gm-marker:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gm-marker {
+    transition: none;
+  }
+
+  .gm-marker:hover {
+    transform: none;
+  }
+}
+
+/* ------------------------------------------------------------
+   Orientation labels (non-interactive HTML markers)
+   ------------------------------------------------------------ */
+
+.gm-label {
+  font-family: var(--font-ui);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-3);
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  text-shadow:
+    0 0 3px var(--paper),
+    0 0 6px var(--paper),
+    1px 1px 0 var(--paper),
+    -1px -1px 0 var(--paper),
+    1px -1px 0 var(--paper),
+    -1px 1px 0 var(--paper);
+  transition: opacity 0.15s ease;
+}
+
+.gm-label--water {
+  font-size: 15px;
+  letter-spacing: 0.22em;
+}
+
+.gm-label--area {
+  font-size: 13px;
+}
+
+.gm-label--valley {
+  font-size: 11px;
+  color: var(--landscape-edge);
+}
+
+.gm-label--landmark,
+.gm-label--crossroad {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+
+/* Densest labels hide when zoomed out past the density threshold */
+.gm-zoomed-out .gm-label--dense {
+  opacity: 0;
+  visibility: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gm-label {
+    transition: none;
+  }
+}
+
+/* ------------------------------------------------------------
+   Reset control button
+   ------------------------------------------------------------ */
+
+.gm-reset-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #333333;
+}
+
+.gm-reset-btn:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+}
+
+/* ------------------------------------------------------------
+   Selected-panel chip (injected markup, mirrors ThresholdChip)
+   ------------------------------------------------------------ */
+
+.gm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--threshold);
+}
+
+.gm-chip-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: var(--threshold);
+  color: #ffffff;
+  border: 1.5px solid var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
+  flex-shrink: 0;
+}
+
+/* ------------------------------------------------------------
+   MapLibre chrome adjustments (paper aesthetic)
+   ------------------------------------------------------------ */
+
+.maplibregl-ctrl.maplibregl-ctrl-attrib {
+  background-color: rgba(250, 246, 236, 0.85);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--ink-2);
+}
