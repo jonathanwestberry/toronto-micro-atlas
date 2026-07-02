@@ -19,7 +19,7 @@ const locations = allLocations.sort((a, b) => a.data.order - b.data.order);
 
   <section>
     <h2>Locations</h2>
-    <ol>
+    <ul>
       {locations.map((loc) => (
         <li>
           <a href={`${base}/guides/hidden-landscapes/${loc.data.slug}/`}>
@@ -30,6 +30,6 @@ const locations = allLocations.sort((a, b) => a.data.order - b.data.order);
           <p>{loc.data.preview}</p>
         </li>
       ))}
-    </ol>
+    </ul>
   </section>
 </Base>
