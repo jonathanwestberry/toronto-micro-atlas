@@ -111,7 +111,24 @@ echo "== 10. Orientation labels (handcrafted, validated through mapshaper) =="
 $MS "${SCRIPTS}/orientation_labels.geojson" \
   -o format=geojson "${PROC}/orientation-labels.geojson"
 
-echo "== 11. Strip null/empty-geometry features (created at write time by precision quantization) =="
+echo "== 11. Municipal boundary (dissolved to one polygon) =="
+$MS "${RAW}/boundary-shp/citygcs_regional_mun_wgs84.shp" \
+  -each 'layer="boundary"' \
+  -dissolve 'layer' \
+  -simplify 25% keep-shapes \
+  -clean \
+  -o format=geojson $PREC "${PROC}/toronto-boundary.geojson"
+
+echo "== 12. Outside-survey mask (padded rectangle minus Toronto) =="
+$MS -rectangle bbox=-79.75,43.50,-79.00,43.95 \
+  -o format=geojson force "${PROC}/_rect.geojson"
+$MS "${PROC}/_rect.geojson" \
+  -erase "${PROC}/toronto-boundary.geojson" \
+  -each 'kind="outside"' \
+  -o format=geojson $PREC force "${PROC}/outside-mask.geojson"
+rm "${PROC}/_rect.geojson"
+
+echo "== 13. Strip null/empty-geometry features (created at write time by precision quantization) =="
 export PROC_DIR="${PROC}"
 python3 - <<'PYEOF'
 import json, glob, os

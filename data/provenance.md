@@ -77,6 +77,14 @@ not published as a downloadable resource on the open data portal, so
 watercourses come from OpenStreetMap instead (below). No manual download step
 is required for any layer in this pipeline.
 
+### 11. Regional Municipal Boundary
+- Dataset page: https://open.toronto.ca/dataset/regional-municipal-boundary/
+- Resource downloaded: `toronto-boundary-wgs84.zip` (shapefile, WGS84)
+  https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/841fb820-46d0-46ac-8dcb-d20f27e57bcc/resource/41bf97f0-da1a-46a9-ac25-5ce0078d6760/download/toronto-boundary-wgs84.zip
+- The City of Toronto municipal limit (land boundary, one polygon). Drawn as the
+  dashed survey-limit line and used to derive the outside-survey mask.
+  Retrieved: 2026-07-02.
+
 ---
 
 ## OpenStreetMap datasets
@@ -139,6 +147,18 @@ Overpass JSON is converted to GeoJSON by `scripts/03_convert_osm.py`.
   (`water` | `area` | `valley` | `landmark` | `crossroad`).
 - Coordinates are approximate label anchors, not surveyed locations.
 - Output: `processed/orientation-labels.geojson`
+
+---
+
+## Derived layers
+
+### 12. Outside-survey mask
+- Derived in `04_process.sh` step 12: a padded rectangle (-79.75, 43.50, -79.00, 43.95)
+  minus the municipal boundary polygon. No external source; inherits the
+  boundary's Open Government Licence - Toronto.
+- Drawn as a 60% paper-color wash so OSM context outside Toronto reads as
+  context rather than subject, and the clipped bbox edge is never exposed
+  (paired with the map's maxBounds).
 
 ---
 

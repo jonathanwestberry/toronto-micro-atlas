@@ -216,6 +216,12 @@ export class GuideMap {
       },
       bounds: INITIAL_BOUNDS,
       fitBoundsOptions: { padding: this.fitPadding() },
+      // Pan/zoom can't leave the data extent, so the bbox edge (where the
+      // OSM context stops dead) is never on screen.
+      maxBounds: [
+        [-79.66, 43.56],
+        [-79.09, 43.88],
+      ],
       minZoom: 9.3,
       maxZoom: 16,
       dragRotate: false,
@@ -276,6 +282,8 @@ export class GuideMap {
 
     // Context group: streets, water, rail (arrive as they load)
     this.map.addSource('waterways', src('watercourses.geojson'));
+    this.map.addSource('boundary', src('toronto-boundary.geojson'));
+    this.map.addSource('outside', src('outside-mask.geojson'));
     this.map.addSource('streets-major', src('streets-major.geojson'));
     this.map.addSource('rail', src('rail.geojson'));
     this.map.addSource('streets-minor', src('streets-minor.geojson'));
@@ -283,7 +291,8 @@ export class GuideMap {
     // Layer order, bottom to top:
     // background (in base style), lake, lake-shore, streets-minor, rail,
     // streets-major, hidden-landscape, hidden-landscape-esa,
-    // hidden-landscape-edge, waterways
+    // hidden-landscape-esa-edge, hidden-landscape-edge, waterways-buried,
+    // waterways, outside-mask, toronto-boundary
 
     this.map.addLayer({
       id: 'lake',
@@ -360,6 +369,18 @@ export class GuideMap {
       },
     });
 
+    // ESA polygons get the same edge as RNFP so the two sources keep
+    // reading as one layer at close zoom.
+    this.map.addLayer({
+      id: 'hidden-landscape-esa-edge',
+      type: 'line',
+      source: 'esa',
+      paint: {
+        'line-color': '#0C6B58',
+        'line-width': 1.25,
+      },
+    });
+
     this.map.addLayer({
       id: 'hidden-landscape-edge',
       type: 'line',
@@ -393,6 +414,30 @@ export class GuideMap {
       paint: {
         'line-color': '#3994C1',
         'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1, 16, 2],
+      },
+    });
+
+    // Beyond the municipal boundary the survey fades: OSM context stays
+    // faintly visible, but the argument is Toronto's. Without this wash the
+    // city data simply stops (the Rouge dies at Steeles) and reads as a bug.
+    this.map.addLayer({
+      id: 'outside-mask',
+      type: 'fill',
+      source: 'outside',
+      paint: {
+        'fill-color': '#FAF6EC',
+        'fill-opacity': 0.6,
+      },
+    });
+
+    this.map.addLayer({
+      id: 'toronto-boundary',
+      type: 'line',
+      source: 'boundary',
+      paint: {
+        'line-color': '#A29A8C',
+        'line-width': 1.2,
+        'line-dasharray': [6, 3],
       },
     });
   }

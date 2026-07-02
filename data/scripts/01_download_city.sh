@@ -32,6 +32,12 @@ echo "== Environmentally Significant Areas (GeoJSON, EPSG:4326) =="
 curl -fsSL -o "${RAW}/esa-4326.geojson" \
   "${CKAN}/dataset/ef5a083a-5c2a-4207-9131-dfc917917069/resource/a72afc3e-881b-48f7-9a42-0b1fe55fdf4a/download/environmentally-significant-areas-4326.geojson"
 
+echo "== Regional Municipal Boundary (SHP, WGS84) =="
+curl -fsSL -o "${RAW}/toronto-boundary-wgs84.zip" \
+  "${CKAN}/dataset/841fb820-46d0-46ac-8dcb-d20f27e57bcc/resource/41bf97f0-da1a-46a9-ac25-5ce0078d6760/download/toronto-boundary-wgs84.zip"
+mkdir -p "${RAW}/boundary-shp"
+unzip -oq "${RAW}/toronto-boundary-wgs84.zip" -d "${RAW}/boundary-shp"
+
 echo "== Repairing City shapefiles =="
 # The RNFP .shp as published has a corrupt header (file-length field says 100
 # bytes) and both City .prj files use non-standard WKT that mapshaper cannot
@@ -58,7 +64,8 @@ WGS84 = ('GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,'
          '298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",'
          '0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]')
 for prj in (os.path.join(raw, "rnfp-shp", "RAVINE_BYLAW_WGS84_fixed.prj"),
-            os.path.join(raw, "parks-shp", "CITY_GREEN_SPACE_WGS84.prj")):
+            os.path.join(raw, "parks-shp", "CITY_GREEN_SPACE_WGS84.prj"),
+            os.path.join(raw, "boundary-shp", "citygcs_regional_mun_wgs84.prj")):
     with open(prj, "w") as f:
         f.write(WGS84)
 
