@@ -1,0 +1,16 @@
+{"type":"FeatureCollection", "features": [
+{"type":"Feature","geometry":{"type":"Point","coordinates":[-79.35,43.585]},"properties":{"name":"Lake Ontario","kind":"water"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[-79.383,43.652]},"properties":{"name":"Downtown","kind":"area"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[-79.358,43.688]},"properties":{"name":"Don Valley","kind":"valley"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[-79.502,43.688]},"properties":{"name":"Humber River","kind":"valley"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[-79.258,43.77]},"properties":{"name":"Scarborough","kind":"area"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[-79.545,43.655]},"properties":{"name":"Etobicoke","kind":"area"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[-79.413,43.768]},"properties":{"name":"North York","kind":"area"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[-79.335,43.699]},"properties":{"name":"East York","kind":"area"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[-79.171,43.808]},"properties":{"name":"Rouge","kind":"valley"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[-79.378,43.62]},"properties":{"name":"Toronto Islands","kind":"area"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[-79.4637,43.6465]},"properties":{"name":"High Park","kind":"landmark"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[-79.234,43.705]},"properties":{"name":"Scarborough Bluffs","kind":"landmark"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[-79.3865,43.6709]},"properties":{"name":"Yonge & Bloor","kind":"crossroad"}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[-79.3985,43.7065]},"properties":{"name":"Yonge & Eglinton","kind":"crossroad"}}
+]}
