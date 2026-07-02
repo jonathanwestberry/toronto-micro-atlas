@@ -462,6 +462,12 @@ export class GuideMap {
         .setLngLat([loc.lng, loc.lat])
         .addTo(this.map);
 
+      // MapLibre gives the marker element a redundant button role; the inner
+      // <button> is the real control, and nested interactives fail axe.
+      wrap.removeAttribute('role');
+      wrap.removeAttribute('tabindex');
+      wrap.removeAttribute('aria-label');
+
       this.markerButtons.set(loc.slug, button);
     }
   }
