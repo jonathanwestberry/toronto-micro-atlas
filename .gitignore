@@ -22,3 +22,6 @@ Thumbs.db
 
 # Logs
 npm-debug.log*
+
+# Raw geodata downloads (recreated by data/scripts/01_download_city.sh + 02/03)
+data/raw/
