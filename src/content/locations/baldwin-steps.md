@@ -1,14 +1,15 @@
 ---
-title: "Baldwin Steps"
+title: "Baldwin Steps and Davenport Escarpment"
 slug: "baldwin-steps"
 guide: "hidden-landscapes"
 thresholdType: "stair-descent"
+thresholdLabel: "Escarpment stairs"
 order: 5
 lat: 43.6780
 lng: -79.4085
 neighbourhood: "Davenport / Wychwood"
 landscapeSystem: "Davenport Escarpment / former Lake Iroquois shoreline"
-preview: "The Baldwin Steps descend the Davenport Escarpment, the ancient shoreline of glacial Lake Iroquois, now a retaining wall of stairs between two altitude registers of the city."
+preview: "The Baldwin Steps climb the Davenport escarpment from Davenport Road up to the grounds of Spadina Museum and Casa Loma. The stairs follow the edge of a landform that is not a ravine: it is the old shoreline of a glacial lake that once covered this part of the city."
 sources:
   - label: "City of Toronto: Davenport Road Heritage"
     url: "https://www.toronto.ca/city-government/planning-development/heritage-preservation/heritage-register/"
@@ -16,8 +17,8 @@ sources:
     url: "https://trca.ca/"
 ---
 
-The Davenport Escarpment is one of the few places in Toronto where geology is legible at street level. The Baldwin Steps descend its face from Davenport Road down to Dupont Street, a change in elevation of roughly ten metres that traces the shoreline of a glacial lake that filled this basin at the end of the last ice age.
+The Davenport escarpment runs across midtown, marking the former shoreline of Lake Iroquois, the glacial lake that preceded Lake Ontario. The Baldwin Steps make the escarpment climbable and legible as a public route, rising from Davenport Road to the higher ground where Spadina Museum and Casa Loma sit. From the bottom the stairs are steep and long, with landings and retaining walls following the slope. From the top, the city spreads out below the level of your feet. The escarpment is easy to miss from street level, because the grid absorbs the height change across several blocks. Only the steps make the full drop visible at once.
 
-At the top of the stairs, Davenport curves along the old beach ridge. At the bottom, the flatness of the former lake bottom begins. The stairs are concrete, maintained, thoroughly urban. But they are following a line that is 11,000 years old.
+## Context
 
-*Observation conditions: dry, midday. Step count: approximately 90. Grade: steep and direct.*
+The escarpment follows the ancient shoreline of glacial Lake Iroquois, which occupied the Lake Ontario basin at the end of the last ice age. When drainage patterns changed and the water level fell, the abandoned shoreline remained as a ridge across the city.

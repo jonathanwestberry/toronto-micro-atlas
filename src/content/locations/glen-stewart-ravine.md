@@ -3,12 +3,13 @@ title: "Glen Stewart Ravine North Entrance"
 slug: "glen-stewart-ravine"
 guide: "hidden-landscapes"
 thresholdType: "stair-descent"
+thresholdLabel: "Stair descent"
 order: 4
 lat: 43.6785
 lng: -79.2935
 neighbourhood: "The Beaches"
 landscapeSystem: "Glen Stewart Ravine / Kingston Road plateau edge"
-preview: "Stairs cut into the Kingston Road escarpment drop you into a ravine that surprises every time: narrow, wet, and emphatically not the Beaches everyone talks about."
+preview: "From the south side of Kingston Road in the Beaches, a wooden staircase drops into Glen Stewart Ravine. The change is fast: one moment you are on a residential main street, the next you are on a boardwalk in a tight forested ravine, following a creek corridor south."
 sources:
   - label: "City of Toronto: Glen Stewart Ravine"
     url: "https://www.toronto.ca/data/parks/prd/facilities/complex/399/index.html"
@@ -16,8 +17,4 @@ sources:
     url: "https://www.glenstewartravine.com/"
 ---
 
-The north entrance to Glen Stewart Ravine is a set of wooden stairs bolted into the side of a ravine wall that the city barely acknowledges from street level. Kingston Road runs along the plateau above; the ravine below is narrow and shaded and feels much further from the commercial strip than the vertical distance suggests.
-
-The creek at the bottom is small and often obscured by vegetation. The ravine is unusual for the east end: steep walls, high canopy, the sense of a contained microclimate. In summer, the air temperature drops noticeably within the first landing.
-
-*Observation conditions: late summer, dry. Stair condition: weathered, slick when wet. Creek: running.*
+The north entrance sits on the south side of Kingston Road. Wooden stairs descend from the sidewalk into a narrow ravine corridor, the canopy closes quickly, and a boardwalk takes over from the stair. The ravine follows Ames Creek south. Sound and light change within the first few steps, and the tight tree cover produces the sense of entering a channel rather than a park. The stairs and boardwalk make the descent read as a designed passage, not a casual shortcut, and the boardwalk keeps foot traffic off the ravine's sensitive slopes.

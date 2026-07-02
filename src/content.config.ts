@@ -28,6 +28,7 @@ const locations = defineCollection({
       'path-ending',
       'slope-overlook',
     ]),
+    thresholdLabel: z.string(),
     order: z.number(),
     lat: z.number(),
     lng: z.number(),

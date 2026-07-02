@@ -1,23 +1,24 @@
 ---
-title: "Mast Trail Entrance"
+title: "Mast Trail, Rouge National Urban Park"
 slug: "mast-trail"
 guide: "hidden-landscapes"
 thresholdType: "trail-entrance"
+thresholdLabel: "Trailhead"
 order: 8
 lat: 43.8050
 lng: -79.1360
 neighbourhood: "Rouge / Scarborough"
 landscapeSystem: "Rouge River valley / Rouge National Urban Park"
-preview: "The Mast Trail enters the Rouge valley where the landscape shifts fast from the suburban edge of Scarborough into a river valley that is classified as a national park and feels like it."
+preview: "The Mast Trail begins at the Glen Rouge Day Use Area on Kingston Road and climbs steeply into the Rouge Valley. Within a few hundred metres the trailhead infrastructure falls away and the ridge rises through dense forest. The city does not follow."
 sources:
   - label: "Parks Canada: Rouge National Urban Park"
     url: "https://www.pc.gc.ca/en/pn-np/on/rouge"
-  - label: "City of Toronto: Rouge Park Connection"
-    url: "https://www.toronto.ca/city-government/planning-development/official-plan-guidelines/rouge-park/"
+  - label: "Parks Canada: Mast Trail"
+    url: "https://www.pc.gc.ca/en/pn-np/on/rouge/visit/trails"
 ---
 
-The Mast Trail drops into the Rouge River valley at a point where the suburban street grid ends abruptly. The transition is clean: one moment Scarborough residential, the next a valley wide enough to muffle the city entirely. The Rouge National Urban Park designation means the forest management is different here: older trees, less intervention, more deadfall.
+Rouge National Urban Park is a federally protected area at the eastern edge of the city, and the Mast Trail is its most demanding entry. From the Glen Rouge Day Use Area on Kingston Road, the trail climbs a wooded ridge above the Rouge Valley, with steep sections and a descent on the far side toward Twyn Rivers Drive. The transition is less abrupt than the downtown entries in this guide: there is a parking area, signage, a day-use edge. But the forest closes in quickly, the ridge makes the topography unmistakable, and the city does not follow you in.
 
-The Rouge is one of the last rivers in the Toronto area that retains a largely unimpeded connection to Lake Ontario. The valley at the Mast Trail entrance shows this: the river moves freely, the banks have not been armoured, and the floodplain is active.
+## Context
 
-*Observation conditions: clear morning. Valley: wide, open canopy at entry. River: audible from trailhead.*
+The Mast Trail crosses a forested ridge above the Rouge Valley in Rouge National Urban Park, Canada's first national urban park, managed by Parks Canada.

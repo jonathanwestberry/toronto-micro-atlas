@@ -1,23 +1,24 @@
 ---
-title: "Blythwood Ravine Underpass"
+title: "Blythwood Ravine Under Mount Pleasant Road"
 slug: "blythwood-ravine"
 guide: "hidden-landscapes"
 thresholdType: "underpass"
+thresholdLabel: "Underpass"
 order: 7
 lat: 43.7175
 lng: -79.3925
 neighbourhood: "Lawrence Park / North Toronto"
-landscapeSystem: "Belt Line / Blythwood Ravine system"
-preview: "Mount Pleasant Road passes over the Blythwood Ravine on a bridge high enough that the underpass feels like a room, a transitional space between two trail sections and two kinds of quiet."
+landscapeSystem: "Blythwood Ravine / Burke Brook / Don River watershed"
+preview: "The trail through Blythwood Ravine passes under Mount Pleasant Road, where the road becomes a concrete ceiling and the path continues beneath it. For a few seconds you are inside the city's infrastructure. Then the ravine opens again on the other side."
 sources:
   - label: "City of Toronto: Blythwood Ravine Park"
     url: "https://www.toronto.ca/data/parks/prd/facilities/complex/392/index.html"
-  - label: "Toronto Belt Line Trail Association"
-    url: "https://www.beltlinetrail.ca/"
+  - label: "Toronto and Region Conservation Authority: Walk the Don"
+    url: "https://trca.ca/conservation/greenspace-management/don-watershed/"
 ---
 
-The Mount Pleasant Road bridge over Blythwood Ravine creates an underpass that functions as a room: high concrete walls, the sound of the ravine creek amplified, traffic noise overhead but muted. The trail continues on both sides but the underpass is its own space, neither fully natural nor fully built.
+The Blythwood and Sherwood ravine system runs through Lawrence Park, and its trail passes under the Mount Pleasant Road bridge at the system's deepest point. The underpass is the threshold: road overhead, ravine walls on either side, the path continuing through compressed space. Burke Brook runs through the system, parts of it constrained by urban drainage infrastructure. For a short distance the ravine and the road occupy the same vertical column, the city folded over itself. The ravine is quieter than the trails closer to the core, and the underpass feels more infrastructural than scenic, which is exactly why it belongs in this guide.
 
-The Blythwood Ravine connects to the old Belt Line railway corridor to the north, a disused commuter rail right-of-way that became a trail long before trail conversion was fashionable. The underpass is the pinch point between the ravine and the Belt Line; most people pass through it quickly without noticing that they have passed through anything.
+## Context
 
-*Observation conditions: overcast. Echo: noticeable. Creek flow: moderate. Graffiti: historical.*
+Burke Brook flows through the Blythwood and Sherwood ravines as part of the Don River watershed. The Toronto and Region Conservation Authority's Walk the Don series traces the creek through Lawrence Park and Sherwood Park and notes the channelized condition of parts of the watercourse.
