@@ -1,0 +1,100 @@
+---
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const { title, description = 'An independent web publication of Field Guides about noticing Toronto.' } = Astro.props;
+const siteTitle = 'Toronto Micro-Atlas';
+const pageTitle = title ? `${title} — ${siteTitle}` : siteTitle;
+const base = import.meta.env.BASE_URL;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="generator" content={Astro.generator} />
+    <title>{pageTitle}</title>
+    <link rel="canonical" href={Astro.url.href} />
+    <style>
+      :root {
+        --color-ink: #1a1a18;
+        --color-paper: #f8f6f0;
+        --color-accent: #2d5a3d;
+        --color-muted: #6b6b60;
+        --font-sans: system-ui, -apple-system, sans-serif;
+        --font-mono: ui-monospace, monospace;
+        --measure: 68ch;
+        --space-s: 0.75rem;
+        --space-m: 1.5rem;
+        --space-l: 3rem;
+      }
+
+      *, *::before, *::after {
+        box-sizing: border-box;
+      }
+
+      html {
+        font-family: var(--font-sans);
+        background-color: var(--color-paper);
+        color: var(--color-ink);
+        line-height: 1.6;
+      }
+
+      body {
+        margin: 0;
+        padding: var(--space-m);
+      }
+
+      header {
+        border-bottom: 1px solid currentColor;
+        padding-bottom: var(--space-s);
+        margin-bottom: var(--space-l);
+      }
+
+      header nav {
+        display: flex;
+        gap: var(--space-m);
+        flex-wrap: wrap;
+        align-items: baseline;
+        margin-top: var(--space-s);
+      }
+
+      a {
+        color: var(--color-accent);
+      }
+
+      main {
+        max-width: var(--measure);
+      }
+
+      footer {
+        border-top: 1px solid currentColor;
+        margin-top: var(--space-l);
+        padding-top: var(--space-s);
+        color: var(--color-muted);
+        font-size: 0.875rem;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a href={`${base}/`}><strong>{siteTitle}</strong></a>
+      <nav>
+        <a href={`${base}/guides/hidden-landscapes/`}>Field Guide 01: Hidden Landscapes</a>
+        <a href={`${base}/about/`}>About</a>
+      </nav>
+    </header>
+
+    <main>
+      <slot />
+    </main>
+
+    <footer>
+      <p>Toronto Micro-Atlas &copy; 2026 Jonathan Westberry. Code: MIT. Written content and illustrations: all rights reserved.</p>
+    </footer>
+  </body>
+</html>

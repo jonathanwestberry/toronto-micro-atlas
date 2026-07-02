@@ -1,0 +1,35 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../../layouts/Base.astro';
+
+const base = import.meta.env.BASE_URL;
+
+const allLocations = await getCollection('locations', ({ data }) => data.guide === 'hidden-landscapes');
+const locations = allLocations.sort((a, b) => a.data.order - b.data.order);
+---
+
+<Base
+  title="Field Guide 01: Hidden Landscapes"
+  description="Eight threshold locations where Toronto's surface cracks open into something older — ravines, buried rivers, and the topography the grid never fully erased."
+>
+  <h1>Field Guide 01: Hidden Landscapes</h1>
+  <p>Eight threshold locations where Toronto's surface cracks open into something older.</p>
+
+  <p><em>Status: under observation. The map is a placeholder; interactive map forthcoming.</em></p>
+
+  <section>
+    <h2>Locations</h2>
+    <ol>
+      {locations.map((loc) => (
+        <li>
+          <a href={`${base}/guides/hidden-landscapes/${loc.data.slug}/`}>
+            {loc.data.title}
+          </a>
+          <br />
+          <small>{loc.data.neighbourhood} — {loc.data.thresholdType}</small>
+          <p>{loc.data.preview}</p>
+        </li>
+      ))}
+    </ol>
+  </section>
+</Base>

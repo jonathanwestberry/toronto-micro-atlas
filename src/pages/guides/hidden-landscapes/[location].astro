@@ -1,0 +1,83 @@
+---
+import { getCollection, render } from 'astro:content';
+import Base from '../../../layouts/Base.astro';
+
+const base = import.meta.env.BASE_URL;
+
+export async function getStaticPaths() {
+  const allLocations = await getCollection('locations', ({ data }) => data.guide === 'hidden-landscapes');
+  const sorted = allLocations.sort((a, b) => a.data.order - b.data.order);
+
+  return sorted.map((loc, index) => {
+    const prev = index > 0 ? sorted[index - 1] : null;
+    const next = index < sorted.length - 1 ? sorted[index + 1] : null;
+
+    return {
+      params: { location: loc.data.slug },
+      props: { entry: loc, prev, next },
+    };
+  });
+}
+
+const { entry, prev, next } = Astro.props;
+const { Content } = await render(entry);
+---
+
+<Base
+  title={entry.data.title}
+  description={entry.data.preview}
+>
+  <nav aria-label="Location breadcrumb">
+    <a href={`${base}/guides/hidden-landscapes/`}>Field Guide 01: Hidden Landscapes</a>
+  </nav>
+
+  <article>
+    <header>
+      <h1>{entry.data.title}</h1>
+      <dl>
+        <dt>Neighbourhood</dt>
+        <dd>{entry.data.neighbourhood}</dd>
+
+        <dt>Landscape system</dt>
+        <dd>{entry.data.landscapeSystem}</dd>
+
+        <dt>Threshold type</dt>
+        <dd>{entry.data.thresholdType}</dd>
+
+        <dt>Coordinates</dt>
+        <dd>{entry.data.lat}, {entry.data.lng}</dd>
+      </dl>
+      <p><em>{entry.data.preview}</em></p>
+    </header>
+
+    <section>
+      <Content />
+    </section>
+
+    {entry.data.sources.length > 0 && (
+      <section>
+        <h2>Sources</h2>
+        <ul>
+          {entry.data.sources.map((source) => (
+            <li>
+              <a href={source.url} target="_blank" rel="noopener noreferrer">{source.label}</a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+  </article>
+
+  <nav aria-label="Location navigation">
+    {prev && (
+      <a href={`${base}/guides/hidden-landscapes/${prev.data.slug}/`} rel="prev">
+        &larr; {prev.data.title}
+      </a>
+    )}
+    {next && (
+      <a href={`${base}/guides/hidden-landscapes/${next.data.slug}/`} rel="next">
+        {next.data.title} &rarr;
+      </a>
+    )}
+  </nav>
+</Base>
