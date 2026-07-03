@@ -505,6 +505,7 @@ const mapLocations = locations.map((loc) => ({
 
   .guide-cards-section {
     max-width: var(--container);
+    margin-inline: auto;
     padding-block: var(--space-12);
     padding-inline: var(--gutter);
     border-top: 1px solid var(--street-minor);
@@ -621,8 +622,14 @@ const mapLocations = locations.map((loc) => ({
       z-index: 10;
     }
 
+  }
+
+  /* Cards: 1 column on mobile, 2 from 640px (rule above), 4 from 1200px.
+     Eight locations fill 4x2 / 2x4 / 1x8 exactly, so no orphan cell ever
+     shows the hairline-grid background as an empty card. */
+  @media (min-width: 1200px) {
     .guide-card-grid {
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
     }
   }
 </style>

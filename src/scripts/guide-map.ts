@@ -299,6 +299,8 @@ export class GuideMap {
     this.map.addSource('waterways', src('watercourses.geojson'));
     this.map.addSource('boundary', src('toronto-boundary.geojson'));
     this.map.addSource('outside', src('outside-mask.geojson'));
+    this.map.addSource('feather-inner', src('feather-inner.geojson'));
+    this.map.addSource('feather-outer', src('feather-outer.geojson'));
     this.map.addSource('streets-major', src('streets-major.geojson'));
     this.map.addSource('streets-minor', src('streets-minor.geojson'));
 
@@ -432,6 +434,30 @@ export class GuideMap {
       paint: {
         'fill-color': '#FAF6EC', // --paper
         'fill-opacity': 0.78,    // --wash-outside opacity
+      },
+    });
+
+    // Edge feather: the ghosted OSM context fades to pure paper before the
+    // clipped data extent, so no zoom level ever shows a hard rectangle
+    // where the data stops. Cumulative with the 0.78 mask: ghost visibility
+    // steps 22% -> 13% -> 0% across two soft bands.
+    this.map.addLayer({
+      id: 'feather-inner',
+      type: 'fill',
+      source: 'feather-inner',
+      paint: {
+        'fill-color': '#FAF6EC', // --paper
+        'fill-opacity': 0.42,
+      },
+    });
+
+    this.map.addLayer({
+      id: 'feather-outer',
+      type: 'fill',
+      source: 'feather-outer',
+      paint: {
+        'fill-color': '#FAF6EC', // --paper
+        'fill-opacity': 1,
       },
     });
 

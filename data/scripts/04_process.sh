@@ -130,6 +130,19 @@ $MS "${PROC}/_rect.geojson" \
   -o format=geojson $PREC force "${PROC}/outside-mask.geojson"
 rm "${PROC}/_rect.geojson"
 
+echo "== 12b. Edge-feather rings (ghost context fades to paper before the data edge) =="
+# Two rings stacked over the outside-mask step the ghosted OSM context down
+# 22% -> 13% -> 0% so no zoom level shows a hard rectangle where clipped
+# data stops. Inner band edge sits 0.06/0.035 deg inside the data bbox.
+$MS -rectangle bbox=-80.30,43.20,-78.45,44.20 -o format=geojson force "${PROC}/_hug.geojson"
+$MS -rectangle bbox=-79.60,43.595,-79.15,43.845 -o format=geojson force "${PROC}/_inA.geojson"
+$MS -rectangle bbox=${BBOX} -o format=geojson force "${PROC}/_inB.geojson"
+$MS "${PROC}/_hug.geojson" -erase "${PROC}/_inA.geojson" -erase "${PROC}/toronto-boundary.geojson" \
+  -each 'kind="feather-inner"' -o format=geojson $PREC force "${PROC}/feather-inner.geojson"
+$MS "${PROC}/_hug.geojson" -erase "${PROC}/_inB.geojson" -erase "${PROC}/toronto-boundary.geojson" \
+  -each 'kind="feather-outer"' -o format=geojson $PREC force "${PROC}/feather-outer.geojson"
+rm "${PROC}/_hug.geojson" "${PROC}/_inA.geojson" "${PROC}/_inB.geojson"
+
 echo "== 13. Strip null/empty-geometry features (created at write time by precision quantization) =="
 export PROC_DIR="${PROC}"
 python3 - <<'PYEOF'

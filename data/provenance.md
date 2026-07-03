@@ -157,9 +157,15 @@ Overpass JSON is converted to GeoJSON by `scripts/03_convert_osm.py`.
   minus the municipal boundary polygon. The rectangle exceeds the map's
   maxBounds with margin so the pan/zoom limits never expose bare paper.
   No external source; inherits the boundary's Open Government Licence - Toronto.
-- Drawn as a 60% paper-color wash so OSM context outside Toronto reads as
-  context rather than subject, and the clipped bbox edge is never exposed
-  (paired with the map's maxBounds).
+- Drawn as a 78% paper-color wash so OSM context outside Toronto reads as
+  context rather than subject.
+
+### 13. Edge-feather rings
+- Derived in `04_process.sh` step 12b: two rectangle rings (minus the
+  municipal boundary) stacked above the outside-mask at 42% and 100% paper,
+  stepping the ghosted context down 22% -> 13% -> 0% before the clipped
+  data extent so no zoom level exposes a hard data rectangle.
+- Outputs: `processed/feather-inner.geojson`, `processed/feather-outer.geojson`.
 
 ---
 
