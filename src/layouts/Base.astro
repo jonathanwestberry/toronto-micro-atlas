@@ -53,9 +53,13 @@ const onAbout = path.includes('/about');
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={`${base}/social/og-default.jpg`} />
 
-    <style>
+    <style is:global>
       /* ============================================================
          Global reset and base styles
+         is:global matters: a plain style block is Astro-scoped to this
+         layout's own template, so the reset, .prose, and .page-wrapper
+         silently never reached slotted page content (UA list padding
+         leaking into card grids was the visible symptom).
          ============================================================ */
 
       *, *::before, *::after {
