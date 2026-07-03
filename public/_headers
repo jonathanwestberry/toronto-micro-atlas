@@ -1,5 +1,5 @@
-/*
+https://toronto-micro-atlas.pages.dev/*
   X-Robots-Tag: noindex, nofollow
 
-# Preview/staging on *.pages.dev: keep it out of search indexes. Remove this
-# file (or scope it) once the atlas lives on its production domain.
+# The pages.dev subdomain stays out of search indexes so it never competes
+# with the production domain (torontomicroatlas.com), which is indexable.
