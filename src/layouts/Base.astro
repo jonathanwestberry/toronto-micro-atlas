@@ -1,5 +1,7 @@
 ---
 import '../styles/tokens.css';
+import '../styles/motion.css';
+import { ClientRouter } from 'astro:transitions';
 
 interface Props {
   title?: string;
@@ -18,6 +20,9 @@ const pageTitle = title ? `${title} | ${siteTitle}` : siteTitle;
 const resolvedOgTitle = ogTitle ?? title ?? siteTitle;
 const base = import.meta.env.BASE_URL;
 const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://jonathanwestberry.github.io');
+const path = Astro.url.pathname;
+const onGuides = path.includes('/guides/');
+const onAbout = path.includes('/about');
 ---
 
 <!doctype html>
@@ -30,6 +35,8 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://jonathan
     <title>{pageTitle}</title>
     <link rel="icon" type="image/svg+xml" href={`${base}/favicon.svg`} />
     <link rel="canonical" href={canonicalURL.href} />
+
+    <ClientRouter />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
@@ -103,6 +110,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://jonathan
       a {
         color: var(--ink);
         text-underline-offset: 3px;
+        transition: color var(--dur-1) var(--ease-out);
       }
 
       a:hover {
@@ -200,6 +208,14 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://jonathan
         text-decoration: none;
         color: var(--ink-2);
         letter-spacing: 0.02em;
+        padding-bottom: 2px;
+      }
+
+      .site-nav a[aria-current='page'],
+      .site-nav a[aria-current='true'] {
+        color: var(--ink);
+        font-weight: 700;
+        box-shadow: inset 0 -2px 0 var(--threshold);
       }
 
       .site-nav a:hover {
@@ -212,49 +228,102 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://jonathan
       }
 
       /* ============================================================
-         Site footer
+         Site footer: publication colophon
          ============================================================ */
 
       .site-footer {
-        padding: var(--space-8) var(--space-6);
-        border-top: 1px solid var(--street-minor);
         margin-top: auto;
+        border-top: 1px solid var(--ink);
+        background: var(--card);
       }
 
       .site-footer-inner {
-        max-width: 1280px;
+        max-width: var(--container-wide);
         margin: 0 auto;
-        display: flex;
-        flex-wrap: wrap;
-        gap: var(--space-4) var(--space-8);
-        align-items: baseline;
-        justify-content: space-between;
+        padding: var(--space-12) var(--gutter) var(--space-8);
+        display: grid;
+        grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.2fr);
+        gap: var(--space-8) var(--space-12);
+      }
+
+      @media (max-width: 767px) {
+        .site-footer-inner {
+          grid-template-columns: 1fr;
+          padding-top: var(--space-8);
+        }
+      }
+
+      .site-footer-mark {
+        font-family: var(--font-heading);
+        font-weight: 900;
+        font-size: var(--text-sm);
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .site-footer-tagline {
+        margin-top: var(--space-2);
+        font-family: var(--font-body);
+        font-size: var(--text-sm);
+        color: var(--ink-2);
+        max-width: 34ch;
+      }
+
+      .site-footer-signature {
+        margin-top: var(--space-6);
+        font-family: var(--font-ui);
+        font-size: var(--text-sm);
+        color: var(--ink-2);
+      }
+
+      .site-footer-signature a {
+        color: var(--ink);
+        font-weight: 600;
+        text-decoration-thickness: 2px;
+        text-underline-offset: 4px;
+      }
+
+      .site-footer-signature a:hover {
+        color: var(--threshold);
+      }
+
+      .site-footer-heading {
+        font-family: var(--font-ui);
+        font-size: var(--text-xs);
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+        margin-bottom: var(--space-3);
       }
 
       .site-footer-links {
-        display: flex;
-        gap: var(--space-6);
-        flex-wrap: wrap;
-        align-items: baseline;
         list-style: none;
+        display: grid;
+        gap: var(--space-2);
       }
 
       .site-footer-links a {
         font-family: var(--font-ui);
-        font-size: var(--text-xs);
-        color: var(--ink-3);
+        font-size: var(--text-sm);
+        color: var(--ink-2);
         text-decoration: none;
       }
 
       .site-footer-links a:hover {
-        color: var(--ink);
+        color: var(--threshold);
+      }
+
+      .site-footer-links a:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-ring-offset);
       }
 
       .site-footer-meta {
         font-family: var(--font-ui);
         font-size: var(--text-xs);
         color: var(--ink-3);
-        line-height: 1.5;
+        line-height: 1.7;
       }
 
       /* ============================================================
@@ -355,8 +424,8 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://jonathan
         <a href={`${base}/`} class="site-masthead">Toronto Micro-Atlas</a>
         <nav aria-label="Site navigation">
           <ul class="site-nav">
-            <li><a href={`${base}/#field-guides`}>Field Guides</a></li>
-            <li><a href={`${base}/about/`}>About</a></li>
+            <li><a href={`${base}/#field-guides`} aria-current={onGuides ? 'true' : undefined}>Field Guides</a></li>
+            <li><a href={`${base}/about/`} aria-current={onAbout ? 'page' : undefined}>About</a></li>
           </ul>
         </nav>
       </div>
@@ -368,15 +437,57 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://jonathan
 
     <footer class="site-footer">
       <div class="site-footer-inner">
-        <ul class="site-footer-links">
-          <li><a href="https://jonathan-westberry.com" rel="noopener">jonathan-westberry.com</a></li>
-          <li><a href="https://github.com/jonathanwestberry/toronto-micro-atlas" rel="noopener">GitHub</a></li>
-        </ul>
-        <p class="site-footer-meta">
-          Code: MIT. Written content: all rights reserved.<br />
-          Map data &copy; OpenStreetMap contributors, City of Toronto.
-        </p>
+        <div class="site-footer-id">
+          <p class="site-footer-mark">Toronto Micro-Atlas</p>
+          <p class="site-footer-tagline">Field Guides about noticing and using Toronto.</p>
+          <p class="site-footer-signature">
+            <span>Made by</span>
+            {/* Hand-lettered signature SVG replaces this text link when the final wordmark is exported */}
+            <a href="https://jonathan-westberry.com" rel="noopener">Jonathan Westberry</a>
+          </p>
+        </div>
+        <nav class="site-footer-nav" aria-label="Footer">
+          <p class="site-footer-heading">Explore</p>
+          <ul class="site-footer-links">
+            <li><a href={`${base}/guides/hidden-landscapes/`} data-astro-reload>Field Guide 01: Hidden Landscapes</a></li>
+            <li><a href={`${base}/about/`}>About the atlas</a></li>
+            <li><a href="https://github.com/jonathanwestberry/toronto-micro-atlas" rel="noopener">Source on GitHub</a></li>
+          </ul>
+        </nav>
+        <div class="site-footer-colophon">
+          <p class="site-footer-heading">Colophon</p>
+          <p class="site-footer-meta">
+            Set in Archivo and Source Serif 4. Built with Astro and MapLibre GL JS.<br />
+            Map data &copy; OpenStreetMap contributors, City of Toronto.<br />
+            Code MIT. Writing and illustrations all rights reserved.
+          </p>
+        </div>
       </div>
     </footer>
+
+    <script>
+      const revealAll = () => {
+        const items = document.querySelectorAll('[data-reveal]:not(.is-revealed)');
+        if (!items.length) return;
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          items.forEach((el) => el.classList.add('is-revealed'));
+          return;
+        }
+        const io = new IntersectionObserver(
+          (entries) => {
+            for (const entry of entries) {
+              if (entry.isIntersecting) {
+                entry.target.classList.add('is-revealed');
+                io.unobserve(entry.target);
+              }
+            }
+          },
+          { rootMargin: '0px 0px -8% 0px', threshold: 0.1 },
+        );
+        items.forEach((el) => io.observe(el));
+      };
+      revealAll();
+      document.addEventListener('astro:page-load', revealAll);
+    </script>
   </body>
 </html>
