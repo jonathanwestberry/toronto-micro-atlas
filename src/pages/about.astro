@@ -9,32 +9,54 @@ const base = import.meta.env.BASE_URL;
   description="Toronto Micro-Atlas is an independent publication by Jonathan Westberry, a mapmaker and designer based in Toronto."
 >
   <div class="page-wrapper">
-    <article class="about-article">
-      <header class="about-header">
-        <h1 class="about-title">About</h1>
-        <div class="about-rule" role="presentation" aria-hidden="true"></div>
-      </header>
+    <div class="about-layout">
+      <article class="about-article" aria-labelledby="about-title">
 
-      <div class="about-body">
-        <p>Toronto Micro-Atlas is an independent publication by Jonathan Westberry, a mapmaker and designer based in Toronto.</p>
+        <header class="about-header" data-reveal>
+          <h1 class="about-title" id="about-title">About</h1>
+          <div class="about-rule" role="presentation" aria-hidden="true"></div>
+        </header>
 
-        <p>The atlas is organized as Field Guides. Each one explores a specific way of noticing or using the city. A guide is a curated collection, not an exhaustive database: it takes a position on what is worth paying attention to and why, and it makes that position readable through interactive maps and location entries built on real geographic data. The maps are drawn to be read as objects, not just used for navigation.</p>
+        <div class="about-body">
+          <p class="about-lede" data-reveal style="--reveal-delay: 40ms">Toronto Micro-Atlas is an independent publication by Jonathan Westberry, a mapmaker and designer based in Toronto.</p>
 
-        <p>Field Guides take time. The atlas grows as guides are finished, and existing guides keep improving after they ship. The work is made in Toronto.</p>
-      </div>
+          <div class="about-prose prose" data-reveal style="--reveal-delay: 80ms">
+            <p>The atlas is organized as Field Guides. Each one explores a specific way of noticing or using the city. A guide is a curated collection, not an exhaustive database: it takes a position on what is worth paying attention to and why, and it makes that position readable through interactive maps and location entries built on real geographic data. The maps are drawn to be read as objects, not just used for navigation.</p>
 
-      <nav class="about-nav" aria-label="Site navigation">
-        <a href={`${base}/`} class="about-back">Toronto Micro-Atlas</a>
-        <a href={`${base}/guides/hidden-landscapes/`} class="about-guide-link">Field Guide 01: Hidden Landscapes</a>
-      </nav>
-    </article>
+            <p>Field Guides take time. The atlas grows as guides are finished, and existing guides keep improving after they ship. The work is made in Toronto.</p>
+          </div>
+        </div>
+
+        <nav class="about-nav" aria-label="Site navigation" data-reveal>
+          <a href={`${base}/`} class="about-back">Toronto Micro-Atlas</a>
+          <a href={`${base}/guides/hidden-landscapes/`} class="about-guide-link" data-astro-reload>Field Guide 01: Hidden Landscapes</a>
+        </nav>
+
+      </article>
+    </div>
   </div>
 </Base>
 
 <style>
+  /* ============================================================
+     Page layout: centered column within page-wrapper
+     ============================================================ */
+
+  .about-layout {
+    max-width: var(--container);
+    margin: 0 auto;
+    display: flex;
+    justify-content: center;
+  }
+
   .about-article {
+    width: 100%;
     max-width: var(--measure);
   }
+
+  /* ============================================================
+     Header
+     ============================================================ */
 
   .about-header {
     margin-bottom: var(--space-12);
@@ -56,6 +78,10 @@ const base = import.meta.env.BASE_URL;
     background-color: var(--landscape);
   }
 
+  /* ============================================================
+     Body
+     ============================================================ */
+
   .about-body {
     display: flex;
     flex-direction: column;
@@ -63,12 +89,23 @@ const base = import.meta.env.BASE_URL;
     margin-bottom: var(--space-12);
   }
 
-  .about-body p {
+  /* Lede paragraph: larger, tighter measure */
+  .about-lede {
     font-family: var(--font-body);
     font-size: var(--text-xl);
     line-height: 1.7;
-    color: var(--ink);
+    color: var(--ink-2);
+    max-width: var(--measure-lede);
   }
+
+  /* Remaining prose via global .prose classes */
+  .about-prose {
+    max-width: var(--measure);
+  }
+
+  /* ============================================================
+     Footer nav
+     ============================================================ */
 
   .about-nav {
     display: flex;
@@ -85,6 +122,7 @@ const base = import.meta.env.BASE_URL;
     font-weight: 500;
     color: var(--ink-2);
     text-decoration: none;
+    transition: color var(--dur-1) var(--ease-out);
   }
 
   .about-back:hover,
@@ -96,5 +134,12 @@ const base = import.meta.env.BASE_URL;
   .about-guide-link:focus-visible {
     outline: var(--focus-ring);
     outline-offset: var(--focus-ring-offset);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .about-back,
+    .about-guide-link {
+      transition: none;
+    }
   }
 </style>

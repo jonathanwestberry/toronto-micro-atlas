@@ -44,8 +44,8 @@ interface PanelRefs {
 // ---------------------------------------------------------------------------
 
 const INITIAL_BOUNDS: maplibregl.LngLatBoundsLike = [
-  [-79.65, 43.57],
-  [-79.1, 43.87],
+  [-79.66, 43.56],
+  [-79.09, 43.88],
 ];
 
 /** Zoom applied when easing to a selected marker (never zooms out past current). */
@@ -216,13 +216,25 @@ export class GuideMap {
       },
       bounds: INITIAL_BOUNDS,
       fitBoundsOptions: { padding: this.fitPadding() },
-      // Pan/zoom can't leave the data extent, so the bbox edge (where the
-      // OSM context stops dead) is never on screen.
+      cooperativeGestures: true,
+      // Wide enough that the padded all-markers fit is never clamped: the
+      // desktop fit (444px+ left padding for the panel) needs ~0.87 deg of
+      // longitude on screen, and the 390px mobile fit needs ~0.72 deg. A
+      // tight maxBounds silently clamps fitBounds and shoves west Toronto
+      // off screen. The outside-mask wash covers to
+      // [-80.00, 43.35, -78.75, 44.05], so no bare void appears anywhere
+      // within these bounds.
+      // 1.55 x 0.80 deg: the desktop fit shows ~1.31 deg of longitude once
+      // the 486px panel padding is added, and maxBounds narrower than the
+      // on-screen span clamps the zoom itself, not just the center.
       maxBounds: [
-        [-79.66, 43.56],
-        [-79.09, 43.88],
+        [-80.15, 43.30],
+        [-78.60, 44.10],
       ],
-      minZoom: 9.3,
+      // 8.5, not 9.0: on narrow viewports the all-markers fit needs ~8.55,
+      // and a higher floor clamps fitBounds so edge markers clip offscreen.
+      // maxBounds still keeps the data void unreachable.
+      minZoom: 8.5,
       maxZoom: 16,
       dragRotate: false,
       attributionControl: false,
@@ -280,19 +292,22 @@ export class GuideMap {
     this.map.addSource('rnfp', src('ravine-rnfp.geojson'));
     this.map.addSource('esa', src('esa.geojson'));
 
-    // Context group: streets, water, rail (arrive as they load)
+    // Context group: streets, water (arrive as they load)
+    // Rail source intentionally omitted: buried watercourses are the only
+    // dashed device on the map; rail used the same dash and was removed to
+    // maintain single-symbol semantics.
     this.map.addSource('waterways', src('watercourses.geojson'));
     this.map.addSource('boundary', src('toronto-boundary.geojson'));
     this.map.addSource('outside', src('outside-mask.geojson'));
     this.map.addSource('streets-major', src('streets-major.geojson'));
-    this.map.addSource('rail', src('rail.geojson'));
     this.map.addSource('streets-minor', src('streets-minor.geojson'));
 
     // Layer order, bottom to top:
-    // background (in base style), lake, lake-shore, streets-minor, rail,
+    // background (in base style), lake, lake-shore, streets-minor,
     // streets-major, hidden-landscape, hidden-landscape-esa,
     // hidden-landscape-esa-edge, hidden-landscape-edge, waterways-buried,
     // waterways, outside-mask, toronto-boundary
+    // (rail removed: buried watercourses are the only dashed device)
 
     this.map.addLayer({
       id: 'lake',
@@ -322,17 +337,6 @@ export class GuideMap {
       paint: {
         'line-color': '#D3CEC4',
         'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.8, 16, 1.6],
-      },
-    });
-
-    this.map.addLayer({
-      id: 'rail',
-      type: 'line',
-      source: 'rail',
-      paint: {
-        'line-color': '#D3CEC4',
-        'line-width': 1,
-        'line-dasharray': [2, 2],
       },
     });
 
@@ -420,24 +424,26 @@ export class GuideMap {
     // Beyond the municipal boundary the survey fades: OSM context stays
     // faintly visible, but the argument is Toronto's. Without this wash the
     // city data simply stops (the Rouge dies at Steeles) and reads as a bug.
+    // fill-opacity matches --wash-outside token (rgba(250,246,236,0.78))
     this.map.addLayer({
       id: 'outside-mask',
       type: 'fill',
       source: 'outside',
       paint: {
-        'fill-color': '#FAF6EC',
-        'fill-opacity': 0.6,
+        'fill-color': '#FAF6EC', // --paper
+        'fill-opacity': 0.78,    // --wash-outside opacity
       },
     });
 
+    // Solid line; dashes are reserved for buried watercourses only.
     this.map.addLayer({
       id: 'toronto-boundary',
       type: 'line',
       source: 'boundary',
       paint: {
         'line-color': '#A29A8C',
-        'line-width': 1.2,
-        'line-dasharray': [6, 3],
+        'line-width': 1.25,
+        'line-opacity': 0.9,
       },
     });
   }
@@ -445,6 +451,16 @@ export class GuideMap {
   // -------------------------------------------------------------------------
   // Orientation labels (HTML markers, not MapLibre symbol layers)
   // -------------------------------------------------------------------------
+
+  // Labels shown on mobile below zoom 10 (the "sparse mobile" set).
+  // All others are hidden on narrow viewports below that zoom threshold.
+  private static MOBILE_LABEL_SPARSE_SET = new Set([
+    'Lake Ontario',
+    'Don Valley',
+    'Humber River',
+    'Rouge',
+    'Downtown',
+  ]);
 
   private async addOrientationLabels(): Promise<void> {
     try {
@@ -458,6 +474,14 @@ export class GuideMap {
         el.className = `gm-label gm-label--${kind}`;
         if (isDenseLabel(feature.properties)) {
           el.classList.add('gm-label--dense');
+        }
+        // data-label-name is used by CSS to show/hide on narrow viewports
+        // below DENSE_LABEL_MIN_ZOOM. Labels not in MOBILE_LABEL_SPARSE_SET
+        // get the gm-label--mobile-hide class and are hidden on containers
+        // narrower than 640px when zoomed out.
+        el.dataset.labelName = name;
+        if (!GuideMap.MOBILE_LABEL_SPARSE_SET.has(name)) {
+          el.classList.add('gm-label--mobile-hide');
         }
         el.textContent = name;
         el.setAttribute('aria-hidden', 'true');
@@ -476,6 +500,9 @@ export class GuideMap {
   private updateLabelDensity(): void {
     const zoomedOut = this.map.getZoom() < DENSE_LABEL_MIN_ZOOM;
     this.map.getContainer().classList.toggle('gm-zoomed-out', zoomedOut);
+    // Mobile width class: narrow containers get a separate density level
+    const isNarrow = this.map.getContainer().offsetWidth < 640;
+    this.map.getContainer().classList.toggle('gm-narrow', isNarrow);
   }
 
   // -------------------------------------------------------------------------
@@ -683,11 +710,18 @@ export class GuideMap {
   // -------------------------------------------------------------------------
 
   private fitPadding(): maplibregl.PaddingOptions | number {
-    // The floating desktop panel (380px wide, 32px inset) overlays the left
-    // side of the map; pad the citywide fit so markers clear it.
+    // Desktop: the floating panel renders 430px wide (its 380px basis plus
+    // padding), inset 32px from the left edge, so its right edge sits at
+    // x=462. Left padding = 462 + 24 breathing room = 486px, measured from
+    // the live layout rather than the stylesheet basis. This keeps all
+    // eight markers (Old Mill Bridge at lng -79.495 westernmost) clear of
+    // the panel on a 1440x900 viewport.
     if (this.isDesktop()) {
-      return { top: 48, right: 48, bottom: 48, left: 452 };
+      return { top: 48, right: 48, bottom: 48, left: 486 };
     }
+    // Mobile / tablet: panels render below the map as a normal flow block,
+    // so no horizontal offset is needed. Uniform padding keeps markers
+    // away from map controls at the edges.
     return 40;
   }
 
@@ -724,6 +758,23 @@ export class GuideMap {
     });
 
     this.refs?.closeBtn?.addEventListener('click', () => this.clearSelection());
+
+    // Clean up the MapLibre instance before Astro's ClientRouter swaps the
+    // DOM. Leaving a mounted map causes a canvas leak and a zombie WebGL
+    // context. Guard against double-registration with a flag on the element.
+    const container = this.map.getContainer();
+    if (!container.dataset.viewTransitionCleanupRegistered) {
+      container.dataset.viewTransitionCleanupRegistered = '1';
+      const cleanupHandler = () => {
+        try {
+          this.map.remove();
+        } catch {
+          // Already removed; ignore.
+        }
+        document.removeEventListener('astro:before-swap', cleanupHandler);
+      };
+      document.addEventListener('astro:before-swap', cleanupHandler);
+    }
 
     // Preselect from ?place= without animation.
     const place = new URLSearchParams(window.location.search).get('place');

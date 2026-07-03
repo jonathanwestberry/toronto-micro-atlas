@@ -87,9 +87,6 @@
   <path fill="none" stroke="#B8B2A7" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round" d="M49.22,-60.69L78.64,-67.06L117.72,-79.78L205.07,-106.5L277.25,-126.86L296.1,-130.67L318.17,-138.94L339.77,-145.31L373.34,-155.49L429.42,-171.39"/>
   <path fill="none" stroke="#B8B2A7" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round" d="M49.68,-57.51L68.53,-63.24L78.64,-67.06"/>
 
-  <!-- rail -->
-  <!-- rail: none in view -->
-
   <!-- buried streams (culverted / underground) -->
   <path fill="none" stroke="#3994C1" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="5,4" d="M46,190.59L103.01,204.58"/>
   <path fill="none" stroke="#3994C1" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="5,4" d="M739.29,494.65L741.13,498.46"/>
@@ -108,6 +105,12 @@
 
   <!-- rivers -->
   <!-- rivers: none in view -->
+
+  <!-- outside-survey wash (paper fill beyond municipal boundary) -->
+  <!-- outside mask: none in view -->
+
+  <!-- toronto municipal boundary (solid hairline, consistent with island map) -->
+  <!-- boundary: none in view -->
 
   <!-- threshold marker -->
   <circle cx="401.5" cy="302" r="16" fill="#00000026" filter="url(#mshad)"/>

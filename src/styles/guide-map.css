@@ -4,12 +4,44 @@
    ============================================================ */
 
 /* ------------------------------------------------------------
+   Cooperative gesture overlay (MapLibre scroll-to-zoom guard)
+   Restyled to match the paper/ink system.
+   ------------------------------------------------------------ */
+
+.maplibregl-cooperative-gesture-screen {
+  background-color: rgba(250, 246, 236, 0.85); /* --paper at ~0.85 opacity */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.maplibregl-cooperative-gesture-screen .maplibregl-cooperative-gesture-screen-content {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: #27241D; /* --ink; hardcoded because MapLibre injects this element outside CSS-var scope */
+  text-align: center;
+  max-width: 28ch;
+}
+
+/* ------------------------------------------------------------
    Threshold markers (real buttons inside MapLibre markers)
    ------------------------------------------------------------ */
 
 .gm-marker-wrap {
-  /* MapLibre positions this wrapper; the button transforms freely inside. */
+  /* MapLibre positions this wrapper via its own .maplibregl-marker rule
+     (position:absolute + inline transform). Never set position here: a
+     same-specificity override knocks every marker out of the map transform
+     and into document flow. The absolutely-positioned wrapper is already
+     the containing block for the ::before hit area below. */
   line-height: 0;
+}
+
+.gm-marker-wrap::before {
+  content: '';
+  position: absolute;
+  /* Centre an invisible 44x44 target around the 32x32 badge */
+  inset: -6px;
+  border-radius: 50%;
 }
 
 .gm-marker {
@@ -25,17 +57,19 @@
   border: 1.5px solid var(--ink);
   box-shadow: 2px 2px 0 var(--ink);
   cursor: pointer;
+  /* Hover: --dur-2 --ease-out enter; scale handled separately for spring */
   transition:
-    background-color 0.1s ease,
-    transform 0.1s ease,
-    box-shadow 0.1s ease;
+    background-color var(--dur-2) var(--ease-out),
+    transform var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out);
+  position: relative;
 }
 
 .gm-marker:hover {
-  transform: scale(1.08);
+  transform: scale(1.06);
   box-shadow:
     2px 2px 0 var(--ink),
-    0 0 0 6px rgba(222, 58, 17, 0.18);
+    0 4px 12px rgba(39, 36, 29, 0.22);
 }
 
 .gm-marker--selected {
@@ -44,27 +78,41 @@
   box-shadow:
     2px 2px 0 var(--ink),
     0 0 0 2px var(--threshold-active);
+  /* One-time settle on selection: 1 -> 1.08 -> 1 via --ease-spring --dur-3 */
+  animation: gm-settle var(--dur-3) var(--ease-spring) both;
+}
+
+@keyframes gm-settle {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
 }
 
 .gm-marker--selected:hover {
+  transform: scale(1.06);
   box-shadow:
     2px 2px 0 var(--ink),
     0 0 0 2px var(--threshold-active),
-    0 0 0 7px rgba(197, 39, 7, 0.18);
+    0 4px 12px rgba(39, 36, 29, 0.22);
 }
 
 .gm-marker:focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: 2px;
+  outline: var(--focus-ring);       /* 2px solid var(--ink) */
+  outline-offset: var(--focus-ring-offset); /* 2px */
 }
 
 @media (prefers-reduced-motion: reduce) {
   .gm-marker {
     transition: none;
+    animation: none;
   }
 
   .gm-marker:hover {
     transform: none;
+  }
+
+  .gm-marker--selected {
+    animation: none;
   }
 }
 
@@ -113,6 +161,16 @@
 
 /* Densest labels hide when zoomed out past the density threshold */
 .gm-zoomed-out .gm-label--dense {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* Mobile label density: on containers narrower than 640px, only the five
+   primary orientation labels are shown below DENSE_LABEL_MIN_ZOOM.
+   gm-label--mobile-hide is added to all labels NOT in the sparse set;
+   above zoom 10 the gm-zoomed-out class is removed and all labels show
+   normally (same behaviour as today). */
+.gm-narrow.gm-zoomed-out .gm-label--mobile-hide {
   opacity: 0;
   visibility: hidden;
 }
@@ -167,6 +225,44 @@
   border: 1.5px solid var(--ink);
   box-shadow: 2px 2px 0 var(--ink);
   flex-shrink: 0;
+}
+
+/* ------------------------------------------------------------
+   Panel crossfade transitions (welcome <-> selected)
+   Enter: --dur-2 --ease-out, 4px translateY up.
+   Exit:  --dur-1 --ease-in, fade down.
+   The JS sets/removes the `hidden` attribute; we override display:none
+   via [hidden] so opacity/transform can animate first.
+   aria-live on the panels fires on content change regardless.
+   ------------------------------------------------------------ */
+
+#guide-welcome-panel,
+#guide-selected-panel {
+  /* Override the browser's instant display:none from [hidden].
+     The panel is invisible when opacity is 0, layout space is preserved. */
+}
+
+#guide-welcome-panel:not([hidden]),
+#guide-selected-panel:not([hidden]) {
+  animation: gm-panel-enter var(--dur-2) var(--ease-out) both;
+}
+
+@keyframes gm-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #guide-welcome-panel:not([hidden]),
+  #guide-selected-panel:not([hidden]) {
+    animation: none;
+  }
 }
 
 /* ------------------------------------------------------------

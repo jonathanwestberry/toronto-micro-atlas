@@ -2,7 +2,10 @@
    Every animation expresses cause and effect; nothing is decorative-only.
    Everything collapses to instant visibility under prefers-reduced-motion. */
 
-[data-reveal] {
+/* Hidden-until-revealed only applies when JS is confirmed running
+   (html.js is set by an inline script in the head). Without JS, all
+   content renders immediately: reveals are enhancement, not gate. */
+html.js [data-reveal] {
   opacity: 0;
   transform: translateY(10px);
   transition:
@@ -11,7 +14,7 @@
   transition-delay: var(--reveal-delay, 0ms);
 }
 
-[data-reveal].is-revealed {
+html.js [data-reveal].is-revealed {
   opacity: 1;
   transform: none;
 }
@@ -20,7 +23,7 @@
    immediately for anything already in view, so nothing waits for scroll. */
 
 @media (prefers-reduced-motion: reduce) {
-  [data-reveal] {
+  html.js [data-reveal] {
     opacity: 1;
     transform: none;
     transition: none;

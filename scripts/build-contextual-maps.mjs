@@ -27,7 +27,7 @@ const P = {
   bg:              '#FAF6EC',
   minorStreet:     '#D3CEC4',
   majorStreet:     '#B8B2A7',
-  rail:            '#D3CEC4',
+  // rail removed: buried watercourses are the only dashed device
   landscape:       '#147D64',
   landscapeStroke: '#0C6B58',
   water:           '#3994C1',
@@ -37,6 +37,9 @@ const P = {
   markerRing:      '#27241D',
   markerInner:     '#FFFFFF',
   ui:              '#857F72',
+  // Boundary and outside-wash: consistent with the island map
+  boundary:        '#A29A8C',  // same as toronto-boundary layer color
+  washOutside:     'rgba(250,246,236,0.78)', // --wash-outside token
 };
 
 // ── Locations ─────────────────────────────────────────────────────────────────
@@ -330,6 +333,50 @@ function computeScaleBar(proj, lat) {
   return { barM, barPx: barM * pxPerM };
 }
 
+// ── Boundary intersection check ───────────────────────────────────────────────
+// Toronto boundary extent (read from toronto-boundary.geojson):
+//   lng [-79.6393, -79.1153], lat [43.5810, 43.8555]
+const BOUNDARY_BBOX = { minLng: -79.6393, maxLng: -79.1153, minLat: 43.5810, maxLat: 43.8555 };
+
+function viewIntersectsBoundary(viewBb) {
+  return bboxOverlaps(viewBb, BOUNDARY_BBOX);
+}
+
+// Render Polygon/MultiPolygon features as stroke-only lines by treating each
+// ring as a polyline. Used for the toronto-boundary layer which is a Polygon
+// geometry but needs to render as a hairline, not a filled shape.
+function renderPolygonRingsAsLines(indexedFeatures, proj, viewBb, attrs) {
+  const attrStr = Object.entries(attrs).map(([k, v]) => `${k}="${v}"`).join(' ');
+  const paths = [];
+  let featureCount = 0;
+
+  for (const f of indexedFeatures) {
+    if (!bboxOverlaps(f._bbox, viewBb)) continue;
+
+    const geom = f.geometry;
+    const polys = geom.type === 'Polygon' ? [geom.coordinates] :
+                  geom.type === 'MultiPolygon' ? geom.coordinates : [];
+
+    for (const polyRings of polys) {
+      for (const ring of polyRings) {
+        // Each ring rendered as a polyline via clipLine
+        const segs = clipLine(ring, viewBb);
+        for (const seg of segs) {
+          const dec = decimate(seg, 0.000025);
+          if (dec.length < 2) continue;
+          const d = projLine(dec, proj);
+          if (d) {
+            paths.push(`  <path ${attrStr} d="${d}"/>`);
+            featureCount++;
+          }
+        }
+      }
+    }
+  }
+
+  return { markup: paths.join('\n'), count: featureCount };
+}
+
 // ── Build one SVG ─────────────────────────────────────────────────────────────
 function buildSVG(loc, indexed, halfM = HALF_M_DEFAULT) {
   const { lat, lng } = loc;
@@ -345,7 +392,7 @@ function buildSVG(loc, indexed, halfM = HALF_M_DEFAULT) {
   const ravine  = renderPolygonLayer(indexed.landscape,    proj, viewBb, { fill: P.landscape, 'fill-opacity': '0.95', stroke: P.landscapeStroke, 'stroke-width': '1.5', 'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
   const minor   = renderLineLayer(indexed.streetsMinor,    proj, viewBb, { fill: 'none', stroke: P.minorStreet, 'stroke-width': '2',   'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
   const major   = renderLineLayer(indexed.streetsMajor,    proj, viewBb, { fill: 'none', stroke: P.majorStreet, 'stroke-width': '3.5', 'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
-  const rail    = renderLineLayer(indexed.rail,            proj, viewBb, { fill: 'none', stroke: P.rail,        'stroke-width': '1.5', 'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'stroke-dasharray': '4,4' });
+  // rail removed: buried watercourses are the only dashed device on all map surfaces
   // Watercourses: buried/culverted segments (OSM tunnel=* / location=underground)
   // render dashed and slightly thinner; surface segments unchanged.
   const streamsBuried = renderLineLayer(indexed.watercourses, proj, viewBb, { fill: 'none', stroke: P.water,  'stroke-width': '1',   'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'stroke-dasharray': '5,4' }, f => f.properties?.tier !== 'river' && f.properties?.buried === true);
@@ -353,13 +400,28 @@ function buildSVG(loc, indexed, halfM = HALF_M_DEFAULT) {
   const streams = renderLineLayer(indexed.watercourses,    proj, viewBb, { fill: 'none', stroke: P.water,       'stroke-width': '1.25','stroke-linejoin': 'round', 'stroke-linecap': 'round' }, f => f.properties?.tier !== 'river' && f.properties?.buried !== true);
   const rivers  = renderLineLayer(indexed.watercourses,    proj, viewBb, { fill: 'none', stroke: P.water,       'stroke-width': '2',   'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, f => f.properties?.tier === 'river' && f.properties?.buried !== true);
 
+  // Boundary and outside-wash: only drawn when the crop extent intersects the
+  // municipal boundary ring. Locations deep inside the city at 700m won't
+  // touch the boundary; locations near the edge (e.g. mast-trail) will.
+  // The boundary is a Polygon geometry rendered as a stroke-only hairline
+  // by treating its rings as polylines (renderPolygonRingsAsLines).
+  const cropTouchesBoundary = viewIntersectsBoundary(viewBb);
+  const boundaryLines = cropTouchesBoundary
+    ? renderPolygonRingsAsLines(indexed.boundary, proj, viewBb, { fill: 'none', stroke: P.boundary, 'stroke-width': '1.25', 'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'stroke-opacity': '0.9' })
+    : { markup: '', count: 0 };
+  // Outside-wash: paper fill over the mask polygon (the region outside Toronto)
+  const outsideMaskFill = (cropTouchesBoundary && boundaryLines.count > 0)
+    ? renderPolygonLayer(indexed.outsideMask, proj, viewBb, { fill: P.bg, 'fill-opacity': '0.78', stroke: 'none' })
+    : { markup: '', count: 0 };
+
   const hasLandscape = ravine.count > 0 || esa.count > 0;
   const hasWater     = streams.count > 0 || rivers.count > 0 || streamsBuried.count > 0 || riversBuried.count > 0 || lake.count > 0;
   const counts = {
     landscape: ravine.count, esa: esa.count, lake: lake.count,
     water: streams.count + rivers.count + streamsBuried.count + riversBuried.count,
     buriedWater: streamsBuried.count + riversBuried.count,
-    major: major.count, minor: minor.count, rail: rail.count,
+    major: major.count, minor: minor.count,
+    boundary: boundaryLines.count,
   };
 
   const { barM, barPx } = computeScaleBar(proj, lat);
@@ -393,9 +455,6 @@ ${minor.markup || '  <!-- minor streets: none in view -->'}
   <!-- major streets -->
 ${major.markup || '  <!-- major streets: none in view -->'}
 
-  <!-- rail -->
-${rail.markup || '  <!-- rail: none in view -->'}
-
   <!-- buried streams (culverted / underground) -->
 ${streamsBuried.markup || '  <!-- buried streams: none in view -->'}
 
@@ -407,6 +466,12 @@ ${streams.markup || '  <!-- streams: none in view -->'}
 
   <!-- rivers -->
 ${rivers.markup || '  <!-- rivers: none in view -->'}
+
+  <!-- outside-survey wash (paper fill beyond municipal boundary) -->
+${outsideMaskFill.markup || `  <!-- outside mask: ${cropTouchesBoundary ? 'none in view' : 'crop does not intersect boundary'} -->`}
+
+  <!-- toronto municipal boundary (solid hairline, consistent with island map) -->
+${boundaryLines.markup || `  <!-- boundary: ${cropTouchesBoundary ? 'none in view' : 'crop does not intersect boundary'} -->`}
 
   <!-- threshold marker -->
   <circle cx="${r2(cx + 1.5)}" cy="${r2(cy + 2)}" r="16" fill="#00000026" filter="url(#mshad)"/>
@@ -445,7 +510,9 @@ async function main() {
     watercourses: loadGeoJSON('watercourses.geojson'),
     streetsMajor: loadGeoJSON('streets-major.geojson'),
     streetsMinor: loadGeoJSON('streets-minor.geojson'),
-    rail:         loadGeoJSON('rail.geojson'),
+    // rail omitted: buried watercourses are the only dashed device on all map surfaces
+    boundary:     loadGeoJSON('toronto-boundary.geojson'),
+    outsideMask:  loadGeoJSON('outside-mask.geojson'),
   };
 
   // Pre-compute bboxes so per-location filtering is fast
@@ -474,7 +541,7 @@ async function main() {
       hasLandscape ? `landscape ok (ravine=${counts.landscape}, esa=${counts.esa})` : 'LANDSCAPE MISSING',
       hasWater     ? `water ok (wc=${counts.water}, buried=${counts.buriedWater}, lake=${counts.lake})` : 'no water in view',
       `streets maj=${counts.major} min=${counts.minor}`,
-      `rail=${counts.rail}`,
+      `boundary=${counts.boundary}`,
       `scale=${barM}m`,
     ].join(' | ');
 

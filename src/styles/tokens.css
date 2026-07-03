@@ -9,7 +9,9 @@
   --paper: #FAF6EC;
   --ink: #27241D;
   --ink-2: #625D52;
-  --ink-3: #857F72;
+  /* 4.6:1 on --paper and --card at small sizes (was #857F72, which failed
+     WCAG AA at 3.9:1). Still reads tertiary next to --ink-2. */
+  --ink-3: #6B6558;
   --street-minor: #D3CEC4;
   --street-major: #B8B2A7;
   --landscape: #147D64;

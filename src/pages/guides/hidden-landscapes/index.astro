@@ -84,6 +84,10 @@ const mapLocations = locations.map((loc) => ({
               <span class="legend-swatch legend-swatch--line" style="background-image: repeating-linear-gradient(90deg, var(--water) 0 5px, transparent 5px 9px);" aria-hidden="true"></span>
               <span class="legend-label">Buried watercourses</span>
             </div>
+            <div class="legend-item">
+              <span class="legend-swatch legend-swatch--line" style="background-color: #A29A8C;" aria-hidden="true"></span>
+              <span class="legend-label">City of Toronto boundary</span>
+            </div>
           </div>
         </div>
       </aside>
@@ -153,11 +157,11 @@ const mapLocations = locations.map((loc) => ({
       </div>
 
       <ul class="guide-card-grid" role="list">
-        {locations.map((loc) => (
-          <li class="guide-card-item">
+        {locations.map((loc, i) => (
+          <li class="guide-card-item" data-reveal style={`--reveal-delay: ${i * 40}ms`}>
             <a
               href={`${base}/guides/hidden-landscapes/${loc.data.slug}/`}
-              class="guide-card"
+              class="guide-card hover-raise"
               data-location-slug={loc.data.slug}
             >
               <div class="guide-card-chip">
@@ -500,7 +504,9 @@ const mapLocations = locations.map((loc) => ({
      ============================================================ */
 
   .guide-cards-section {
-    padding: var(--space-12) var(--space-6);
+    max-width: var(--container);
+    padding-block: var(--space-12);
+    padding-inline: var(--gutter);
     border-top: 1px solid var(--street-minor);
   }
 
@@ -539,11 +545,16 @@ const mapLocations = locations.map((loc) => ({
     padding: var(--space-6);
     text-decoration: none;
     color: var(--ink);
-    transition: background-color 0.1s ease;
+    border: 1px solid transparent;
+    /* hover-raise class handles transform/box-shadow; we add border-color here */
+    transition:
+      background-color var(--dur-2) var(--ease-out),
+      border-color var(--dur-2) var(--ease-out);
   }
 
   .guide-card:hover {
     background-color: var(--paper);
+    border-color: var(--ink);
   }
 
   .guide-card:focus-visible {

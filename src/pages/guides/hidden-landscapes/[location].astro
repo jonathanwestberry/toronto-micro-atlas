@@ -39,132 +39,179 @@ const mapsUrl = `https://www.google.com/maps?q=${entry.data.lat},${entry.data.ln
   description={entry.data.preview}
 >
   <div class="page-wrapper">
-    <article class="location-article" aria-labelledby="location-title">
+    <div class="location-layout">
 
-      <!-- Breadcrumb -->
-      <nav class="location-breadcrumb" aria-label="Breadcrumb">
-        <ol class="breadcrumb-list">
-          <li class="breadcrumb-item">
-            <a href={`${base}/`} class="breadcrumb-link">Toronto Micro-Atlas</a>
-          </li>
-          <li class="breadcrumb-item breadcrumb-sep" aria-hidden="true">/</li>
-          <li class="breadcrumb-item">
-            <a href={`${base}/guides/hidden-landscapes/`} class="breadcrumb-link">Hidden Landscapes</a>
-          </li>
-        </ol>
+      <article class="location-article" aria-labelledby="location-title">
+
+        <!-- Breadcrumb -->
+        <nav class="location-breadcrumb" aria-label="Breadcrumb" data-reveal>
+          <ol class="breadcrumb-list">
+            <li class="breadcrumb-item">
+              <a href={`${base}/`} class="breadcrumb-link">Toronto Micro-Atlas</a>
+            </li>
+            <li class="breadcrumb-item breadcrumb-sep" aria-hidden="true">/</li>
+            <li class="breadcrumb-item">
+              <a href={`${base}/guides/hidden-landscapes/`} class="breadcrumb-link" data-astro-reload>Hidden Landscapes</a>
+            </li>
+          </ol>
+        </nav>
+
+        <!-- H1 + meta header block -->
+        <header class="location-header" data-reveal>
+          <h1 class="location-title" id="location-title">{entry.data.title}</h1>
+          <div class="location-meta">
+            <ThresholdChip
+              symbol={entry.data.thresholdType as SymbolName}
+              label={entry.data.thresholdLabel}
+            />
+            <span class="location-neighbourhood">{entry.data.neighbourhood}</span>
+          </div>
+        </header>
+
+        <!-- Contextual map plate -->
+        <figure class="location-map-plate" data-reveal style="--reveal-delay: 40ms">
+          <img
+            src={`${base}/maps/context-${entry.data.slug}.svg`}
+            alt={`Map of the streets and hidden landscape around ${entry.data.title}, threshold point marked at the centre`}
+            width="800"
+            height="600"
+            loading="eager"
+            decoding="async"
+            class="location-map-image"
+          />
+          <figcaption class="location-map-caption">Street-to-landscape relationship at a glance.</figcaption>
+        </figure>
+
+        <!-- Illustration slot: renders only when vignette asset exists -->
+        <!--
+          Illustration slot: when a vignette image exists at
+          src/assets/guides/hidden-landscapes/vignettes/{slug}.jpg,
+          import and render it here with Astro's Image component.
+          Currently empty; slot is preserved for future illustration plates.
+        -->
+
+        <!-- Observation prose -->
+        <div class="location-observation prose" data-reveal style="--reveal-delay: 80ms">
+          <Content />
+        </div>
+
+        <!-- Open in Maps -->
+        <a
+          href={mapsUrl}
+          class="location-maps-link"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Open ${entry.data.title} in Google Maps`}
+          data-reveal
+          style="--reveal-delay: 80ms"
+        >
+          Open in Maps
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="maps-arrow">
+            <line x1="3" y1="13" x2="13" y2="3"/>
+            <polyline points="6,3 13,3 13,10"/>
+          </svg>
+        </a>
+
+        <!-- Sources -->
+        {entry.data.sources.length > 0 && (
+          <aside class="location-sources" aria-label="Sources" data-reveal>
+            <span class="location-sources-kicker">Sources</span>
+            <ul class="location-sources-list">
+              {entry.data.sources.map((source) => (
+                <li>
+                  <a
+                    href={source.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="location-source-link"
+                  >
+                    {source.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </aside>
+        )}
+
+      </article>
+
+      <!-- Prev / Next navigation -->
+      <nav class="location-nav" aria-label="Location navigation" data-reveal>
+        <div class="location-nav-grid">
+          {prev ? (
+            <a
+              href={`${base}/guides/hidden-landscapes/${prev.data.slug}/`}
+              class="location-nav-card hover-raise"
+              rel="prev"
+            >
+              <span class="location-nav-kicker">Previous</span>
+              <span class="location-nav-name">{prev.data.title}</span>
+            </a>
+          ) : (
+            <div class="location-nav-empty" aria-hidden="true"></div>
+          )}
+          {next ? (
+            <a
+              href={`${base}/guides/hidden-landscapes/${next.data.slug}/`}
+              class="location-nav-card location-nav-card--next hover-raise"
+              rel="next"
+            >
+              <span class="location-nav-kicker">Next</span>
+              <span class="location-nav-name">{next.data.title}</span>
+            </a>
+          ) : (
+            <div class="location-nav-empty" aria-hidden="true"></div>
+          )}
+        </div>
+        <div class="location-nav-index-row">
+          <a
+            href={`${base}/guides/hidden-landscapes/`}
+            class="location-nav-index-link"
+            data-astro-reload
+          >
+            All locations
+          </a>
+        </div>
       </nav>
 
-      <!-- H1 -->
-      <h1 class="location-title" id="location-title">{entry.data.title}</h1>
-
-      <!-- Threshold chip -->
-      <div class="location-chip-row">
-        <ThresholdChip
-          symbol={entry.data.thresholdType as SymbolName}
-          label={entry.data.thresholdLabel}
-        />
-        <span class="location-neighbourhood">{entry.data.neighbourhood}</span>
-      </div>
-
-      <!-- Contextual map: build-time SVG from scripts/build-contextual-maps.mjs -->
-      <div class="location-map-slot">
-        <img
-          src={`${base}/maps/context-${entry.data.slug}.svg`}
-          alt={`Map of the streets and hidden landscape around ${entry.data.title}, threshold point marked at the centre`}
-          width="800"
-          height="600"
-          loading="eager"
-          decoding="async"
-        />
-      </div>
-      <p class="location-map-caption">Street-to-landscape relationship at a glance.</p>
-
-      <!-- Illustration slot: renders only when vignette asset exists -->
-      <!--
-        Illustration slot: when a vignette image exists at
-        src/assets/guides/hidden-landscapes/vignettes/{slug}.jpg,
-        import and render it here with Astro's Image component.
-        Currently empty; slot is preserved for future illustration plates.
-      -->
-
-      <!-- Observation prose -->
-      <div class="location-observation">
-        <Content />
-      </div>
-
-      <!-- Open in Maps -->
-      <a
-        href={mapsUrl}
-        class="location-maps-link"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label={`Open ${entry.data.title} in Google Maps`}
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-          <polyline points="15 3 21 3 21 9"/>
-          <line x1="10" y1="14" x2="21" y2="3"/>
-        </svg>
-        Open in Maps
-      </a>
-
-      <!-- Sources -->
-      {entry.data.sources.length > 0 && (
-        <aside class="location-sources" aria-label="Sources">
-          <h2 class="location-sources-heading">Sources</h2>
-          <ul class="location-sources-list">
-            {entry.data.sources.map((source) => (
-              <li class="location-source-item">
-                <a
-                  href={source.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="location-source-link"
-                >
-                  {source.label}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </aside>
-      )}
-
-    </article>
-
-    <!-- Prev / Next navigation (by name, not number) -->
-    <nav class="location-nav" aria-label="Location navigation">
-      {prev && (
-        <a
-          href={`${base}/guides/hidden-landscapes/${prev.data.slug}/`}
-          class="location-nav-link location-nav-link--prev"
-          rel="prev"
-        >
-          <span class="location-nav-direction" aria-hidden="true">Previous</span>
-          <span class="location-nav-name">{prev.data.title}</span>
-        </a>
-      )}
-      <a
-        href={`${base}/guides/hidden-landscapes/`}
-        class="location-nav-link location-nav-link--index"
-      >
-        All locations
-      </a>
-      {next && (
-        <a
-          href={`${base}/guides/hidden-landscapes/${next.data.slug}/`}
-          class="location-nav-link location-nav-link--next"
-          rel="next"
-        >
-          <span class="location-nav-direction" aria-hidden="true">Next</span>
-          <span class="location-nav-name">{next.data.title}</span>
-        </a>
-      )}
-    </nav>
-
+    </div>
   </div>
 </Base>
 
 <style>
+  /* ============================================================
+     Page layout: centered column within page-wrapper
+     ============================================================ */
+
+  .location-layout {
+    max-width: var(--container);
+    margin: 0 auto;
+  }
+
+  /* Article column: centered at --measure, with wider map plate */
+  .location-article {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* All article children default to --measure width, centered */
+  .location-article > * {
+    width: 100%;
+    max-width: var(--measure);
+  }
+
+  /* Map plate may extend wider */
+  .location-map-plate {
+    max-width: 840px;
+  }
+
+  /* Nav gets full container width */
+  .location-nav {
+    width: 100%;
+    max-width: var(--container);
+  }
+
   /* ============================================================
      Breadcrumb
      ============================================================ */
@@ -187,6 +234,7 @@ const mapsUrl = `https://www.google.com/maps?q=${entry.data.lat},${entry.data.ln
     color: var(--ink-3);
     text-decoration: none;
     letter-spacing: 0.04em;
+    transition: color var(--dur-1) var(--ease-out);
   }
 
   .breadcrumb-link:hover {
@@ -204,9 +252,19 @@ const mapsUrl = `https://www.google.com/maps?q=${entry.data.lat},${entry.data.ln
     user-select: none;
   }
 
+  @media (prefers-reduced-motion: reduce) {
+    .breadcrumb-link {
+      transition: none;
+    }
+  }
+
   /* ============================================================
-     Location title and chip row
+     Header block: H1 + meta row
      ============================================================ */
+
+  .location-header {
+    margin-bottom: var(--space-8);
+  }
 
   .location-title {
     font-family: var(--font-heading);
@@ -215,15 +273,14 @@ const mapsUrl = `https://www.google.com/maps?q=${entry.data.lat},${entry.data.ln
     line-height: 1.1;
     letter-spacing: -0.01em;
     color: var(--ink);
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-3);
   }
 
-  .location-chip-row {
+  .location-meta {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-3) var(--space-6);
-    margin-bottom: var(--space-8);
+    align-items: baseline;
+    gap: var(--space-3);
   }
 
   .location-neighbourhood {
@@ -234,20 +291,17 @@ const mapsUrl = `https://www.google.com/maps?q=${entry.data.lat},${entry.data.ln
   }
 
   /* ============================================================
-     Contextual map slot
+     Contextual map plate
      ============================================================ */
 
-  .location-map-slot {
-    width: 100%;
-    aspect-ratio: 4 / 3;
-    background-color: var(--paper);
-    border: 1px solid var(--street-minor);
-    position: relative;
-    overflow: hidden;
-    margin-bottom: var(--space-2);
+  .location-map-plate {
+    background-color: var(--card);
+    border: 1px solid var(--ink);
+    padding: var(--space-4);
+    margin-bottom: var(--space-8);
   }
 
-  .location-map-slot img {
+  .location-map-image {
     display: block;
     width: 100%;
     height: auto;
@@ -258,7 +312,7 @@ const mapsUrl = `https://www.google.com/maps?q=${entry.data.lat},${entry.data.ln
     font-size: var(--text-xs);
     color: var(--ink-3);
     letter-spacing: 0.04em;
-    margin-bottom: var(--space-10);
+    padding-top: var(--space-3);
   }
 
   /* ============================================================
@@ -266,10 +320,10 @@ const mapsUrl = `https://www.google.com/maps?q=${entry.data.lat},${entry.data.ln
      ============================================================ */
 
   .location-observation {
-    max-width: var(--measure);
-    margin-bottom: var(--space-10);
+    margin-bottom: var(--space-8);
   }
 
+  /* Override global .prose p to match editorial spec */
   .location-observation :global(p) {
     font-family: var(--font-body);
     font-size: var(--text-lg);
@@ -282,11 +336,13 @@ const mapsUrl = `https://www.google.com/maps?q=${entry.data.lat},${entry.data.ln
     margin-bottom: 0;
   }
 
+  /* Context section heading: small-caps Archivo kicker above paragraphs */
   .location-observation :global(h2) {
     font-family: var(--font-heading);
     font-weight: 700;
-    font-size: var(--text-base);
-    letter-spacing: 0.08em;
+    font-size: var(--text-xs);
+    font-variant: small-caps;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--ink-3);
     margin-top: var(--space-12);
@@ -308,22 +364,24 @@ const mapsUrl = `https://www.google.com/maps?q=${entry.data.lat},${entry.data.ln
     gap: var(--space-2);
     font-family: var(--font-ui);
     font-size: var(--text-sm);
-    color: var(--ink-2);
+    font-weight: 600;
+    color: var(--ink);
     text-decoration: none;
-    border-bottom: 1px solid var(--street-minor);
-    padding-bottom: var(--space-1);
     margin-bottom: var(--space-12);
-    transition: color 0.1s ease, border-color 0.1s ease;
+    transition: color var(--dur-1) var(--ease-out);
   }
 
   .location-maps-link:hover {
     color: var(--threshold);
-    border-color: var(--threshold);
   }
 
   .location-maps-link:focus-visible {
     outline: var(--focus-ring);
     outline-offset: var(--focus-ring-offset);
+  }
+
+  .maps-arrow {
+    flex-shrink: 0;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -333,21 +391,21 @@ const mapsUrl = `https://www.google.com/maps?q=${entry.data.lat},${entry.data.ln
   }
 
   /* ============================================================
-     Sources
+     Sources aside
      ============================================================ */
 
   .location-sources {
     margin-bottom: var(--space-12);
-    padding-top: var(--space-8);
+    padding-top: var(--space-12);
     border-top: 1px solid var(--street-minor);
-    max-width: var(--measure);
   }
 
-  .location-sources-heading {
+  .location-sources-kicker {
+    display: block;
     font-family: var(--font-ui);
     font-size: var(--text-xs);
     font-weight: 700;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--ink-3);
     margin-bottom: var(--space-4);
@@ -366,6 +424,7 @@ const mapsUrl = `https://www.google.com/maps?q=${entry.data.lat},${entry.data.ln
     color: var(--ink-3);
     text-decoration: none;
     text-underline-offset: 3px;
+    transition: color var(--dur-1) var(--ease-out);
   }
 
   .location-source-link:hover {
@@ -378,71 +437,110 @@ const mapsUrl = `https://www.google.com/maps?q=${entry.data.lat},${entry.data.ln
     outline-offset: var(--focus-ring-offset);
   }
 
+  @media (prefers-reduced-motion: reduce) {
+    .location-source-link {
+      transition: none;
+    }
+  }
+
   /* ============================================================
-     Prev / Next nav
+     Prev / Next navigation
      ============================================================ */
 
   .location-nav {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-4) var(--space-6);
-    align-items: center;
-    justify-content: space-between;
-    padding-top: var(--space-8);
+    padding-top: var(--space-12);
     border-top: 1px solid var(--street-minor);
     margin-top: var(--space-4);
   }
 
-  .location-nav-link {
+  .location-nav-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+    margin-bottom: var(--space-6);
+  }
+
+  .location-nav-card {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    gap: var(--space-2);
+    padding: var(--space-6);
+    border: 1px solid var(--street-minor);
     text-decoration: none;
     color: var(--ink);
-    max-width: 20ch;
+    transition:
+      border-color var(--dur-2) var(--ease-out),
+      transform var(--dur-2) var(--ease-out),
+      box-shadow var(--dur-2) var(--ease-out);
   }
 
-  .location-nav-link--index {
-    font-family: var(--font-ui);
-    font-size: var(--text-xs);
-    color: var(--ink-3);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    max-width: none;
+  .location-nav-card--next {
+    text-align: right;
   }
 
-  .location-nav-link:hover .location-nav-name {
-    color: var(--threshold);
+  .location-nav-card:hover {
+    border-color: var(--ink);
   }
 
-  .location-nav-link--index:hover {
-    color: var(--threshold);
-  }
-
-  .location-nav-link:focus-visible {
+  .location-nav-card:focus-visible {
     outline: var(--focus-ring);
     outline-offset: var(--focus-ring-offset);
   }
 
-  .location-nav-direction {
+  @media (prefers-reduced-motion: reduce) {
+    .location-nav-card {
+      transition: none;
+    }
+  }
+
+  .location-nav-kicker {
     font-family: var(--font-ui);
     font-size: var(--text-xs);
-    letter-spacing: 0.1em;
+    font-weight: 700;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--ink-3);
   }
 
   .location-nav-name {
-    font-family: var(--font-ui);
-    font-size: var(--text-sm);
+    font-family: var(--font-heading);
+    font-size: var(--text-lg);
     font-weight: 600;
     color: var(--ink);
     line-height: 1.3;
-    transition: color 0.1s ease;
+  }
+
+  .location-nav-empty {
+    /* Empty cell preserves 2-col grid alignment */
+  }
+
+  .location-nav-index-row {
+    display: flex;
+    justify-content: center;
+  }
+
+  .location-nav-index-link {
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    color: var(--ink-3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: color var(--dur-1) var(--ease-out);
+  }
+
+  .location-nav-index-link:hover {
+    color: var(--threshold);
+  }
+
+  .location-nav-index-link:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: var(--focus-ring-offset);
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .location-nav-name {
+    .location-nav-index-link {
       transition: none;
     }
   }
@@ -451,9 +549,13 @@ const mapsUrl = `https://www.google.com/maps?q=${entry.data.lat},${entry.data.ln
      Responsive
      ============================================================ */
 
-  @media (min-width: 768px) {
-    .location-map-slot {
-      max-width: 600px;
+  @media (max-width: 767px) {
+    .location-nav-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .location-nav-card--next {
+      text-align: left;
     }
   }
 </style>

@@ -120,7 +120,9 @@ $MS "${RAW}/boundary-shp/citygcs_regional_mun_wgs84.shp" \
   -o format=geojson $PREC "${PROC}/toronto-boundary.geojson"
 
 echo "== 12. Outside-survey mask (padded rectangle minus Toronto) =="
-$MS -rectangle bbox=-79.75,43.50,-79.00,43.95 \
+# Rectangle must exceed the map's maxBounds ([-80.15, 43.30, -78.60, 44.10])
+# with margin, or a bare void appears at the pan/zoom limits.
+$MS -rectangle bbox=-80.00,43.35,-78.75,44.05 \
   -o format=geojson force "${PROC}/_rect.geojson"
 $MS "${PROC}/_rect.geojson" \
   -erase "${PROC}/toronto-boundary.geojson" \

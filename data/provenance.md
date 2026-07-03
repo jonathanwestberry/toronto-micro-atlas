@@ -153,9 +153,10 @@ Overpass JSON is converted to GeoJSON by `scripts/03_convert_osm.py`.
 ## Derived layers
 
 ### 12. Outside-survey mask
-- Derived in `04_process.sh` step 12: a padded rectangle (-79.75, 43.50, -79.00, 43.95)
-  minus the municipal boundary polygon. No external source; inherits the
-  boundary's Open Government Licence - Toronto.
+- Derived in `04_process.sh` step 12: a padded rectangle (-80.00, 43.35, -78.75, 44.05)
+  minus the municipal boundary polygon. The rectangle exceeds the map's
+  maxBounds with margin so the pan/zoom limits never expose bare paper.
+  No external source; inherits the boundary's Open Government Licence - Toronto.
 - Drawn as a 60% paper-color wash so OSM context outside Toronto reads as
   context rather than subject, and the clipped bbox edge is never exposed
   (paired with the map's maxBounds).

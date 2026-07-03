@@ -70,11 +70,6 @@
   <path fill="none" stroke="#B8B2A7" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round" d="M390.34,759.25L400.46,740.8L418.86,724.26L431.74,718.54L450.6,717.9L457.96,719.81L464.4,721.72L471.76,724.26L485.09,728.72L508.55,736.35L532.47,736.35L547.19,728.08L558.69,708.36L559.15,692.46L547.65,670.2L527.87,648.57L518.67,630.13L516.83,611.68L524.19,573.52L526.03,545.53"/>
   <path fill="none" stroke="#B8B2A7" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round" d="M480.49,697.55L498.89,670.2L512.69,663.84L537.07,666.38L553.63,684.19L556.39,696.28L551.33,717.9L534.77,731.9L515.91,734.44L485.55,725.54L472.68,721.08L465.32,718.54L458.88,716.63L435.42,714.72L418.4,719.81"/>
 
-  <!-- rail -->
-  <path fill="none" stroke="#D3CEC4" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="4,4" d="M710.94,-178.39L698.06,-158.03L673.22,-116.68L658.96,-91.23L648.84,-74.05L638.26,-55.6L589.05,28.37L569.73,65.9L562.83,84.35L556.39,108.52L551.33,128.25L547.19,146.69L534.77,191.86L518.21,229.39L509.93,243.39L465.32,308.91L449.68,336.26L442.32,356.61L439.1,374.42L438.18,392.24L441.4,417.68L445.08,432.31L463.94,493.37L469.46,518.18L469.92,551.89L466.24,571.61L461.18,587.51L451.06,609.14L439.56,625.04L427.14,639.03L396.32,663.84L368.26,680.38L346.64,696.28L313.53,721.08L308.47,724.9L272.59,750.98L257.87,764.34"/>
-  <path fill="none" stroke="#D3CEC4" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="4,4" d="M257.41,-21.25L245.91,-5.98L91.36,194.4L48.12,254.84L-5.69,329.26L-50.77,387.15"/>
-  <path fill="none" stroke="#D3CEC4" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="4,4" d="M-53.07,386.51L-8.91,327.99L39.84,261.2L46.28,253.56L88.6,193.77L105.16,168.96L244.53,-7.26L255.11,-22.52L319.05,-107.77L377.92,-184.75"/>
-
   <!-- buried streams (culverted / underground) -->
   <path fill="none" stroke="#3994C1" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="5,4" d="M587.21,89.44L581.69,86.26"/>
   <path fill="none" stroke="#3994C1" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="5,4" d="M646.08,20.74L636.43,19.46"/>
@@ -136,6 +131,12 @@
   <path fill="none" stroke="#3994C1" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" d="M571.11,140.33L572.95,167.69L541.21,231.3L491.53,338.8L468.08,356.61"/>
   <path fill="none" stroke="#3994C1" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" d="M468.08,356.61L449.22,380.15L451.06,417.04L484.17,503.55L491.99,539.81L491.07,579.88L484.63,599.6L443.7,649.85L422.54,684.83L398.62,703.28L353.08,723.63L331.46,743.35"/>
   <path fill="none" stroke="#3994C1" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" d="M750.04,-185.39L747.74,-150.4L722.9,-96.32L702.66,-77.87L680.12,-70.87L665.86,-74.69L627.23,-93.14L580.77,-82.96L541.21,-56.24L523.27,-40.34L509.01,-19.34L481.87,1.65L484.17,32.82L512.69,86.26L562.37,126.97L571.11,140.33"/>
+
+  <!-- outside-survey wash (paper fill beyond municipal boundary) -->
+  <!-- outside mask: none in view -->
+
+  <!-- toronto municipal boundary (solid hairline, consistent with island map) -->
+  <!-- boundary: none in view -->
 
   <!-- threshold marker -->
   <circle cx="401.5" cy="302" r="16" fill="#00000026" filter="url(#mshad)"/>

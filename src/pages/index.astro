@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import ThresholdSymbol from '../components/ThresholdSymbol.astro';
 
 const base = import.meta.env.BASE_URL;
 ---
@@ -10,20 +11,44 @@ const base = import.meta.env.BASE_URL;
 >
   <div class="home-wrapper">
 
-    <!-- Publication intro -->
-    <section class="home-intro" aria-labelledby="intro-heading">
-      <div class="home-intro-inner">
-        <p class="home-intro-text">Toronto Micro-Atlas is an independent web publication of Field Guides about noticing and using Toronto. Each guide takes one specific way the city works, where it hides things, what it shows someone paying attention, and builds it into an interactive map with careful editorial research.</p>
+    <!-- Publication lede -->
+    <section class="home-lede" aria-labelledby="lede-kicker">
+      <div class="home-lede-inner">
+        <p class="lede-kicker" id="lede-kicker" aria-label="Toronto Micro-Atlas">Toronto&nbsp;Micro-Atlas</p>
+        <hr class="lede-rule" aria-hidden="true" />
+        <p class="lede-text" data-reveal>Toronto Micro-Atlas is an independent web publication of Field Guides about noticing and using Toronto. Each guide takes one specific way the city works, where it hides things, what it shows someone paying attention, and builds it into an interactive map with careful editorial research.</p>
       </div>
     </section>
 
     <!-- Field Guide 01 feature block -->
     <section class="feature-block" id="field-guides" aria-labelledby="feature-title">
       <div class="feature-inner">
-        <span class="feature-kicker">Field Guide 01</span>
-        <h2 class="feature-title" id="feature-title">Hidden Landscapes</h2>
-        <p class="feature-blurb">Hidden Landscapes documents eight threshold moments where Toronto's orderly street grid suddenly gives way to valleys, ravines, escarpments, and watercourses. Each entry is a specific place, a specific crossing, and a specific reason to look twice at what the city is built on top of.</p>
-        <a href={`${base}/guides/hidden-landscapes/`} class="feature-cta">Open the Field Guide</a>
+
+        <!-- Left column: text -->
+        <div class="feature-text">
+          <span class="feature-kicker" data-reveal style="--reveal-delay: 0ms">Field Guide 01</span>
+          <h1 class="feature-title" id="feature-title" data-reveal style="--reveal-delay: 40ms">Hidden Landscapes</h1>
+          <p class="feature-blurb" data-reveal style="--reveal-delay: 80ms">Hidden Landscapes documents eight threshold moments where Toronto's orderly street grid suddenly gives way to valleys, ravines, escarpments, and watercourses. Each entry is a specific place, a specific crossing, and a specific reason to look twice at what the city is built on top of.</p>
+          <a
+            href={`${base}/guides/hidden-landscapes/`}
+            class="feature-cta hover-raise"
+            data-astro-reload
+            data-reveal
+            style="--reveal-delay: 120ms"
+          >Open the Field Guide</a>
+        </div>
+
+        <!-- Right column: threshold glyph specimen sheet -->
+        <div class="feature-glyphs" aria-hidden="true" data-reveal style="--reveal-delay: 160ms">
+          <ThresholdSymbol name="stair-descent"    size={64}  class="glyph glyph--lg"  aria-hidden="true" />
+          <ThresholdSymbol name="slope-overlook"   size={48}  class="glyph glyph--md"  aria-hidden="true" />
+          <ThresholdSymbol name="bridge"            size={56}  class="glyph glyph--ml"  aria-hidden="true" />
+          <ThresholdSymbol name="trail-entrance"   size={40}  class="glyph glyph--sm"  aria-hidden="true" />
+          <ThresholdSymbol name="underpass"         size={52}  class="glyph glyph--ml"  aria-hidden="true" />
+          <ThresholdSymbol name="park-edge"         size={44}  class="glyph glyph--sm"  aria-hidden="true" />
+          <ThresholdSymbol name="path-ending"       size={36}  class="glyph glyph--xs"  aria-hidden="true" />
+        </div>
+
       </div>
     </section>
 
@@ -31,20 +56,24 @@ const base = import.meta.env.BASE_URL;
     <section class="under-observation" aria-labelledby="observation-heading">
       <div class="under-observation-inner">
         <h2 class="section-label" id="observation-heading">Under observation</h2>
-        <ul class="observation-list">
-          <li class="observation-item">
-            <span class="observation-name">Farmers Markets</span>
-            <span class="observation-desc">A rotating atlas of Toronto's outdoor markets, mapped by neighbourhood and season.</span>
-          </li>
-          <li class="observation-item">
-            <span class="observation-name">Quiet Third Places</span>
-            <span class="observation-desc">The libraries, reading rooms, lobbies, and garden corners where the city allows you to sit still.</span>
-          </li>
-          <li class="observation-item">
-            <span class="observation-name">Shade and Cooling</span>
-            <span class="observation-desc">Where to find cover on a hot day: a taxonomy of trees, awnings, tunnels, and water in the urban surface.</span>
-          </li>
-        </ul>
+        <dl class="observation-list">
+
+          <div class="observation-row" data-reveal style="--reveal-delay: 0ms">
+            <dt class="observation-term">Farmers Markets</dt>
+            <dd class="observation-desc">A rotating atlas of Toronto's outdoor markets, mapped by neighbourhood and season.</dd>
+          </div>
+
+          <div class="observation-row" data-reveal style="--reveal-delay: 40ms">
+            <dt class="observation-term">Quiet Third Places</dt>
+            <dd class="observation-desc">The libraries, reading rooms, lobbies, and garden corners where the city allows you to sit still.</dd>
+          </div>
+
+          <div class="observation-row" data-reveal style="--reveal-delay: 80ms">
+            <dt class="observation-term">Shade and Cooling</dt>
+            <dd class="observation-desc">Where to find cover on a hot day: a taxonomy of trees, awnings, tunnels, and water in the urban surface.</dd>
+          </div>
+
+        </dl>
       </div>
     </section>
 
@@ -62,24 +91,49 @@ const base = import.meta.env.BASE_URL;
   }
 
   /* ============================================================
-     Publication intro
+     Publication lede
      ============================================================ */
 
-  .home-intro {
-    padding: var(--space-16) var(--space-6) var(--space-12);
+  .home-lede {
+    padding-block: var(--space-16) var(--space-12);
+    padding-inline: var(--gutter);
     border-bottom: 1px solid var(--street-minor);
   }
 
-  .home-intro-inner {
-    max-width: var(--measure);
-    margin: 0 auto;
+  @media (max-width: 767px) {
+    .home-lede {
+      padding-block: var(--space-12) var(--space-8);
+    }
   }
 
-  .home-intro-text {
+  .home-lede-inner {
+    max-width: var(--container);
+    margin-inline: auto;
+  }
+
+  .lede-kicker {
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: var(--space-4);
+  }
+
+  .lede-rule {
+    border: none;
+    border-top: 1px solid var(--street-minor);
+    margin-bottom: var(--space-8);
+    max-width: var(--measure-lede);
+  }
+
+  .lede-text {
     font-family: var(--font-body);
     font-size: var(--text-xl);
     line-height: 1.65;
-    color: var(--ink);
+    color: var(--ink-2);
+    max-width: var(--measure-lede);
   }
 
   /* ============================================================
@@ -88,12 +142,34 @@ const base = import.meta.env.BASE_URL;
 
   .feature-block {
     background-color: var(--landscape);
-    padding: var(--space-16) var(--space-6);
+    padding-block: var(--space-16);
+    padding-inline: var(--gutter);
+  }
+
+  @media (min-width: 768px) {
+    .feature-block {
+      padding-block: var(--space-24);
+    }
   }
 
   .feature-inner {
-    max-width: 900px;
-    margin: 0 auto;
+    max-width: var(--container);
+    margin-inline: auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-12);
+    align-items: center;
+  }
+
+  @media (min-width: 1024px) {
+    .feature-inner {
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+      gap: var(--space-16);
+    }
+  }
+
+  /* Left column */
+  .feature-text {
     display: flex;
     flex-direction: column;
     gap: var(--space-6);
@@ -103,47 +179,64 @@ const base = import.meta.env.BASE_URL;
     font-family: var(--font-ui);
     font-size: var(--text-xs);
     font-weight: 700;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: rgba(250, 246, 236, 0.65);
+    /* Solid paper on spruce: 8.8:1. Translucent kickers fail AA here
+       (0.65 alpha blends to ~2.9:1); hierarchy comes from size and
+       letterspacing instead of lightness. */
+    color: var(--paper);
   }
 
   .feature-title {
     font-family: var(--font-heading);
     font-weight: 900;
-    font-size: clamp(var(--text-4xl), 9vw, var(--text-5xl));
-    line-height: 1.0;
-    letter-spacing: -0.01em;
-    color: var(--paper);
+    font-size: clamp(2.75rem, 8vw, 5rem);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
     text-transform: uppercase;
+    /* #FAF6EC on #147D64 = 8.82:1 -- passes AAA */
+    color: var(--paper);
+    margin: 0;
   }
 
   .feature-blurb {
     font-family: var(--font-body);
     font-size: var(--text-lg);
     line-height: 1.65;
-    color: rgba(250, 246, 236, 0.88);
-    max-width: 58ch;
+    /* Solid paper on spruce: 8.8:1. The 0.88 alpha version blended to
+       ~4.0:1 and failed AA for 18px regular text. */
+    color: var(--paper);
+    max-width: 55ch;
   }
 
+  /* Paper CTA button */
   .feature-cta {
     display: inline-block;
-    background-color: var(--threshold);
-    color: var(--paper);
+    align-self: flex-start;
+    background-color: var(--paper);
+    color: var(--ink);
     font-family: var(--font-ui);
     font-size: var(--text-base);
-    font-weight: 700;
-    letter-spacing: 0.04em;
+    font-weight: 600;
+    letter-spacing: 0.02em;
     text-decoration: none;
-    padding: var(--space-4) var(--space-8);
-    border: 1.5px solid transparent;
-    align-self: flex-start;
-    transition: background-color 0.1s ease, border-color 0.1s ease;
+    padding: var(--space-3) var(--space-6);
+    border: 1px solid var(--ink);
+    /* Sharp corners -- 1px max per design system */
+    border-radius: 1px;
+    /* hover-raise handles transform/color transitions */
   }
 
-  .feature-cta:hover {
-    background-color: var(--threshold-active);
-    color: var(--paper);
+  @media (hover: hover) {
+    .feature-cta:hover {
+      background-color: var(--threshold);
+      color: var(--paper);
+      border-color: var(--threshold);
+    }
+  }
+
+  .feature-cta:active {
+    transform: scale(0.98);
   }
 
   .feature-cta:focus-visible {
@@ -151,9 +244,44 @@ const base = import.meta.env.BASE_URL;
     outline-offset: 3px;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .feature-cta {
-      transition: none;
+  /* Right column: glyph specimen sheet */
+  .feature-glyphs {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    grid-template-rows: repeat(3, auto);
+    gap: var(--space-8) var(--space-6);
+    justify-content: center;
+    align-items: center;
+    /* cream strokes at 30-45% opacity against --landscape */
+    color: rgba(250, 246, 236, 0.38);
+  }
+
+  /* Staggered placement to evoke an engraved specimen sheet */
+  .glyph--lg { grid-column: 1; grid-row: 1; }
+  .glyph--md { grid-column: 3; grid-row: 1; }
+  .glyph--ml { grid-column: 2; grid-row: 2; }
+  .glyph--sm:nth-of-type(4) { grid-column: 1; grid-row: 3; }
+  /* Reselect by DOM order for items sharing the same size class */
+  .feature-glyphs .glyph:nth-child(4) { grid-column: 1; grid-row: 3; }
+  .feature-glyphs .glyph:nth-child(5) { grid-column: 3; grid-row: 2; }
+  .feature-glyphs .glyph:nth-child(6) { grid-column: 2; grid-row: 3; }
+  .feature-glyphs .glyph:nth-child(7) { grid-column: 3; grid-row: 3; }
+
+  /* On mobile, collapse to a single centered row of small motifs */
+  @media (max-width: 1023px) {
+    .feature-glyphs {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: var(--space-6);
+      justify-content: center;
+      /* de-emphasize on mobile -- just a quiet motif bar */
+      color: rgba(250, 246, 236, 0.28);
+    }
+
+    /* Show only 3 representative glyphs on mobile */
+    .feature-glyphs .glyph:nth-child(n+4) {
+      display: none;
     }
   }
 
@@ -162,13 +290,19 @@ const base = import.meta.env.BASE_URL;
      ============================================================ */
 
   .under-observation {
-    padding: var(--space-16) var(--space-6);
-    border-top: 1px solid var(--street-minor);
+    padding-block: var(--space-16);
+    padding-inline: var(--gutter);
+  }
+
+  @media (min-width: 768px) {
+    .under-observation {
+      padding-block: var(--space-16) var(--space-24);
+    }
   }
 
   .under-observation-inner {
-    max-width: 800px;
-    margin: 0 auto;
+    max-width: var(--container);
+    margin-inline: auto;
   }
 
   .section-label {
@@ -178,63 +312,59 @@ const base = import.meta.env.BASE_URL;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--ink-3);
-    margin-bottom: var(--space-8);
+    margin-bottom: var(--space-6);
+    /* Section heading sits above the hairline border of the first row */
   }
 
+  /* Definition list as two-column rows */
   .observation-list {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-6);
-  }
-
-  .observation-item {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35em var(--space-3);
-    align-baseline: start;
     border-top: 1px solid var(--street-minor);
-    padding-top: var(--space-6);
   }
 
-  .observation-item:first-child {
-    border-top: none;
-    padding-top: 0;
+  .observation-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+    padding-block: var(--space-6);
+    border-bottom: 1px solid var(--street-minor);
   }
 
-  .observation-name {
+  @media (min-width: 768px) {
+    .observation-row {
+      grid-template-columns: 240px minmax(0, 1fr);
+      gap: var(--space-8);
+      align-items: baseline;
+    }
+  }
+
+  .observation-term {
     font-family: var(--font-ui);
     font-size: var(--text-sm);
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--ink);
-    flex-shrink: 0;
-  }
-
-  .observation-name::after {
-    content: '.';
+    /* dt elements are block by default; no additional display needed */
   }
 
   .observation-desc {
     font-family: var(--font-body);
-    font-size: var(--text-base);
+    font-size: var(--text-lg);
+    line-height: 1.6;
     color: var(--ink-2);
-    line-height: 1.55;
+    /* natural measure from the grid; max-width keeps very wide viewports readable */
+    max-width: 58ch;
+    margin: 0;
   }
 
   /* ============================================================
-     Responsive
+     Reduced motion: all transitions already handled by motion.css
+     and the [data-reveal] system. Active-press scale on CTA only.
      ============================================================ */
 
-  @media (min-width: 768px) {
-    .feature-block {
-      padding: var(--space-24) var(--space-8);
-    }
-
-    .observation-item {
-      flex-wrap: nowrap;
-      align-items: baseline;
+  @media (prefers-reduced-motion: reduce) {
+    .feature-cta:active {
+      transform: none;
     }
   }
 </style>

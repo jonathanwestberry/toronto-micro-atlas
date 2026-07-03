@@ -90,11 +90,6 @@
   <path fill="none" stroke="#B8B2A7" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round" d="M763.43,-166.3L695.81,-147.85L650.26,-134.49L606.56,-119.86L561.94,-106.5L550.89,-103.32L503.51,-89.32L438.64,-69.6L378.84,-52.42L357.22,-45.43L198.04,2.29L134.55,20.74L75.21,39.18L69.23,40.46L-173.21,113.61"/>
   <path fill="none" stroke="#B8B2A7" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round" d="M941.47,676.56L757.45,729.35L516.39,798.04"/>
 
-  <!-- rail -->
-  <path fill="none" stroke="#D3CEC4" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="4,4" d="M422.54,-225.47L152.5,-140.85L133.17,-134.49L75.21,-113.5L16.78,-89.32L-21.4,-70.87L-62.8,-49.24"/>
-  <path fill="none" stroke="#D3CEC4" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="4,4" d="M-60.96,-46.06L-19.1,-66.42L25.06,-86.14L87.63,-111.59L134.09,-128.13"/>
-  <path fill="none" stroke="#D3CEC4" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="4,4" d="M-64.18,-51.15L-22.78,-72.78L15.86,-91.23L42.09,-102.68L94.53,-123.68L132.71,-136.4"/>
-
   <!-- buried streams (culverted / underground) -->
   <path fill="none" stroke="#3994C1" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="5,4" d="M335.13,553.8L319.49,567.16L309.83,609.78L312.13,654.94L322.25,674.02L354.92,694.37L372.4,717.27L388.96,722.99L396.78,735.71L396.32,761.15L419.78,792.96"/>
 
@@ -111,6 +106,12 @@
 
   <!-- rivers -->
   <!-- rivers: none in view -->
+
+  <!-- outside-survey wash (paper fill beyond municipal boundary) -->
+  <!-- outside mask: none in view -->
+
+  <!-- toronto municipal boundary (solid hairline, consistent with island map) -->
+  <!-- boundary: none in view -->
 
   <!-- threshold marker -->
   <circle cx="401.5" cy="302" r="16" fill="#00000026" filter="url(#mshad)"/>

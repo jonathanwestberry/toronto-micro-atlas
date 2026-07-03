@@ -1,11 +1,132 @@
 ---
 import Base from '../layouts/Base.astro';
+import ThresholdSymbol from '../components/ThresholdSymbol.astro';
 
 const base = import.meta.env.BASE_URL;
 ---
 
 <Base title="Page Not Found">
-  <h1>404: Page Not Found</h1>
-  <p>That location does not exist in this atlas.</p>
-  <p><a href={`${base}/`}>Return to the index.</a></p>
+  <div class="not-found-shell">
+    <div class="not-found-card" data-reveal>
+
+      <ThresholdSymbol
+        name="path-ending"
+        size={96}
+        class="not-found-glyph"
+        aria-hidden="true"
+      />
+
+      <h1 class="not-found-heading">404: Page Not Found</h1>
+      <p class="not-found-message">That location does not exist in this atlas.</p>
+
+      <a href={`${base}/`} class="not-found-home-btn">
+        Return to the index
+      </a>
+
+    </div>
+  </div>
 </Base>
+
+<style>
+  /* ============================================================
+     Vertically centered empty state
+     ============================================================ */
+
+  .not-found-shell {
+    min-height: 60dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-12) var(--gutter);
+  }
+
+  .not-found-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--space-6);
+    max-width: 40ch;
+  }
+
+  /* ============================================================
+     Decorative glyph
+     ============================================================ */
+
+  .not-found-glyph {
+    color: var(--ink);
+    opacity: 0.12;
+    /* Override ThresholdSymbol's display:block to stay inline-block for centering */
+    display: inline-block;
+    pointer-events: none;
+  }
+
+  /* ============================================================
+     Copy
+     ============================================================ */
+
+  .not-found-heading {
+    font-family: var(--font-heading);
+    font-weight: 900;
+    font-size: var(--text-3xl);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+
+  .not-found-message {
+    font-family: var(--font-body);
+    font-size: var(--text-lg);
+    line-height: 1.65;
+    color: var(--ink-2);
+  }
+
+  /* ============================================================
+     Paper button: home link
+     ============================================================ */
+
+  .not-found-home-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-3) var(--space-8);
+    background-color: var(--paper);
+    color: var(--ink);
+    border: 1px solid var(--ink);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-decoration: none;
+    transition:
+      background-color var(--dur-2) var(--ease-out),
+      color var(--dur-2) var(--ease-out);
+  }
+
+  .not-found-home-btn:hover {
+    background-color: var(--threshold);
+    color: var(--paper);
+    /* Override global a:hover to avoid double-color conflict */
+    color: var(--paper);
+  }
+
+  .not-found-home-btn:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  .not-found-home-btn:active {
+    transform: scale(0.98);
+    transition-duration: var(--dur-1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .not-found-home-btn {
+      transition: none;
+    }
+
+    .not-found-home-btn:active {
+      transform: none;
+    }
+  }
+</style>
