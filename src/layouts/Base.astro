@@ -18,7 +18,7 @@ const {
 const siteTitle = 'Toronto Micro-Atlas';
 const pageTitle = title ? `${title} | ${siteTitle}` : siteTitle;
 const resolvedOgTitle = ogTitle ?? title ?? siteTitle;
-const base = import.meta.env.BASE_URL;
+const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
 const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://jonathanwestberry.github.io');
 const path = Astro.url.pathname;
 const onGuides = path.includes('/guides/');

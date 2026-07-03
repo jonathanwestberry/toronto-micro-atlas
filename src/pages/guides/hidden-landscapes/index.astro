@@ -3,7 +3,7 @@ import { getCollection } from 'astro:content';
 import Base from '../../../layouts/Base.astro';
 import ThresholdChip from '../../../components/ThresholdChip.astro';
 
-const base = import.meta.env.BASE_URL;
+const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
 
 const allLocations = await getCollection('locations', ({ data }) => data.guide === 'hidden-landscapes');
 const locations = allLocations.sort((a, b) => a.data.order - b.data.order);
