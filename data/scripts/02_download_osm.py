@@ -22,8 +22,12 @@ RAW = os.path.join(DATA_DIR, "raw")
 os.makedirs(RAW, exist_ok=True)
 
 OVERPASS = "https://overpass-api.de/api/interpreter"
-# Overpass bbox order: south, west, north, east
-BBOX = "43.57,-79.65,43.87,-79.10"
+# Overpass bbox order: south, west, north, east.
+# Extended into the GTA (was 43.57,-79.65,43.87,-79.10) so context data covers
+# well beyond the eight markers and no paper void shows at the citywide floor:
+# west past Mississauga, south into Lake Ontario, east to Pickering, north to
+# Markham/Richmond Hill.
+BBOX = "43.45,-79.85,43.98,-78.90"
 
 QUERIES = {
     "osm-rail-raw.json":

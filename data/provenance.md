@@ -1,10 +1,22 @@
 # Data Provenance
 
 Geodata layers for the illustrated interactive map of Toronto (MapLibre GL JS, static site).
-All outputs are WGS84 (EPSG:4326) GeoJSON, clipped to the Toronto extent
-`-79.66, 43.56, -79.09, 43.88` (W, S, E, N) and simplified for web use at zooms ~10-15.
+All outputs are WGS84 (EPSG:4326) GeoJSON, simplified for web use at zooms ~10-15.
+Clip extents (W, S, E, N) differ by role. The interactive map clamps the camera
+to the city-fit viewport at min zoom (city dead-centre, no panning) and washes
+everything beyond the boundary, so street data only needs to cover the near-city
+extent; the wash rectangle is what actually guarantees no bare paper on any
+screen aspect.
+- Streets (major, minor): near-city `-79.75, 43.45, -79.00, 43.98`.
+- Lake / rail: wider `-79.85, 43.45, -78.90, 43.98` (lake must reach the min-zoom
+  viewport edge on tall/wide screens or a blue/paper edge shows).
+- Watercourses: Toronto + the Rouge `-79.72, 43.55, -79.08, 43.95`.
+- Subject layers (ravine, ESA, parks, boundary): Toronto `-79.66, 43.56, -79.09, 43.88`.
+- Outside-wash rectangle: `-79.98, 43.30, -78.72, 44.12` (larger than any
+  screen's min-zoom viewport, minus the Toronto boundary).
 
-Pipeline: `scripts/run_all.sh` (download -> convert -> process). Retrieval dates: July 1-2, 2026.
+Pipeline: `scripts/run_all.sh` (download -> convert -> process). Retrieval dates:
+City of Toronto layers July 1-2, 2026; OSM context re-pulled for the GTA extent July 3, 2026.
 
 ## Licenses at a glance
 
@@ -152,20 +164,20 @@ Overpass JSON is converted to GeoJSON by `scripts/03_convert_osm.py`.
 
 ## Derived layers
 
-### 12. Outside-survey mask
-- Derived in `04_process.sh` step 12: a padded rectangle (-80.00, 43.35, -78.75, 44.05)
-  minus the municipal boundary polygon. The rectangle exceeds the map's
-  maxBounds with margin so the pan/zoom limits never expose bare paper.
-  No external source; inherits the boundary's Open Government Licence - Toronto.
-- Drawn as a 78% paper-color wash so OSM context outside Toronto reads as
-  context rather than subject.
+### 12. Outside-survey wash
+- `04_process.sh` step 12: a rectangle (`BBOX_WASH`) minus the municipal
+  boundary polygon, drawn as a 72% paper fill so the GTA context reads as a
+  faint ghost and Toronto reads as the figure. No external source; inherits the
+  boundary's Open Government Licence - Toronto.
+- The rectangle is larger than any screen's min-zoom viewport (the camera clamps
+  to that extent), so its outer edge is never reachable and it needs no soft
+  feather. Output: `processed/outside-mask.geojson`.
 
-### 13. Edge-feather rings
-- Derived in `04_process.sh` step 12b: two rectangle rings (minus the
-  municipal boundary) stacked above the outside-mask at 42% and 100% paper,
-  stepping the ghosted context down 22% -> 13% -> 0% before the clipped
-  data extent so no zoom level exposes a hard data rectangle.
-- Outputs: `processed/feather-inner.geojson`, `processed/feather-outer.geojson`.
+### 13. Edge-feather rings (REMOVED)
+- The old `feather-inner` / `feather-outer` rings that faded the wash to pure
+  paper before a hard data rectangle are gone: with GTA data underneath and the
+  camera clamped inside the wash rectangle, there is no reachable data edge to
+  feather.
 
 ---
 

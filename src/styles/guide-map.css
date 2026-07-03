@@ -193,11 +193,17 @@
    Reset control button
    ------------------------------------------------------------ */
 
-.gm-reset-btn {
+/* Specificity must beat MapLibre's `.maplibregl-ctrl button { display: block }`
+   (0,1,1), or the flex centering is ignored and the icon sits top-left. */
+.maplibregl-ctrl button.gm-reset-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   color: #333333;
+}
+
+.gm-reset-btn svg {
+  display: block;
 }
 
 .gm-reset-btn:focus-visible {

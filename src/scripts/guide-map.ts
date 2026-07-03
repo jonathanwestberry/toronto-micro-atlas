@@ -43,13 +43,50 @@ interface PanelRefs {
 // Constants
 // ---------------------------------------------------------------------------
 
+// The eight markers' bounding box (SW = Old Mill Bridge, NE = Mast Trail). The
+// map opens and resets framed to these (plus fitPadding), so every marker stays
+// in view while the rest of Toronto spills off the edges. Context data extends
+// well past this box, so the resulting zoom floor never reveals paper void.
 const INITIAL_BOUNDS: maplibregl.LngLatBoundsLike = [
-  [-79.66, 43.56],
-  [-79.09, 43.88],
+  [-79.492, 43.651],
+  [-79.136, 43.806],
+];
+
+// The City of Toronto boundary extent. The zoom-out floor is pinned to this
+// fit, so the most zoomed-out view is the whole city framed (surrounded by the
+// washed GTA context); pulling back past the visible boundary is disallowed.
+const CITY_BOUNDS: maplibregl.LngLatBoundsLike = [
+  [-79.6393, 43.5810],
+  [-79.1153, 43.8555],
 ];
 
 /** Zoom applied when easing to a selected marker (never zooms out past current). */
 const SELECT_ZOOM = 12;
+
+/**
+ * On load and reset the map frames the markers a touch looser than a tight fit
+ * (this much below the marker-fit zoom), leaving a little zoom-out headroom
+ * before the floor. The floor itself is the citywide fit (see applyZoomLimits).
+ */
+const ONLOAD_ZOOM_OUT = 0.15;
+
+/** Uniform padding (px) for the citywide floor fit, so at min zoom the city sits
+ *  dead-centre with a little breathing room rather than touching the edges. */
+const FLOOR_PADDING = 34;
+
+/** maxBounds is the viewport extent at the floor, grown by this tiny factor, so
+ *  rounding never clamps the floor zoom while the city stays dead-centre and
+ *  effectively unpannable at min zoom (~1px of slack). */
+const MAXBOUNDS_SLACK = 1.002;
+
+/** Loose fallback pan limit (matches the outside-wash rectangle) used until the
+ *  per-screen limit is computed on load. */
+const WASH_BOUNDS: maplibregl.LngLatBoundsLike = [
+  [-79.98, 43.30],
+  [-78.72, 44.12],
+];
+/** Safe floor used only until the first fit-based floor is computed on load. */
+const FALLBACK_MIN_ZOOM = 8;
 
 /** Below this zoom the densest orientation labels are hidden. */
 const DENSE_LABEL_MIN_ZOOM = 10.5;
@@ -217,24 +254,13 @@ export class GuideMap {
       bounds: INITIAL_BOUNDS,
       fitBoundsOptions: { padding: this.fitPadding() },
       cooperativeGestures: true,
-      // Wide enough that the padded all-markers fit is never clamped: the
-      // desktop fit (444px+ left padding for the panel) needs ~0.87 deg of
-      // longitude on screen, and the 390px mobile fit needs ~0.72 deg. A
-      // tight maxBounds silently clamps fitBounds and shoves west Toronto
-      // off screen. The outside-mask wash covers to
-      // [-80.00, 43.35, -78.75, 44.05], so no bare void appears anywhere
-      // within these bounds.
-      // 1.55 x 0.80 deg: the desktop fit shows ~1.31 deg of longitude once
-      // the 486px panel padding is added, and maxBounds narrower than the
-      // on-screen span clamps the zoom itself, not just the center.
-      maxBounds: [
-        [-80.15, 43.30],
-        [-78.60, 44.10],
-      ],
-      // 8.5, not 9.0: on narrow viewports the all-markers fit needs ~8.55,
-      // and a higher floor clamps fitBounds so edge markers clip offscreen.
-      // maxBounds still keeps the data void unreachable.
-      minZoom: 8.5,
+      // Loose fallback pan limit; the real per-screen limit (the viewport at the
+      // citywide floor, so the city is dead-centre and unpannable at min zoom)
+      // is computed on load and resize in applyZoomLimits.
+      maxBounds: WASH_BOUNDS,
+      // Safe initial floor; tightened to just under the marker fit once the map
+      // has measured (applyMinZoomFloor, on 'load' and 'resize').
+      minZoom: FALLBACK_MIN_ZOOM,
       maxZoom: 16,
       dragRotate: false,
       attributionControl: false,
@@ -264,7 +290,13 @@ export class GuideMap {
 
     this.map.on('load', () => {
       this.addSourcesAndLayers();
+      this.applyZoomLimits({ recenter: true });
     });
+
+    // Recompute the floor + pan limit as the viewport/aspect changes (window
+    // resize, breakpoint crossing, mobile URL-bar show/hide), preserving the
+    // user's current view instead of re-framing.
+    this.map.on('resize', () => this.applyZoomLimits({ recenter: false }));
   }
 
   // -------------------------------------------------------------------------
@@ -283,7 +315,12 @@ export class GuideMap {
     const src = (filename: string): maplibregl.GeoJSONSourceSpecification => ({
       type: 'geojson',
       data: `${this.baseUrl}data/${filename}`,
-      buffer: 0,
+      // MapLibre's default (128). buffer: 0 clips features exactly at each 512px
+      // tile edge with no overlap, so the semi-transparent wash and strokes fail
+      // to meet across seams and the darker layer beneath shows through as a grid
+      // of hairlines (more of them the further you zoom in). A real buffer makes
+      // features overlap the tile edge and the seams disappear.
+      buffer: 128,
       tolerance: 0.375,
     });
 
@@ -299,8 +336,6 @@ export class GuideMap {
     this.map.addSource('waterways', src('watercourses.geojson'));
     this.map.addSource('boundary', src('toronto-boundary.geojson'));
     this.map.addSource('outside', src('outside-mask.geojson'));
-    this.map.addSource('feather-inner', src('feather-inner.geojson'));
-    this.map.addSource('feather-outer', src('feather-outer.geojson'));
     this.map.addSource('streets-major', src('streets-major.geojson'));
     this.map.addSource('streets-minor', src('streets-minor.geojson'));
 
@@ -309,7 +344,9 @@ export class GuideMap {
     // streets-major, hidden-landscape, hidden-landscape-esa,
     // hidden-landscape-esa-edge, hidden-landscape-edge, waterways-buried,
     // waterways, outside-mask, toronto-boundary
-    // (rail removed: buried watercourses are the only dashed device)
+    // (rail removed: buried watercourses are the only dashed device;
+    //  feather removed: GTA context data + maxBounds put the wash's outer edge
+    //  out of reach, so it needs no soft fade)
 
     this.map.addLayer({
       id: 'lake',
@@ -423,53 +460,32 @@ export class GuideMap {
       },
     });
 
-    // Beyond the municipal boundary the survey fades: OSM context stays
-    // faintly visible, but the argument is Toronto's. Without this wash the
-    // city data simply stops (the Rouge dies at Steeles) and reads as a bug.
-    // fill-opacity matches --wash-outside token (rgba(250,246,236,0.78))
+    // Outside-survey wash: a paper fill over everything beyond the municipal
+    // boundary, cut from a rectangle larger than maxBounds so its outer edge is
+    // never reachable. Mutes the GTA context (streets, water) to a faint ghost
+    // so Toronto reads as the figure, with real data underneath instead of the
+    // old clipped-data void.
     this.map.addLayer({
       id: 'outside-mask',
       type: 'fill',
       source: 'outside',
       paint: {
         'fill-color': '#FAF6EC', // --paper
-        'fill-opacity': 0.78,    // --wash-outside opacity
+        'fill-opacity': 0.72,
       },
     });
 
-    // Edge feather: the ghosted OSM context fades to pure paper before the
-    // clipped data extent, so no zoom level ever shows a hard rectangle
-    // where the data stops. Cumulative with the 0.78 mask: ghost visibility
-    // steps 22% -> 13% -> 0% across two soft bands.
-    this.map.addLayer({
-      id: 'feather-inner',
-      type: 'fill',
-      source: 'feather-inner',
-      paint: {
-        'fill-color': '#FAF6EC', // --paper
-        'fill-opacity': 0.42,
-      },
-    });
-
-    this.map.addLayer({
-      id: 'feather-outer',
-      type: 'fill',
-      source: 'feather-outer',
-      paint: {
-        'fill-color': '#FAF6EC', // --paper
-        'fill-opacity': 1,
-      },
-    });
-
-    // Solid line; dashes are reserved for buried watercourses only.
+    // Municipal boundary: sits on top of the wash edge, drawn distinctly darker
+    // and heavier than any street so it reads as an administrative edge, not a
+    // road. Solid; dashes are reserved for buried watercourses only.
     this.map.addLayer({
       id: 'toronto-boundary',
       type: 'line',
       source: 'boundary',
       paint: {
-        'line-color': '#A29A8C',
-        'line-width': 1.25,
-        'line-opacity': 0.9,
+        'line-color': '#57513F', // darker than every street tone
+        'line-width': 2,
+        'line-opacity': 0.95,
       },
     });
   }
@@ -621,7 +637,7 @@ export class GuideMap {
 
   /** Reset map to the citywide extent and clear any active selection */
   resetView(): void {
-    this.map.fitBounds(INITIAL_BOUNDS, { padding: this.fitPadding() });
+    this.frameMarkers(true);
     this.clearSelection();
   }
 
@@ -753,6 +769,72 @@ export class GuideMap {
 
   private isDesktop(): boolean {
     return window.matchMedia(DESKTOP_QUERY).matches;
+  }
+
+  /**
+   * Frame the eight markers a touch looser than a tight fit. This is the on-load
+   * and reset view: every marker in frame with a little zoom-out headroom before
+   * the floor.
+   */
+  private frameMarkers(animate: boolean): void {
+    const cam = this.map.cameraForBounds(INITIAL_BOUNDS, {
+      padding: this.fitPadding(),
+    });
+    if (!cam || typeof cam.zoom !== 'number') return;
+    const target = { center: cam.center, zoom: cam.zoom - ONLOAD_ZOOM_OUT };
+    if (animate && !this.prefersReducedMotion()) {
+      this.map.easeTo({ ...target, duration: 600 });
+    } else {
+      this.map.jumpTo(target);
+    }
+  }
+
+  /**
+   * Set the zoom-out floor to the citywide fit and clamp maxBounds to the
+   * viewport at that floor, centred on the city. Effect: zooming all the way out
+   * shows the whole City of Toronto dead-centre and cannot be panned; zooming in
+   * frees panning within that same extent. Recomputed per screen so every size
+   * and aspect ratio behaves identically.
+   *
+   * The floor extent is measured, not derived: jump the camera to the floor,
+   * read getBounds (exact for this viewport), then either re-frame the markers
+   * (on load) or restore the user's view (on resize). All synchronous, so only
+   * the final camera renders, no flash.
+   */
+  private applyZoomLimits(options: { recenter: boolean }): void {
+    const cam = this.map.cameraForBounds(CITY_BOUNDS, { padding: FLOOR_PADDING });
+    if (!cam || typeof cam.zoom !== 'number' || !Number.isFinite(cam.zoom)) return;
+
+    const restore = { center: this.map.getCenter(), zoom: this.map.getZoom() };
+
+    this.map.setMaxBounds(null); // clear first: a stale-tight bound can clamp the floor
+    this.map.jumpTo({ center: cam.center, zoom: cam.zoom });
+    const floor = this.map.getBounds();
+    this.map.setMinZoom(cam.zoom);
+    this.map.setMaxBounds(this.padBounds(floor, MAXBOUNDS_SLACK));
+
+    if (options.recenter) {
+      this.frameMarkers(false);
+    } else {
+      this.map.jumpTo(restore); // re-clamped to the new maxBounds if needed
+    }
+  }
+
+  /** Grow a bounds about its centre by factor `f` (adds maxBounds slack). */
+  private padBounds(
+    b: maplibregl.LngLatBounds,
+    f: number,
+  ): maplibregl.LngLatBoundsLike {
+    const w = b.getWest();
+    const e = b.getEast();
+    const s = b.getSouth();
+    const n = b.getNorth();
+    const cx = (w + e) / 2;
+    const cy = (s + n) / 2;
+    return [
+      [cx - (cx - w) * f, cy - (cy - s) * f],
+      [cx + (e - cx) * f, cy + (n - cy) * f],
+    ];
   }
 
   private prefersReducedMotion(): boolean {

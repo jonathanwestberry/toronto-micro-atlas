@@ -77,4 +77,7 @@
 
   /* Cartographic outside-survey wash */
   --wash-outside: rgba(250, 246, 236, 0.78);
+
+  /* Full-bleed guide-map hero (desktop fills viewport below the header) */
+  --header-h: 67px;    /* measured height of .site-header (normal flow, not sticky) */
 }

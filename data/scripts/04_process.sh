@@ -5,9 +5,19 @@
 # Simplification notes:
 #   * mapshaper -simplify with a bare number/percentage keeps that PROPORTION
 #     of removable vertices (weighted Visvalingam). Percentages below were
-#     tuned empirically for zooms ~10-15 and a <3 MB per-file budget.
+#     tuned empirically for zooms ~10-15 and a per-file budget.
 #   * keep-shapes prevents small rings from collapsing entirely.
 #   * precision=0.00001 writes 5 decimal places (~1.1 m), plenty for z15.
+#
+# Extents:
+#   * BBOX (OSM context) is extended into the GTA so the map has no paper void
+#     at the citywide floor. The map fits the eight markers, and the surrounding
+#     street fabric / lake fills every edge instead of a wash-to-paper mask.
+#   * BBOX_CITY keeps the subject layers (ravine, ESA, parks, boundary) clipped
+#     to Toronto: that data only exists inside the city and IS the argument.
+#   * BBOX_WATER keeps watercourses to Toronto + the Rouge: buried creeks are a
+#     Toronto subject, and GTA-wide streams only add payload.
+#   NOTE: re-run 02_download_osm.py with the matching GTA bbox before this.
 #
 # Usage: bash 04_process.sh
 set -euo pipefail
@@ -18,8 +28,20 @@ PROC="${DATA_DIR}/processed"
 SCRIPTS="${DATA_DIR}/scripts"
 mkdir -p "${PROC}"
 
-# Toronto extent with a small buffer (W,S,E,N)
-BBOX="-79.66,43.56,-79.09,43.88"
+# OSM context extent (W,S,E,N). Lake keeps this wider extent so its south/E-W
+# reach covers the min-zoom viewport on tall/wide screens with no colour edge.
+BBOX="-79.85,43.45,-78.90,43.98"
+# Streets: tighter. The camera clamps to the city-fit viewport at min zoom and
+# the outside-wash covers anything past this, so far-GTA street fabric is dead
+# weight. Trimmed E-W to the city + a margin (keeps all eight markers).
+BBOX_STREETS="-79.75,43.45,-79.00,43.98"
+# Watercourses: Toronto + the Rouge only.
+BBOX_WATER="-79.72,43.55,-79.08,43.95"
+# City subject layers: Toronto only (unchanged from the original build).
+BBOX_CITY="-79.66,43.56,-79.09,43.88"
+# Outside-wash rectangle: larger than any screen's min-zoom viewport, so beyond
+# the real data it reads as uniform wash (never bare paper). W,S,E,N.
+BBOX_WASH="-79.98,43.30,-78.72,44.12"
 MS="npx mapshaper"
 PREC="precision=0.00001"
 
@@ -30,7 +52,7 @@ $MS "${RAW}/rnfp-shp/RAVINE_BYLAW_WGS84_fixed.shp" \
   -simplify 25% keep-shapes \
   -clean \
   -filter-slivers min-area=400m2 \
-  -clip bbox=${BBOX} \
+  -clip bbox=${BBOX_CITY} \
   -filter remove-empty \
   -o format=geojson $PREC "${PROC}/ravine-rnfp.geojson"
 
@@ -41,7 +63,7 @@ $MS "${RAW}/green-spaces-4326.geojson" \
   -rename-fields name=AREA_NAME,class=AREA_CLASS \
   -simplify 15% keep-shapes \
   -clean \
-  -clip bbox=${BBOX} \
+  -clip bbox=${BBOX_CITY} \
   -filter remove-empty \
   -o format=geojson $PREC "${PROC}/green-spaces.geojson"
 
@@ -51,7 +73,7 @@ $MS "${RAW}/parks-shp/CITY_GREEN_SPACE_WGS84.shp" \
   -rename-fields name=NAME,type=TYPE_DESC \
   -simplify 15% keep-shapes \
   -clean \
-  -clip bbox=${BBOX} \
+  -clip bbox=${BBOX_CITY} \
   -filter remove-empty \
   -o format=geojson $PREC "${PROC}/parks-city.geojson"
 
@@ -61,7 +83,7 @@ $MS "${RAW}/esa-4326.geojson" \
   -rename-fields name=ESA_NAME \
   -simplify 30% keep-shapes \
   -clean \
-  -clip bbox=${BBOX} \
+  -clip bbox=${BBOX_CITY} \
   -filter remove-empty \
   -o format=geojson $PREC "${PROC}/esa.geojson"
 
@@ -69,7 +91,7 @@ echo "== 5. Lake Ontario shoreline polygon (clip first: source ring spans the wh
 $MS "${RAW}/osm-lake.geojson" \
   -clip bbox=${BBOX} \
   -filter remove-empty \
-  -simplify interval=0.00004 keep-shapes \
+  -simplify interval=0.00006 keep-shapes \
   -clean \
   -o format=geojson $PREC "${PROC}/lake-ontario.geojson"
 
@@ -78,23 +100,25 @@ $MS "${RAW}/osm-waterways.geojson" \
   -filter 'waterway == "river" || waterway == "stream" || waterway == "canal"' \
   -filter-fields name,tier,buried \
   -simplify 30% \
-  -clip bbox=${BBOX} \
+  -clip bbox=${BBOX_WATER} \
   -filter remove-empty \
   -o format=geojson $PREC "${PROC}/watercourses.geojson"
 
 echo "== 7. Major streets (motorway/trunk vs primary/secondary), merged per street name =="
 $MS "${RAW}/osm-streets-major.geojson" \
   -filter-fields name,ref,tier \
-  -simplify 25% \
-  -clip bbox=${BBOX} \
+  -simplify 20% \
+  -clip bbox=${BBOX_STREETS} \
   -filter remove-empty \
   -dissolve 'tier,name' copy-fields=ref \
   -o format=geojson $PREC "${PROC}/streets-major.geojson"
 
 echo "== 8. Minor streets (dissolved context linework, no attributes) =="
+# Heavier simplify (10%) than the subject layers: minor streets are hairline
+# fabric at these zooms, and the GTA extent would otherwise be too heavy.
 $MS "${RAW}/osm-streets-minor.geojson" \
-  -simplify 25% \
-  -clip bbox=${BBOX} \
+  -simplify 10% \
+  -clip bbox=${BBOX_STREETS} \
   -filter remove-empty \
   -dissolve 'tier' \
   -o format=geojson $PREC "${PROC}/streets-minor.geojson"
@@ -119,29 +143,17 @@ $MS "${RAW}/boundary-shp/citygcs_regional_mun_wgs84.shp" \
   -clean \
   -o format=geojson $PREC "${PROC}/toronto-boundary.geojson"
 
-echo "== 12. Outside-survey mask (padded rectangle minus Toronto) =="
-# Rectangle must exceed the map's maxBounds ([-80.15, 43.30, -78.60, 44.10])
-# with margin, or a bare void appears at the pan/zoom limits.
-$MS -rectangle bbox=-80.00,43.35,-78.75,44.05 \
-  -o format=geojson force "${PROC}/_rect.geojson"
+echo "== 12. Outside-survey wash (rectangle minus Toronto) =="
+# A paper fill over everything beyond the boundary, mutes the GTA context to a
+# faint ghost so Toronto reads as the figure. The rectangle is larger than any
+# screen's min-zoom viewport (the camera clamps to that), so its outer edge is
+# unreachable and no soft feather is needed (the old feather rings are gone).
+$MS -rectangle bbox=${BBOX_WASH} -o format=geojson force "${PROC}/_rect.geojson"
 $MS "${PROC}/_rect.geojson" \
   -erase "${PROC}/toronto-boundary.geojson" \
   -each 'kind="outside"' \
   -o format=geojson $PREC force "${PROC}/outside-mask.geojson"
 rm "${PROC}/_rect.geojson"
-
-echo "== 12b. Edge-feather rings (ghost context fades to paper before the data edge) =="
-# Two rings stacked over the outside-mask step the ghosted OSM context down
-# 22% -> 13% -> 0% so no zoom level shows a hard rectangle where clipped
-# data stops. Inner band edge sits 0.06/0.035 deg inside the data bbox.
-$MS -rectangle bbox=-80.30,43.20,-78.45,44.20 -o format=geojson force "${PROC}/_hug.geojson"
-$MS -rectangle bbox=-79.60,43.595,-79.15,43.845 -o format=geojson force "${PROC}/_inA.geojson"
-$MS -rectangle bbox=${BBOX} -o format=geojson force "${PROC}/_inB.geojson"
-$MS "${PROC}/_hug.geojson" -erase "${PROC}/_inA.geojson" -erase "${PROC}/toronto-boundary.geojson" \
-  -each 'kind="feather-inner"' -o format=geojson $PREC force "${PROC}/feather-inner.geojson"
-$MS "${PROC}/_hug.geojson" -erase "${PROC}/_inB.geojson" -erase "${PROC}/toronto-boundary.geojson" \
-  -each 'kind="feather-outer"' -o format=geojson $PREC force "${PROC}/feather-outer.geojson"
-rm "${PROC}/_hug.geojson" "${PROC}/_inA.geojson" "${PROC}/_inB.geojson"
 
 echo "== 13. Strip null/empty-geometry features (created at write time by precision quantization) =="
 export PROC_DIR="${PROC}"
@@ -158,6 +170,15 @@ for path in sorted(glob.glob(os.path.join(os.environ["PROC_DIR"], "*.geojson")))
             json.dump(d, f, separators=(",", ":"))
         print(f"{os.path.basename(path)}: dropped {before - len(d['features'])} null/empty-geometry features")
 PYEOF
+
+echo "== Copy web-facing layers into public/data =="
+# The app loads these from public/data (base-pathed at /toronto-micro-atlas/data).
+PUB="${DATA_DIR}/../public/data"
+mkdir -p "${PUB}"
+for f in ravine-rnfp esa lake-ontario watercourses streets-major streets-minor \
+         toronto-boundary outside-mask orientation-labels; do
+  cp "${PROC}/${f}.geojson" "${PUB}/${f}.geojson"
+done
 
 echo "== Done. Outputs: =="
 ls -lh "${PROC}"

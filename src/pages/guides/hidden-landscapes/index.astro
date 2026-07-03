@@ -85,7 +85,7 @@ const mapLocations = locations.map((loc) => ({
               <span class="legend-label">Buried watercourses</span>
             </div>
             <div class="legend-item">
-              <span class="legend-swatch legend-swatch--line" style="background-color: #A29A8C;" aria-hidden="true"></span>
+              <span class="legend-swatch legend-swatch--line" style="background-color: #57513F;" aria-hidden="true"></span>
               <span class="legend-label">City of Toronto boundary</span>
             </div>
           </div>
@@ -222,8 +222,13 @@ const mapLocations = locations.map((loc) => ({
 
   .guide-map-container {
     width: 100%;
-    height: 55vh;
-    min-height: 300px;
+    /* Mobile/tablet: a comfortable hero height that leaves the intro peeking
+       below, the common pattern for map-led editorial pages. Desktop overrides
+       to full viewport height below. svh (not dvh) keeps the height stable when
+       the mobile URL bar shows/hides, so the MapLibre canvas never resizes
+       mid-scroll. */
+    height: 62svh;
+    min-height: 380px;
     background-color: var(--paper);
     position: relative;
     overflow: hidden;
@@ -600,9 +605,11 @@ const mapLocations = locations.map((loc) => ({
   }
 
   @media (min-width: 1024px) {
+    /* Desktop: the map fills the full viewport height below the header (no
+       peek), so its bottom edge sits at the bottom of the screen on load. */
     .guide-map-container {
-      height: 70vh;
-      min-height: 500px;
+      height: calc(100vh - var(--header-h));
+      min-height: 0;
     }
 
     .guide-map-row {
@@ -614,7 +621,7 @@ const mapLocations = locations.map((loc) => ({
       top: var(--space-8);
       left: var(--space-8);
       width: 380px;
-      max-height: calc(70vh - var(--space-16));
+      max-height: calc(100vh - var(--header-h) - var(--space-16));
       overflow-y: auto;
       border: 1px solid var(--street-minor);
       border-top: none;

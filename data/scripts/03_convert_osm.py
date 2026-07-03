@@ -18,7 +18,8 @@ DATA_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW = os.path.join(DATA_DIR, "raw")
 
 # Extended bbox used to decide which island rings to keep (deg).
-EXT_W, EXT_S, EXT_E, EXT_N = -79.80, 43.45, -78.95, 43.95
+# Matches the GTA download extent in 02_download_osm.py.
+EXT_W, EXT_S, EXT_E, EXT_N = -79.85, 43.45, -78.90, 43.98
 
 
 def load(name):
