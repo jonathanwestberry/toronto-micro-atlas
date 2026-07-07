@@ -10,6 +10,7 @@
     "maps": "node scripts/build-contextual-maps.mjs"
   },
   "dependencies": {
+    "@astrojs/sitemap": "^3.7.3",
     "@fontsource-variable/archivo": "^5.2.8",
     "@fontsource-variable/source-serif-4": "^5.2.9",
     "astro": "^5.10.0",

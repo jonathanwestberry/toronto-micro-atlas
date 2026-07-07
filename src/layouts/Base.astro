@@ -20,6 +20,8 @@ const pageTitle = title ? `${title} | ${siteTitle}` : siteTitle;
 const resolvedOgTitle = ogTitle ?? title ?? siteTitle;
 const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
 const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://torontomicroatlas.com');
+// og:image must be an absolute URL; scrapers (X, LinkedIn, Slack) won't resolve relative paths
+const ogImageURL = new URL(`${base}/social/og-default.jpg`, Astro.site ?? 'https://torontomicroatlas.com');
 const path = Astro.url.pathname;
 const onGuides = path.includes('/guides/');
 const onAbout = path.includes('/about');
@@ -44,14 +46,14 @@ const onAbout = path.includes('/about');
     <meta property="og:title" content={resolvedOgTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonicalURL.href} />
-    <meta property="og:image" content={`${base}/social/og-default.jpg`} />
+    <meta property="og:image" content={ogImageURL.href} />
     <meta property="og:site_name" content={siteTitle} />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={resolvedOgTitle} />
     <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content={`${base}/social/og-default.jpg`} />
+    <meta name="twitter:image" content={ogImageURL.href} />
 
     <style is:global>
       /* ============================================================
