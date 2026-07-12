@@ -7,12 +7,15 @@ interface Props {
   title?: string;
   description?: string;
   ogTitle?: string;
+  /** Site-relative path to a page-specific social image (e.g. '/social/og-x.jpg') */
+  ogImage?: string;
 }
 
 const {
   title,
   description = 'An independent web publication of Field Guides about noticing and using Toronto.',
   ogTitle,
+  ogImage,
 } = Astro.props;
 
 const siteTitle = 'Toronto Micro-Atlas';
@@ -21,7 +24,7 @@ const resolvedOgTitle = ogTitle ?? title ?? siteTitle;
 const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
 const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://torontomicroatlas.com');
 // og:image must be an absolute URL; scrapers (X, LinkedIn, Slack) won't resolve relative paths
-const ogImageURL = new URL(`${base}/social/og-default.jpg`, Astro.site ?? 'https://torontomicroatlas.com');
+const ogImageURL = new URL(`${base}${ogImage ?? '/social/og-default.jpg'}`, Astro.site ?? 'https://torontomicroatlas.com');
 const path = Astro.url.pathname;
 const onGuides = path.includes('/guides/');
 const onAbout = path.includes('/about');
@@ -457,6 +460,7 @@ const onAbout = path.includes('/about');
           <p class="site-footer-heading">Explore</p>
           <ul class="site-footer-links">
             <li><a href={`${base}/guides/hidden-landscapes/`} data-astro-reload>Field Guide 01: Hidden Landscapes</a></li>
+            <li><a href={`${base}/guides/sidewalk-forest/`} data-astro-reload>Field Guide 02: Sidewalk Forest</a></li>
             <li><a href={`${base}/about/`}>About the atlas</a></li>
             <li><a href="https://github.com/jonathanwestberry/toronto-micro-atlas" rel="noopener">Source on GitHub</a></li>
           </ul>

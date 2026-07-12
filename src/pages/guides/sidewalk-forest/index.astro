@@ -1,0 +1,328 @@
+---
+import { readFileSync } from 'node:fs';
+import Base from '../../../layouts/Base.astro';
+import '../../../styles/fg02.css';
+
+// Read at build time only; the same file is fetched by the map island at
+// runtime, so the legend and the layers can never disagree. Resolved from
+// the project root: import.meta.url points into dist/ in the built server.
+const meta = JSON.parse(
+  readFileSync(new URL('./public/data/fg02/meta.json', `file://${process.cwd()}/`), 'utf8'),
+);
+
+const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
+
+const total = (meta.total as number).toLocaleString('en-CA');
+const kinds = meta.distinctSpecies as number;
+const categories = meta.categories as { key: string; label: string; color: string; count: number }[];
+
+// Chapter-one mini legend: the four hues the eye asks about first
+const chipKeys = ['maple', 'locust', 'ginkgo', 'conifer'];
+const chips = categories.filter((c) => chipKeys.includes(c.key));
+---
+
+<Base
+  title="Field Guide 02: Sidewalk Forest"
+  description={`Toronto keeps a ledger of every street tree it tends: ${total} of them, each with a species, a trunk measurement, and an address. This Field Guide reads the ledger, one dot per tree.`}
+  ogImage="/social/og-sidewalk-forest.jpg"
+>
+  <div class="fg2">
+    <div class="fg2-scrolly" data-mode="story">
+
+      <!-- Sticky map stage -->
+      <div class="fg2-stage">
+        <div class="fg2-map" id="fg2-map" role="region" aria-label="Map of all 688,335 street trees in Toronto's inventory">
+          <div class="fg2-map-placeholder" aria-hidden="true">
+            <span class="fg2-map-placeholder-label">Map</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live region for assistive tech -->
+      <div class="visually-hidden" id="fg2-announcer" role="status" aria-live="polite"></div>
+
+      <!-- Story column -->
+      <div class="fg2-steps">
+
+        <section class="fg2-step fg2-step--hero" data-chapter="hero">
+          <div class="fg2-hero-card">
+            <span class="fg2-hero-kicker">Field Guide 02</span>
+            <h1 class="fg2-hero-title">Sidewalk Forest</h1>
+            <p class="fg2-hero-lede">
+              Toronto keeps a ledger of every tree it plants and tends along its
+              streets, each one recorded with a species, a trunk measurement, and
+              a street address. Seen all at once, the inventory is a second city:
+              a forest laid over the grid. This guide reads the ledger.
+            </p>
+            <p class="fg2-hero-stats">
+              <strong>{total}</strong> trees · <strong>{kinds}</strong> kinds · one dot each
+            </p>
+            <p class="fg2-hero-cue">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="4" x2="12" y2="20"/><polyline points="6,14 12,20 18,14"/></svg>
+              Scroll to read
+              <button type="button" class="fg2-card-btn" style="margin: 0 0 0 auto;" data-scroll-to-explorer>Skip to the map</button>
+            </p>
+          </div>
+        </section>
+
+        <section class="fg2-step" data-chapter="ledger">
+          <div class="fg2-step-card">
+            <span class="fg2-step-kicker">Chapter 1</span>
+            <h2 class="fg2-step-heading">The Ledger</h2>
+            <p class="fg2-step-text">
+              Every dot is one street tree in the city's inventory. Not parks, not
+              ravines, not backyards: just the trees Toronto itself tends along its
+              road allowances. The colours are families. Where streets burn
+              brightest, the planting runs densest; the downtown core, for all its
+              towers, barely glows.
+            </p>
+            <div class="fg2-chips" aria-hidden="true">
+              {chips.map((c) => (
+                <span class="fg2-chip">
+                  <span class="fg2-chip-dot" style={`background-color: ${c.color}`}></span>
+                  {c.label}
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section class="fg2-step" data-chapter="one-in-four">
+          <div class="fg2-step-card">
+            <span class="fg2-step-kicker">Chapter 2</span>
+            <h2 class="fg2-step-heading">One in Four</h2>
+            <p class="fg2-step-text">
+              <strong>185,621</strong> of the city's street trees are maples, about
+              one in four. No other family comes close. Forestry crews have planted
+              them for a century: fast growers, dense shade, indifferent to abuse.
+              This is what a city that loves one tree looks like.
+            </p>
+          </div>
+        </section>
+
+        <section class="fg2-step" data-chapter="import-flag">
+          <div class="fg2-step-card">
+            <span class="fg2-step-kicker">Chapter 3</span>
+            <h2 class="fg2-step-heading">The Import and the Flag</h2>
+            <p class="fg2-step-text">
+              The single most common street tree in Toronto is the
+              <strong>Norway maple</strong>: 69,474 of them, a European import so
+              at home here that Ontario's invasive plant council publishes a
+              management guide for it. The sugar maple, the tree on the flag,
+              musters 11,325. On its own streets, the national tree is outnumbered
+              six to one by its European cousin.
+            </p>
+            <button type="button" class="fg2-card-btn" id="fg2-maple-toggle">Show the sugar maples</button>
+          </div>
+        </section>
+
+        <section class="fg2-step" data-chapter="workhorse">
+          <div class="fg2-step-card">
+            <span class="fg2-step-kicker">Chapter 4</span>
+            <h2 class="fg2-step-heading">The Workhorse</h2>
+            <p class="fg2-step-text">
+              Where the sidewalk is hardest, the city plants
+              <strong>honey locust</strong>: 59,904 of them, nearly one street tree
+              in ten. It tolerates salt, drought, compacted soil, and reflected
+              heat, which is a botanical description of a downtown street. The
+              chartreuse constellation below is the core's street canopy, more or
+              less one species.
+            </p>
+          </div>
+        </section>
+
+        <section class="fg2-step" data-chapter="fossil">
+          <div class="fg2-step-card">
+            <span class="fg2-step-kicker">Chapter 5</span>
+            <h2 class="fg2-step-heading">The Living Fossil</h2>
+            <p class="fg2-step-text">
+              The <strong>ginkgo</strong> has no living relatives. It has outlasted
+              every tree it evolved beside, two hundred million years and counting,
+              and it shrugs at pollution, salt, and drought. Which is why a
+              Jurassic survivor is now standard issue on Toronto sidewalks: 17,464
+              of them, glowing gold.
+            </p>
+          </div>
+        </section>
+
+        <section class="fg2-step" data-chapter="elegy">
+          <div class="fg2-step-card">
+            <span class="fg2-step-kicker">Chapter 6</span>
+            <h2 class="fg2-step-heading">The Elegy</h2>
+            <p class="fg2-step-text">
+              The pale dots are <strong>ash</strong> trees, and the map is mostly
+              dark. Emerald ash borer, a beetle first found in Toronto in 2007, has
+              killed ash here by the hundreds of thousands. The street ledger now
+              counts 9,948, fewer ash than lilacs. The inventory doesn't record
+              absence, but you can read it in the gaps.
+            </p>
+          </div>
+        </section>
+
+        <section class="fg2-step" data-chapter="one-of-each">
+          <div class="fg2-step-card">
+            <span class="fg2-step-kicker">Chapter 7</span>
+            <h2 class="fg2-step-heading">One of Each</h2>
+            <p class="fg2-step-text">
+              The ledger holds <strong>fifteen one-of-a-kind trees</strong>,
+              species that appear exactly once in {total} entries. Somewhere on
+              Macdonell Avenue in Parkdale stands the city's only street pawpaw.
+              Scarborough has the lone bald cypress; Flamborough Drive, the single
+              sour cherry. The gold points are all fifteen; select one to meet it.
+            </p>
+          </div>
+        </section>
+
+        <section class="fg2-step" data-chapter="thins">
+          <div class="fg2-step-card">
+            <span class="fg2-step-kicker">Chapter 8</span>
+            <h2 class="fg2-step-heading">Where the Ledger Thins</h2>
+            <p class="fg2-step-text">
+              The forest is not evenly planted. <strong>Ward 2, Etobicoke
+              Centre</strong>, holds 52,659 ledger trees, the most in the city.
+              <strong>Ward 13, Toronto Centre</strong>, holds 8,558, the fewest.
+              Downtown's density leaves little soil unclaimed; the postwar suburbs
+              were drawn with room for trees. The ledger maps where the city had
+              room to be generous.
+            </p>
+          </div>
+        </section>
+
+        <section class="fg2-step" data-chapter="find-yours">
+          <div class="fg2-step-card">
+            <span class="fg2-step-kicker">Chapter 9</span>
+            <h2 class="fg2-step-heading">Find Yours</h2>
+            <p class="fg2-step-text">
+              The tree outside your door is probably in this ledger, with its
+              species and trunk width on file. Keep scrolling and the map is
+              yours: zoom in until the dots separate, tap one, and the city will
+              tell you what it is.
+            </p>
+            <button type="button" class="fg2-card-btn fg2-card-btn--solid" data-scroll-to-explorer>Explore the forest</button>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- Explorer -->
+      <section class="fg2-explorer" id="fg2-explorer" aria-label="Tree explorer">
+        <div class="fg2-explorer-ui">
+          <aside class="fg2-panel" id="fg2-panel" aria-label="Explorer controls">
+            <h2 class="fg2-panel-title">
+              <button type="button" class="fg2-panel-toggle" id="fg2-panel-toggle" aria-expanded="true" aria-controls="fg2-panel-body">
+                The Sidewalk Forest
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><polyline points="6,15 12,9 18,15"/></svg>
+              </button>
+            </h2>
+            <div id="fg2-panel-body">
+            <p class="fg2-panel-hint">
+              Zoom in until dots separate, then tap a tree to identify it. Or find
+              your street:
+            </p>
+            <div class="fg2-search">
+              <label class="visually-hidden" for="fg2-street-input">Search streets</label>
+              <input
+                type="search"
+                id="fg2-street-input"
+                placeholder="Search your street…"
+                autocomplete="off"
+                spellcheck="false"
+              />
+              <ul class="fg2-search-results" id="fg2-street-results"></ul>
+            </div>
+            <div class="fg2-legend" role="group" aria-label="Tree families. Select one to show only that family.">
+              <span class="fg2-legend-label">Families</span>
+              {categories.map((c, i) => (
+                <button type="button" data-genus={i} aria-pressed="false">
+                  <span class="fg2-legend-dot" style={`background-color: ${c.color}`} aria-hidden="true"></span>
+                  {c.label}
+                  <span class="fg2-legend-count">{c.count.toLocaleString('en-CA')}</span>
+                </button>
+              ))}
+              <button type="button" class="fg2-card-btn fg2-legend-reset" id="fg2-legend-reset">Show all families</button>
+              <button type="button" class="fg2-card-btn fg2-legend-reset" id="fg2-reset">Citywide view</button>
+            </div>
+            </div>
+          </aside>
+          <button type="button" class="fg2-back-to-story" id="fg2-back-to-story">Back to the story</button>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Sources -->
+    <section class="fg2-sources" aria-labelledby="fg2-sources-heading">
+      <div class="fg2-sources-inner">
+        <h2 id="fg2-sources-heading">Method and sources</h2>
+        <p>
+          One dot per tree. Citywide views are exact-count renders of all
+          {total} records in the inventory; street-level views read the same
+          records live, so every dot can be identified. The ledger is a working
+          document maintained by Urban Forestry crews: it contains data-entry
+          quirks, including implausible trunk measurements, which this guide
+          filters conservatively. Counts were computed from the June 2026 refresh
+          and will drift as the city plants and removes trees.
+        </p>
+        <ul>
+          <li>
+            <a href="https://open.toronto.ca/dataset/street-tree-data/" rel="noopener">Street Tree Data</a>,
+            City of Toronto Open Data. Retrieved July 12, 2026; last refreshed June 4, 2026.
+          </li>
+          <li>
+            Ward counts follow the 25-ward system; names from the
+            <a href="https://www.toronto.ca/city-government/data-research-maps/neighbourhoods-communities/ward-profiles/" rel="noopener">City of Toronto ward profiles</a>.
+          </li>
+          <li>
+            Emerald ash borer history:
+            <a href="https://www.toronto.ca/services-payments/water-environment/trees/forest-management/threats-to-trees-insects/emerald-ash-borer-agrilus-planipennis/" rel="noopener">City of Toronto Urban Forestry</a>
+            and the
+            <a href="https://trca.ca/conservation/habitat-protection-regeneration/emerald-ash-borer/" rel="noopener">Toronto and Region Conservation Authority</a>.
+          </li>
+          <li>
+            Norway maple invasive status:
+            <a href="https://www.ontarioinvasiveplants.ca/wp-content/uploads/2021/05/BMP_NorwayMaple_April2021_WEB.pdf" rel="noopener">Ontario Invasive Plant Council, Best Management Practices</a>.
+          </li>
+          <li>
+            Basemap context: © OpenStreetMap contributors; City of Toronto boundary files.
+          </li>
+        </ul>
+        <p>
+          Published July 12, 2026. Part of the
+          <a href={`${base}/`}>Toronto Micro-Atlas</a>, an independent web
+          publication of Field Guides about noticing and using Toronto.
+        </p>
+      </div>
+    </section>
+
+    <noscript>
+      <div class="fg2-noscript">
+        <p>
+          The interactive map needs JavaScript. The short version: Toronto's
+          street tree inventory holds {total} trees of {kinds} kinds. One in four
+          is a maple, and the most common of all is the Norway maple, a European
+          import that outnumbers the sugar maple six to one. Honey locust rules
+          downtown. There are 17,464 ginkgos, 9,948 ashes left after emerald ash
+          borer, and fifteen species that appear exactly once, including a single
+          pawpaw in Parkdale.
+        </p>
+      </div>
+    </noscript>
+  </div>
+</Base>
+
+<script>
+  import { initSidewalkForest } from '../../../scripts/fg02-map';
+  initSidewalkForest();
+</script>
+
+<style>
+  .visually-hidden {
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+  }
+</style>
