@@ -181,6 +181,45 @@ Overpass JSON is converted to GeoJSON by `scripts/03_convert_osm.py`.
 
 ---
 
+## Field Guide 02: Sidewalk Forest
+
+### 14. Street Tree Data
+- Dataset page: https://open.toronto.ca/dataset/street-tree-data/
+- Resource downloaded: `Street Tree Data - 4326.geojson` (343 MB, WGS84)
+  https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/6ac4569e-fd37-4cbc-ac63-db3624c5f6a2/resource/d6089672-bdf7-4857-8ea8-90da826fcfa1/download/street-tree-data-4326.geojson
+- Publisher: City of Toronto, Parks, Forestry & Recreation (Urban Forestry).
+  License: Open Government Licence - Toronto. Retrieved: 2026-07-12;
+  portal last-refreshed 2026-06-04.
+- 688,335 street trees (city-maintained trees on road allowances), each with
+  BOTANICAL_NAME, COMMON_NAME, DBH_TRUNK (cm), ADDRESS, STREETNAME, WARD.
+  Geometries arrive as single-position MultiPoints; unwrapped to Points.
+- Known data quirks handled in processing (`scripts/11_process_trees.py`):
+  lowercase 'ginkgo biloba' rows normalized; DBH values outside 1-250 cm
+  treated as data-entry errors and omitted from popups; a handful of
+  malformed single-value coordinates skipped.
+- Pipeline (`scripts/10_download_trees.sh` -> `11_process_trees.py` ->
+  `12_tile_trees.sh` -> `13_render_trees.py`; Python deps via
+  `scripts/.venv`: numpy, Pillow; tiling via tippecanoe):
+  - `processed/trees-tiling.ndjson`: minimized attributes (`g` genus
+    category, `s` species index, `d` DBH, `a` civic address).
+  - `public/tiles/trees/{z}/{x}/{y}.pbf`: z13-z14 static vector tiles,
+    full density (no feature dropping), uncompressed protobuf
+    (`--no-tile-compression`; static hosts send no Content-Encoding).
+  - `public/data/fg02/r/*.webp`: exact-count dot renders (one dot per
+    record) in Web Mercator, used as image sources below z13.2.
+  - `public/data/fg02/meta.json`: species lookup, genus categories with
+    validated colors, story stats. `streets.json`: street-name search index
+    (centroids of per-street tree positions; streets with <3 trees dropped).
+- Editorial claims in the guide and where they come from:
+  - Counts (total, per-genus, Norway vs sugar maple, ginkgo, ash vs lilac,
+    ward most/least, 15 singleton species) recomputed from this dataset.
+  - Ward names: City of Toronto ward profiles (25-ward system).
+  - Emerald ash borer first found in Toronto 2007: City of Toronto Urban
+    Forestry EAB page; TRCA.
+  - Norway maple invasive status: Ontario Invasive Plant Council BMP (2021).
+
+---
+
 ## Processing environment
 
 - mapshaper 0.7.34 via `npx` (no global install), Node.js v25, Python 3 (stdlib only).

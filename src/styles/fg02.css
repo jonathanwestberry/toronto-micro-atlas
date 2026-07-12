@@ -1,0 +1,915 @@
+/* ============================================================
+   Field Guide 02: Sidewalk Forest -- nocturne system
+   Guide-scoped tokens and page styles. The site shell keeps its
+   paper palette; everything inside .fg2 goes dark.
+   ============================================================ */
+
+.fg2 {
+  /* Nocturne palette */
+  --n-ground: hsl(211, 42%, 9%);
+  --n-ground-2: hsl(210, 38%, 13%);
+  --n-card: hsl(209, 34%, 15%);
+  --n-card-solid: hsl(209, 34%, 15%);
+  --n-line: hsl(210, 26%, 26%);
+  --n-line-soft: hsl(210, 30%, 20%);
+  --n-text: hsl(43, 55%, 93%);
+  --n-text-2: hsl(214, 22%, 76%);
+  --n-text-3: hsl(214, 14%, 62%);
+  --n-gold: hsl(48, 90%, 64%);
+  --n-gold-active: hsl(45, 96%, 56%);
+  --n-focus: 2px solid var(--n-gold);
+
+  background-color: var(--n-ground);
+  color: var(--n-text);
+}
+
+/* Dark header treatment for this page only: the site header sits on the
+   nocturne ground, so its paper tokens flip. */
+body:has(.fg2) {
+  background-color: var(--fg2-ground, hsl(211, 42%, 9%));
+}
+body:has(.fg2) .site-header {
+  background-color: hsl(211, 42%, 9%);
+  border-bottom-color: hsl(210, 26%, 26%);
+}
+body:has(.fg2) .site-header .site-masthead {
+  color: hsl(43, 55%, 93%);
+}
+body:has(.fg2) .site-header .site-nav a {
+  color: hsl(214, 22%, 76%);
+}
+body:has(.fg2) .site-header .site-masthead:hover,
+body:has(.fg2) .site-header .site-nav a:hover {
+  color: hsl(48, 90%, 64%);
+}
+body:has(.fg2) .site-header .site-nav a[aria-current] {
+  color: hsl(43, 55%, 93%);
+  box-shadow: inset 0 -2px 0 hsl(48, 90%, 64%);
+}
+
+/* ============================================================
+   Scrolly frame: the map is a sticky full-viewport stage; the
+   story column scrolls over it.
+   ============================================================ */
+
+.fg2-scrolly {
+  position: relative;
+}
+
+.fg2-stage {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  width: 100%;
+  overflow: hidden;
+  background-color: var(--n-ground);
+}
+
+/* The id sets specificity above maplibre-gl.css's `.maplibregl-map
+   { position: relative }`, which otherwise collapses the island to 0px. */
+#fg2-map.fg2-map {
+  position: absolute;
+  inset: 0;
+}
+
+/* Paper grain, kept from the atlas system but subtler on dark */
+.fg2-stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+  opacity: 0.05;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.fg2-map-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fg2-map-placeholder-label {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--n-text-3);
+}
+
+/* During the story the map ignores the pointer so scroll stays fluid;
+   the explorer flips this. */
+.fg2-scrolly[data-mode='story'] .fg2-map {
+  pointer-events: none;
+}
+
+/* ============================================================
+   Story column
+   ============================================================ */
+
+.fg2-steps {
+  position: relative;
+  z-index: 5;
+  pointer-events: none; /* cards re-enable */
+  /* The sticky stage keeps its 100svh slot in normal flow; pull the story
+     column up over it so the hero card is on screen at load. */
+  margin-top: -100svh;
+}
+
+.fg2-step {
+  min-height: 108svh;
+  display: flex;
+  align-items: center;
+  padding-inline: var(--gutter);
+}
+
+.fg2-step-card {
+  pointer-events: auto;
+  width: min(430px, 100%);
+  background-color: color-mix(in srgb, var(--n-card) 94%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid var(--n-line-soft);
+  border-top: 3px solid var(--n-gold);
+  padding: var(--space-6);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  opacity: 0.55;
+  transition: opacity var(--dur-3) var(--ease-out);
+}
+
+.fg2-step.is-active .fg2-step-card {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fg2-step-card {
+    transition: none;
+    opacity: 1;
+  }
+}
+
+.fg2-step-kicker {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--n-gold);
+  margin-bottom: var(--space-3);
+}
+
+.fg2-step-heading {
+  font-family: var(--font-heading);
+  font-weight: 900;
+  font-size: var(--text-2xl);
+  line-height: 1.08;
+  text-transform: uppercase;
+  letter-spacing: -0.005em;
+  color: var(--n-text);
+  margin-bottom: var(--space-4);
+}
+
+.fg2-step-text {
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: 1.65;
+  color: var(--n-text-2);
+}
+
+.fg2-step-text strong {
+  color: var(--n-text);
+  font-weight: 600;
+}
+
+/* Inline color chips (chapter one's mini legend) */
+.fg2-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.fg2-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  color: var(--n-text-2);
+}
+
+.fg2-chip-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* In-card action (maple toggle, explore button) */
+.fg2-card-btn {
+  margin-top: var(--space-4);
+  display: inline-block;
+  background: transparent;
+  border: 1px solid var(--n-gold);
+  color: var(--n-gold);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+
+.fg2-card-btn:hover {
+  background-color: var(--n-gold);
+  color: var(--n-ground);
+}
+
+.fg2-card-btn:focus-visible {
+  outline: var(--n-focus);
+  outline-offset: 2px;
+}
+
+.fg2-card-btn--solid {
+  background-color: var(--n-gold);
+  color: var(--n-ground);
+}
+
+.fg2-card-btn--solid:hover {
+  background-color: var(--n-gold-active);
+}
+
+/* ============================================================
+   Hero step
+   ============================================================ */
+
+.fg2-step--hero {
+  min-height: calc(100svh + 8svh);
+  align-items: flex-end;
+  padding-bottom: 9svh;
+}
+
+.fg2-hero-card {
+  pointer-events: auto;
+  width: min(560px, 100%);
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--n-ground) 96%, transparent) 70%,
+    color-mix(in srgb, var(--n-ground) 72%, transparent)
+  );
+  border-left: 3px solid var(--n-gold);
+  padding: var(--space-6) var(--space-8);
+}
+
+.fg2-hero-kicker {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--n-gold);
+  margin-bottom: var(--space-2);
+}
+
+.fg2-hero-title {
+  font-family: var(--font-heading);
+  font-weight: 900;
+  font-size: clamp(2.5rem, 7vw, 4.25rem);
+  line-height: 0.98;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: var(--n-text);
+  margin-bottom: var(--space-4);
+}
+
+.fg2-hero-lede {
+  font-family: var(--font-body);
+  font-size: var(--text-lg);
+  line-height: 1.6;
+  color: var(--n-text-2);
+  max-width: 46ch;
+  margin-bottom: var(--space-4);
+}
+
+.fg2-hero-stats {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  letter-spacing: 0.06em;
+  color: var(--n-text-3);
+  text-transform: uppercase;
+}
+
+.fg2-hero-stats strong {
+  color: var(--n-gold);
+  font-weight: 700;
+}
+
+.fg2-hero-cue {
+  margin-top: var(--space-6);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--n-text-3);
+}
+
+.fg2-hero-cue svg {
+  animation: fg2-cue-bob 2.2s var(--ease-out) infinite;
+}
+
+@keyframes fg2-cue-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(5px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fg2-hero-cue svg {
+    animation: none;
+  }
+}
+
+/* ============================================================
+   Map markers: singletons and ward callouts (HTML markers)
+   ============================================================ */
+
+.fg2-single {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: var(--n-gold);
+  border: 2px solid var(--n-ground);
+  box-shadow: 0 0 0 2px var(--n-gold), 0 0 14px 2px hsla(48, 90%, 64%, 0.5);
+  cursor: pointer;
+  padding: 0;
+}
+
+.fg2-single:focus-visible {
+  outline: var(--n-focus);
+  outline-offset: 3px;
+}
+
+.fg2-ward-label {
+  background-color: color-mix(in srgb, var(--n-card) 92%, transparent);
+  border: 1px solid var(--n-line);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-ui);
+  text-align: center;
+  pointer-events: none;
+}
+
+.fg2-ward-count {
+  display: block;
+  font-weight: 900;
+  font-size: var(--text-xl);
+  color: var(--n-text);
+  line-height: 1.1;
+}
+
+.fg2-ward-name {
+  display: block;
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--n-text-3);
+}
+
+/* District orientation labels */
+.fg2-olabel {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: hsl(214, 16%, 48%);
+  pointer-events: none;
+  text-shadow: 0 1px 6px hsl(211, 42%, 6%);
+  white-space: nowrap;
+}
+
+.fg2-olabel--water {
+  font-style: italic;
+  letter-spacing: 0.22em;
+  color: hsl(212, 30%, 38%);
+}
+
+/* Marker layers show/hide with chapter state. MapLibre writes an inline
+   `opacity` on marker roots, so visibility (not opacity) does the hiding;
+   a keyframe handles the entrance. */
+.fg2-marker-hidden {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.fg2-marker-shown {
+  visibility: visible;
+  animation: fg2-marker-in var(--dur-3) var(--ease-out) both;
+}
+
+@keyframes fg2-marker-in {
+  from { transform: scale(0.4); }
+  to { transform: scale(1); }
+}
+
+/* MapLibre positions markers with its own inline transform; scale must
+   live on an inner element, so singles and ward labels animate a child. */
+.fg2-marker-shown.fg2-single,
+.fg2-marker-shown.fg2-ward-label {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fg2-marker-shown {
+    animation: none;
+  }
+}
+
+/* ============================================================
+   Explorer panel
+   ============================================================ */
+
+.fg2-explorer {
+  position: relative;
+  height: 100svh;
+}
+
+.fg2-explorer-ui {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--dur-3) var(--ease-out);
+}
+
+.fg2-scrolly[data-mode='explore'] .fg2-explorer-ui {
+  opacity: 1;
+}
+
+.fg2-panel {
+  pointer-events: auto;
+  position: absolute;
+  top: var(--space-6);
+  left: var(--space-6);
+  width: 300px;
+  max-height: calc(100svh - var(--space-16));
+  overflow-y: auto;
+  background-color: color-mix(in srgb, var(--n-card) 95%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid var(--n-line-soft);
+  border-top: 3px solid var(--n-gold);
+  padding: var(--space-4);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.fg2-panel-title {
+  font-size: var(--text-base);
+  margin-bottom: var(--space-1);
+}
+
+.fg2-panel-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-heading);
+  font-weight: 900;
+  font-size: var(--text-base);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--n-text);
+  text-align: left;
+}
+
+.fg2-panel-toggle svg {
+  transition: transform var(--dur-2) var(--ease-out);
+  color: var(--n-text-3);
+}
+
+.fg2-panel-toggle[aria-expanded='false'] svg {
+  transform: rotate(180deg);
+}
+
+.fg2-panel.is-collapsed #fg2-panel-body {
+  display: none;
+}
+
+.fg2-panel.is-collapsed {
+  overflow-y: visible;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fg2-panel-toggle svg {
+    transition: none;
+  }
+}
+
+.fg2-panel-hint {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--n-text-3);
+  margin-bottom: var(--space-4);
+}
+
+/* Street search */
+.fg2-search {
+  position: relative;
+  margin-bottom: var(--space-4);
+}
+
+.fg2-search input {
+  width: 100%;
+  background-color: var(--n-ground-2);
+  border: 1px solid var(--n-line);
+  color: var(--n-text);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-3);
+}
+
+.fg2-search input::placeholder {
+  color: var(--n-text-3);
+}
+
+.fg2-search input:focus-visible {
+  outline: var(--n-focus);
+  outline-offset: 1px;
+}
+
+.fg2-search-results {
+  list-style: none;
+  margin-top: var(--space-1);
+  border: 1px solid var(--n-line-soft);
+  background-color: var(--n-card-solid);
+  max-height: 210px;
+  overflow-y: auto;
+}
+
+.fg2-search-results:empty {
+  display: none;
+}
+
+.fg2-search-results button {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--n-text-2);
+  padding: var(--space-2) var(--space-3);
+}
+
+.fg2-search-results button:hover,
+.fg2-search-results button:focus-visible {
+  background-color: var(--n-ground-2);
+  color: var(--n-text);
+  outline: none;
+}
+
+.fg2-search-count {
+  color: var(--n-text-3);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+/* Legend */
+.fg2-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fg2-legend-label {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--n-text-3);
+  margin-bottom: var(--space-2);
+}
+
+.fg2-legend button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--n-text-2);
+  width: 100%;
+  text-align: left;
+}
+
+.fg2-legend button:hover {
+  color: var(--n-text);
+  background-color: var(--n-ground-2);
+}
+
+.fg2-legend button:focus-visible {
+  outline: var(--n-focus);
+  outline-offset: -2px;
+}
+
+.fg2-legend button[aria-pressed='true'] {
+  border-color: var(--n-gold);
+  color: var(--n-text);
+  background-color: var(--n-ground-2);
+}
+
+.fg2-legend-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.fg2-legend-count {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--n-text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.fg2-legend-reset {
+  margin-top: var(--space-2);
+}
+
+/* Story return link */
+.fg2-back-to-story {
+  pointer-events: auto;
+  position: absolute;
+  top: var(--space-6);
+  right: var(--space-6);
+  background-color: color-mix(in srgb, var(--n-card) 92%, transparent);
+  border: 1px solid var(--n-line-soft);
+  color: var(--n-text-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+}
+
+.fg2-back-to-story:hover {
+  color: var(--n-text);
+}
+
+.fg2-back-to-story:focus-visible {
+  outline: var(--n-focus);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   Tree popup (MapLibre popup, restyled)
+   ============================================================ */
+
+.fg2 .maplibregl-popup-content {
+  background-color: var(--n-card-solid);
+  color: var(--n-text);
+  border: 1px solid var(--n-line);
+  border-top: 3px solid var(--n-gold);
+  border-radius: 0;
+  padding: var(--space-4);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
+  font-family: var(--font-body);
+  min-width: 220px;
+}
+
+.fg2 .maplibregl-popup-tip {
+  border-top-color: var(--n-card-solid);
+  border-bottom-color: var(--n-card-solid);
+}
+
+.fg2 .maplibregl-popup-close-button {
+  color: var(--n-text-3);
+  font-size: 18px;
+  padding: 2px 8px;
+}
+
+.fg2 .maplibregl-popup-close-button:hover {
+  color: var(--n-text);
+  background: none;
+}
+
+.fg2-pop-common {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: var(--text-lg);
+  line-height: 1.15;
+  margin-bottom: 2px;
+  padding-right: var(--space-4);
+}
+
+.fg2-pop-botanical {
+  font-style: italic;
+  font-size: var(--text-sm);
+  color: var(--n-text-2);
+  margin-bottom: var(--space-2);
+}
+
+.fg2-pop-meta {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  color: var(--n-text-3);
+  margin-bottom: var(--space-2);
+}
+
+.fg2-pop-maps {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  color: var(--n-gold);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.fg2-pop-maps:hover {
+  color: var(--n-gold-active);
+}
+
+/* ============================================================
+   Map controls on dark
+   ============================================================ */
+
+.fg2 .maplibregl-ctrl-group {
+  background-color: var(--n-card-solid);
+  border: 1px solid var(--n-line-soft);
+  border-radius: 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.fg2 .maplibregl-ctrl-group button {
+  background-color: transparent;
+  border-radius: 0;
+}
+
+.fg2 .maplibregl-ctrl-group button + button {
+  border-top: 1px solid var(--n-line-soft);
+}
+
+.fg2 .maplibregl-ctrl button .maplibregl-ctrl-icon {
+  filter: invert(0.85) sepia(0.08);
+}
+
+.fg2 .gm-reset-btn {
+  color: var(--n-text-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fg2 .maplibregl-ctrl-attrib {
+  background-color: color-mix(in srgb, var(--n-ground) 78%, transparent);
+  font-family: var(--font-ui);
+  font-size: 10px;
+}
+
+.fg2 .maplibregl-ctrl-attrib,
+.fg2 .maplibregl-ctrl-attrib a {
+  color: var(--n-text-3);
+}
+
+/* ============================================================
+   Sources section (still on dark, quiet)
+   ============================================================ */
+
+.fg2-sources {
+  position: relative;
+  z-index: 5;
+  background-color: var(--n-ground);
+  border-top: 1px solid var(--n-line-soft);
+  padding: var(--space-16) var(--gutter) var(--space-24);
+}
+
+.fg2-sources-inner {
+  max-width: var(--measure);
+  margin-inline: auto;
+}
+
+.fg2-sources h2 {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--n-text-3);
+  margin-bottom: var(--space-4);
+}
+
+.fg2-sources p,
+.fg2-sources li {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  line-height: 1.7;
+  color: var(--n-text-2);
+}
+
+.fg2-sources p {
+  margin-bottom: var(--space-4);
+}
+
+.fg2-sources ul {
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+}
+
+.fg2-sources a {
+  color: var(--n-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.fg2-sources a:hover {
+  color: var(--n-gold);
+}
+
+.fg2-sources a:focus-visible {
+  outline: var(--n-focus);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   No-JS fallback
+   ============================================================ */
+
+.fg2-noscript {
+  padding: var(--space-12) var(--gutter);
+  max-width: var(--measure);
+  margin-inline: auto;
+  font-family: var(--font-body);
+  color: var(--n-text-2);
+}
+
+/* ============================================================
+   Mobile
+   ============================================================ */
+
+@media (max-width: 767px) {
+  .fg2-step {
+    align-items: flex-end;
+    padding-inline: var(--space-3);
+    padding-bottom: var(--space-4);
+  }
+
+  .fg2-step-card {
+    width: 100%;
+    max-height: 46svh;
+    overflow-y: auto;
+    padding: var(--space-4);
+  }
+
+  .fg2-step-heading {
+    font-size: var(--text-xl);
+  }
+
+  .fg2-step-text {
+    font-size: var(--text-sm);
+  }
+
+  .fg2-hero-card {
+    padding: var(--space-4);
+  }
+
+  .fg2-panel {
+    top: auto;
+    bottom: var(--space-3);
+    left: var(--space-3);
+    right: var(--space-3);
+    width: auto;
+    max-height: 44svh;
+  }
+
+  .fg2-back-to-story {
+    top: var(--space-3);
+    right: var(--space-3);
+  }
+
+  .fg2-ward-count {
+    font-size: var(--text-base);
+  }
+}
