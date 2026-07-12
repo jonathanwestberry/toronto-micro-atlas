@@ -91,6 +91,31 @@ body:has(.fg2) .site-header .site-nav a[aria-current] {
   justify-content: center;
 }
 
+/* Keyboard aim reticle: hidden until the map canvas has focus in explorer
+   mode, giving keyboard users a visible target for Enter-to-identify. */
+.fg2-reticle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--n-gold);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 4;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.8));
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+
+.fg2-scrolly.fg2-map-focused[data-mode='explore'] .fg2-reticle {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fg2-reticle {
+    transition: none;
+  }
+}
+
 .fg2-map-placeholder-label {
   font-family: var(--font-ui);
   font-size: var(--text-xs);
@@ -125,28 +150,40 @@ body:has(.fg2) .site-header .site-nav a[aria-current] {
   padding-inline: var(--gutter);
 }
 
+/* Inactive cards are de-emphasized by their accent border, elevation, and a
+   slight scale, never by element opacity: fading the whole card also fades the
+   text below WCAG AA over bright map regions (Refactoring UI: de-emphasize with
+   the accent and background, not by thinning the content). The 96%-opaque
+   surface keeps body text and the gold kicker >= 7:1 even over ember plantings. */
 .fg2-step-card {
   pointer-events: auto;
   width: min(430px, 100%);
-  background-color: color-mix(in srgb, var(--n-card) 94%, transparent);
+  background-color: color-mix(in srgb, var(--n-card) 96%, transparent);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   border: 1px solid var(--n-line-soft);
-  border-top: 3px solid var(--n-gold);
+  border-top: 3px solid transparent;
   padding: var(--space-6);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
-  opacity: 0.55;
-  transition: opacity var(--dur-3) var(--ease-out);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3);
+  transform: scale(0.985);
+  transition: transform var(--dur-3) var(--ease-out),
+    border-top-color var(--dur-3) var(--ease-out),
+    box-shadow var(--dur-3) var(--ease-out);
 }
 
 .fg2-step.is-active .fg2-step-card {
-  opacity: 1;
+  border-top-color: var(--n-gold);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  transform: scale(1);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .fg2-step-card {
     transition: none;
-    opacity: 1;
+    transform: none;
+  }
+  .fg2-step.is-active .fg2-step-card {
+    transform: none;
   }
 }
 
@@ -373,12 +410,22 @@ body:has(.fg2) .site-header .site-nav a[aria-current] {
   line-height: 1.1;
 }
 
+.fg2-ward-density {
+  display: block;
+  font-weight: 700;
+  font-size: var(--text-sm);
+  color: var(--n-gold);
+  line-height: 1.2;
+  margin-top: 2px;
+}
+
 .fg2-ward-name {
   display: block;
   font-size: var(--text-xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--n-text-3);
+  margin-top: 2px;
 }
 
 /* District orientation labels */

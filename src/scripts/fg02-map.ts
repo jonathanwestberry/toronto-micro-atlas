@@ -106,9 +106,11 @@ const CHAPTERS: Chapter[] = [
 // Ward callouts for "Where the ledger thins" (2022-2026 ward system;
 // names verified against the City's ward profiles).
 const WARD_CALLOUTS = [
-  // Anchored inside their wards but clear of the desktop story column.
-  { name: 'Ward 2 · Etobicoke Centre', count: '52,659 trees', lng: -79.513, lat: 43.692 },
-  { name: 'Ward 13 · Toronto Centre', count: '8,558 trees', lng: -79.369, lat: 43.667 },
+  // Anchored inside their wards but clear of the desktop story column. The
+  // near-identical per-km2 figures under wildly different totals are the
+  // chapter's whole point (the raw gap is ward area, not planting).
+  { name: 'Ward 2 · Etobicoke Centre', count: '52,659 trees', density: '1,414 / km²', lng: -79.513, lat: 43.692 },
+  { name: 'Ward 13 · Toronto Centre', count: '8,558 trees', density: '1,464 / km²', lng: -79.369, lat: 43.667 },
 ];
 
 function prefersReducedMotion(): boolean {
@@ -237,6 +239,34 @@ class SidewalkForest {
       paint: { 'line-color': BOUNDARY, 'line-width': 1.5, 'line-opacity': 0.9 },
     });
 
+    // Ward boundaries: hidden until the "A Question of Size" chapter, where
+    // seeing the outlines (Etobicoke Centre six times Toronto Centre's area) is
+    // the argument that the raw-count gap is geography, not planting.
+    this.map.addSource('wards', src('city-wards.geojson'));
+    // Dark casing under a bright dashed line so the outlines stay legible over
+    // the dense, colourful dot field.
+    this.map.addLayer({
+      id: 'ward-lines-casing', type: 'line', source: 'wards',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': 'hsl(212, 45%, 5%)',
+        'line-width': 4,
+        'line-opacity': 0,
+      },
+    });
+    this.map.addLayer({
+      id: 'ward-lines', type: 'line', source: 'wards',
+      paint: {
+        'line-color': 'hsl(210, 30%, 78%)',
+        'line-width': 1.5,
+        'line-dasharray': [3, 2.5],
+        'line-opacity': 0,
+      },
+    });
+    for (const id of ['ward-lines-casing', 'ward-lines']) {
+      this.map.setPaintProperty(id, 'line-opacity-transition', { duration: 400 });
+    }
+
     // --- Tree rasters -------------------------------------------------------
     const coords = this.renderBounds;
     this.map.addSource('trees-base-lo', { type: 'image', url: `${this.base}data/fg02/r/base-lo.webp`, coordinates: coords });
@@ -300,9 +330,44 @@ class SidewalkForest {
     });
 
     this.wireTreeTaps();
+    this.wireKeyboard();
     void this.addDistrictLabels();
     this.buildMarkers();
     this.applyChapter(this.activeChapter, true);
+  }
+
+  /**
+   * Keyboard path to the core interaction. The MapLibre canvas is focusable and
+   * already pans with the arrow keys and zooms with +/-; this adds Enter to
+   * identify the tree under the centre reticle, so a keyboard or switch user can
+   * reach the same "what is this tree" answer a tap gives. Announced live.
+   */
+  private wireKeyboard(): void {
+    const canvas = this.map.getCanvas();
+    canvas.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (this.mode !== 'explore') return;
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (this.map.getZoom() < XF_HI) {
+        this.map.easeTo({ zoom: 15.6, duration: prefersReducedMotion() ? 0 : 700 });
+        this.announce('Zooming in. Press Enter again to identify the tree at the crosshair.');
+        return;
+      }
+      const centre = this.map.getCenter();
+      const pt = this.map.project(centre);
+      const bbox: [maplibregl.PointLike, maplibregl.PointLike] = [
+        [pt.x - 12, pt.y - 12],
+        [pt.x + 12, pt.y + 12],
+      ];
+      const hits = this.map.queryRenderedFeatures(bbox, { layers: ['trees-circles'] });
+      if (hits.length > 0) {
+        this.openTreePopup(hits[0], centre, true);
+      } else {
+        this.announce('No tree at the crosshair. Use the arrow keys to move, or press plus to zoom in.');
+      }
+    });
+    canvas.addEventListener('focus', () => this.scrollyEl.classList.add('fg2-map-focused'));
+    canvas.addEventListener('blur', () => this.scrollyEl.classList.remove('fg2-map-focused'));
   }
 
   private promoteBaseOnce = (): void => {
@@ -345,6 +410,13 @@ class SidewalkForest {
 
     // Markers
     this.showMarkerSet(ch.markers ?? null);
+
+    // Ward outlines ride with the ward callouts.
+    if (this.map.getLayer('ward-lines')) {
+      const on = ch.markers === 'wards';
+      this.map.setPaintProperty('ward-lines', 'line-opacity', on ? 0.95 : 0);
+      this.map.setPaintProperty('ward-lines-casing', 'line-opacity', on ? 0.55 : 0);
+    }
   }
 
   /** Swap the chapter overlay via A/B crossfade; url key like 'cat-maple'. */
@@ -492,7 +564,11 @@ class SidewalkForest {
     });
   }
 
-  private openTreePopup(feature: maplibregl.MapGeoJSONFeature, lngLat: maplibregl.LngLat): void {
+  private openTreePopup(
+    feature: maplibregl.MapGeoJSONFeature,
+    lngLat: maplibregl.LngLat,
+    focus = false,
+  ): void {
     if (!this.meta) return;
     const p = feature.properties as { g: number; s: number; d?: number; a?: string };
     const sp = this.meta.species[p.s];
@@ -530,6 +606,15 @@ class SidewalkForest {
       .addTo(this.map);
 
     this.announce(`${common}. ${botanical}. ${bits.join('. ')}`);
+
+    // Keyboard-opened popups move focus into the popup so the answer, the map
+    // link, and dismissal are all reachable without a pointer.
+    if (focus) {
+      const closeBtn = this.popup
+        .getElement()
+        ?.querySelector<HTMLButtonElement>('.maplibregl-popup-close-button');
+      closeBtn?.focus();
+    }
   }
 
   // --- Street search ---------------------------------------------------------
@@ -588,10 +673,13 @@ class SidewalkForest {
       const count = document.createElement('span');
       count.className = 'fg2-ward-count';
       count.textContent = w.count;
+      const density = document.createElement('span');
+      density.className = 'fg2-ward-density';
+      density.textContent = w.density;
       const name = document.createElement('span');
       name.className = 'fg2-ward-name';
       name.textContent = w.name;
-      el.append(count, name);
+      el.append(count, density, name);
       this.wardMarkers.push(
         new maplibregl.Marker({ element: el, anchor: 'center' })
           .setLngLat([w.lng, w.lat])

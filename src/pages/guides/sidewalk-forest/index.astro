@@ -36,6 +36,18 @@ const chips = categories.filter((c) => chipKeys.includes(c.key));
             <span class="fg2-map-placeholder-label">Map</span>
           </div>
         </div>
+        <!-- Keyboard aim: shown while the map has focus in explorer mode.
+             Arrow keys pan, +/- zoom, Enter identifies the tree here. -->
+        <div class="fg2-reticle" id="fg2-reticle" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="16" cy="16" r="9"/>
+            <line x1="16" y1="2" x2="16" y2="8"/>
+            <line x1="16" y1="24" x2="16" y2="30"/>
+            <line x1="2" y1="16" x2="8" y2="16"/>
+            <line x1="24" y1="16" x2="30" y2="16"/>
+            <circle cx="16" cy="16" r="1.5" fill="currentColor" stroke="none"/>
+          </svg>
+        </div>
       </div>
 
       <!-- Live region for assistive tech -->
@@ -164,11 +176,11 @@ const chips = categories.filter((c) => chipKeys.includes(c.key));
             <span class="fg2-step-kicker">Chapter 7</span>
             <h2 class="fg2-step-heading">One of Each</h2>
             <p class="fg2-step-text">
-              The ledger holds <strong>fifteen one-of-a-kind trees</strong>,
-              species that appear exactly once in {total} entries. Somewhere on
+              Seven trees in the ledger are the <strong>only one of their
+              species</strong>, single entries among all {total} rows. Somewhere on
               Macdonell Avenue in Parkdale stands the city's only street pawpaw.
-              Scarborough has the lone bald cypress; Flamborough Drive, the single
-              sour cherry. The gold points are all fifteen; select one to meet it.
+              There is one bald cypress, one sour cherry, one pignut hickory. The
+              gold points are all seven; select one to meet it.
             </p>
           </div>
         </section>
@@ -176,14 +188,16 @@ const chips = categories.filter((c) => chipKeys.includes(c.key));
         <section class="fg2-step" data-chapter="thins">
           <div class="fg2-step-card">
             <span class="fg2-step-kicker">Chapter 8</span>
-            <h2 class="fg2-step-heading">Where the Ledger Thins</h2>
+            <h2 class="fg2-step-heading">A Question of Size</h2>
             <p class="fg2-step-text">
-              The forest is not evenly planted. <strong>Ward 2, Etobicoke
-              Centre</strong>, holds 52,659 ledger trees, the most in the city.
-              <strong>Ward 13, Toronto Centre</strong>, holds 8,558, the fewest.
-              Downtown's density leaves little soil unclaimed; the postwar suburbs
-              were drawn with room for trees. The ledger maps where the city had
-              room to be generous.
+              At first the forest looks lopsided. <strong>Ward 2, Etobicoke
+              Centre</strong>, holds 52,659 ledger trees; <strong>Ward 13, Toronto
+              Centre</strong>, holds just 8,558, a six-to-one gap. But the outlines
+              tell the real story: Etobicoke Centre is six times the area. Per
+              square kilometre the two are nearly identical, about 1,410 against
+              1,460, and almost every ward lands between 700 and 1,900. The raw
+              count mostly measures how large a ward is. Normalize for size and
+              Toronto's street canopy is strikingly even.
             </p>
           </div>
         </section>
@@ -216,8 +230,9 @@ const chips = categories.filter((c) => chipKeys.includes(c.key));
             </h2>
             <div id="fg2-panel-body">
             <p class="fg2-panel-hint">
-              Zoom in until dots separate, then tap a tree to identify it. Or find
-              your street:
+              Zoom in until dots separate, then tap a tree to identify it (or
+              focus the map and press Enter to read the tree at the crosshair).
+              Or find your street:
             </p>
             <div class="fg2-search">
               <label class="visually-hidden" for="fg2-street-input">Search streets</label>
@@ -269,8 +284,13 @@ const chips = categories.filter((c) => chipKeys.includes(c.key));
             City of Toronto Open Data. Retrieved July 12, 2026; last refreshed June 4, 2026.
           </li>
           <li>
-            Ward counts follow the 25-ward system; names from the
-            <a href="https://www.toronto.ca/city-government/data-research-maps/neighbourhoods-communities/ward-profiles/" rel="noopener">City of Toronto ward profiles</a>.
+            Ward counts and boundaries follow the 25-ward system
+            (<a href="https://open.toronto.ca/dataset/city-wards/" rel="noopener">City Wards</a>,
+            City of Toronto Open Data); names from the
+            <a href="https://www.toronto.ca/city-government/data-research-maps/neighbourhoods-communities/ward-profiles/" rel="noopener">ward profiles</a>.
+            Trees per square kilometre are the tree count divided by the ward's
+            land area; this counts all ward area, including parkland with no
+            street frontage, so it understates density in the large ravine wards.
           </li>
           <li>
             Emerald ash borer history:
@@ -302,8 +322,8 @@ const chips = categories.filter((c) => chipKeys.includes(c.key));
           is a maple, and the most common of all is the Norway maple, a European
           import that outnumbers the sugar maple six to one. Honey locust rules
           downtown. There are 17,464 ginkgos, 9,948 ashes left after emerald ash
-          borer, and fifteen species that appear exactly once, including a single
-          pawpaw in Parkdale.
+          borer, and seven trees that are the only one of their species, including
+          a single pawpaw in Parkdale.
         </p>
       </div>
     </noscript>

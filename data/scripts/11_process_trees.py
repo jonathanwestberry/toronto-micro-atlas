@@ -85,6 +85,18 @@ def categorize(genus: str) -> int:
     return CAT_INDEX["other"]
 
 
+def species_key(botanical: str) -> str:
+    """Collapse cultivars to the true species: 'Acer rubrum Brandywine' and
+    "Acer rubrum 'Redpointe'" both key to 'Acer rubrum'. A trailing lowercase
+    epithet is the species; capitalized/quoted trailing tokens are cultivars.
+    Genus-only names ('Ulmus', 'Fraxinus') key to the genus."""
+    b = botanical.replace("×", "x").strip()
+    words = b.split()
+    if len(words) >= 2 and re.fullmatch(r"[a-z\-]+", words[1]):
+        return f"{words[0]} {words[1]}"
+    return words[0] if words else "?"
+
+
 SMALL_WORDS = {"of", "the"}
 
 
@@ -116,7 +128,11 @@ def main() -> None:
     feats = data["features"]
 
     # Pass 1: species counts to build the index (small ints for common trees).
+    # species_counts keys on the full botanical string (cultivars distinct);
+    # species_key_counts collapses cultivars so "the only one of its species"
+    # means a true species-level singleton, not merely a unique cultivar name.
     species_counts = Counter()
+    species_key_counts = Counter()
     for ft in feats:
         p = ft["properties"]
         bot = (p.get("BOTANICAL_NAME") or "").strip()
@@ -124,6 +140,8 @@ def main() -> None:
         if bot and bot[0].islower():
             bot = bot[0].upper() + bot[1:]
         species_counts[bot] += 1
+        if bot:
+            species_key_counts[species_key(bot)] += 1
 
     species_order = [s for s, _ in species_counts.most_common()]
     species_index = {s: i for i, s in enumerate(species_order)}
@@ -190,7 +208,10 @@ def main() -> None:
             }, separators=(",", ":")) + "\n")
             n_written += 1
 
-            if species_counts[bot] == 1 and " " in bot:
+            # A true species-level singleton: exactly one tree of this species
+            # in the whole inventory (cultivars collapsed). Genus-only rows
+            # ('Ulmus') are excluded, since they name a genus, not a species.
+            if species_key_counts[species_key(bot)] == 1 and " " in species_key(bot):
                 singleton_feats.append({
                     "botanical": bot,
                     "common": com,
@@ -248,7 +269,9 @@ def main() -> None:
 
     print(f"features written: {n_written}")
     print(f"streets indexed:  {len(streets)}")
-    print(f"singletons:       {len(singleton_feats)}")
+    print(f"species singletons: {len(singleton_feats)}")
+    for s in sorted(singleton_feats, key=lambda s: s["botanical"]):
+        print(f"    {s['botanical']:34s} {s['common']:26s} {s['address']}")
     for key, lbl, _color in CATEGORIES:
         print(f"  {lbl:22s} {cat_counts[CAT_INDEX[key]]:>7,}")
     print("stats:", json.dumps(meta["stats"], indent=2))
