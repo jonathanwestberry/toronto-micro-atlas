@@ -237,6 +237,109 @@ const onAbout = path.includes('/about');
         outline-offset: var(--focus-ring-offset);
       }
 
+      /* Field Guides dropdown. <details> so it works with no JS; a small script
+         closes it on outside-click / Escape as an enhancement. */
+      .site-nav-dd {
+        position: relative;
+      }
+
+      .nav-dd-summary {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-family: var(--font-ui);
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--ink-2);
+        letter-spacing: 0.02em;
+        cursor: pointer;
+        padding-bottom: 2px;
+        list-style: none;
+        user-select: none;
+      }
+
+      .nav-dd-summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .nav-dd-summary::after {
+        content: '';
+        width: 0;
+        height: 0;
+        border-left: 3.5px solid transparent;
+        border-right: 3.5px solid transparent;
+        border-top: 4px solid currentColor;
+        transition: transform var(--dur-1) var(--ease-out);
+      }
+
+      .nav-dd[open] .nav-dd-summary::after {
+        transform: rotate(180deg);
+      }
+
+      .nav-dd-summary:hover {
+        color: var(--threshold);
+      }
+
+      .nav-dd-summary:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: var(--focus-ring-offset);
+      }
+
+      .nav-dd-summary.is-current {
+        color: var(--ink);
+        font-weight: 700;
+        box-shadow: inset 0 -2px 0 var(--threshold);
+      }
+
+      .nav-dd[open] .nav-dd-summary {
+        color: var(--ink);
+      }
+
+      .nav-dd-menu {
+        position: absolute;
+        top: calc(100% + 10px);
+        left: 0;
+        z-index: 50;
+        list-style: none;
+        min-width: 232px;
+        background: var(--paper);
+        border: 1px solid var(--ink);
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+        padding: var(--space-2);
+      }
+
+      .nav-dd-menu a {
+        display: block;
+        padding: var(--space-2) var(--space-3);
+        font-family: var(--font-ui);
+        font-size: var(--text-sm);
+        color: var(--ink-2);
+        text-decoration: none;
+        white-space: nowrap;
+      }
+
+      .nav-dd-menu a:hover,
+      .nav-dd-menu a:focus-visible {
+        background: var(--card);
+        color: var(--threshold);
+        outline: none;
+      }
+
+      .nav-dd-all {
+        margin-top: var(--space-1);
+        border-top: 1px solid var(--rule, var(--card));
+        font-size: var(--text-xs);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .nav-dd-summary::after {
+          transition: none;
+        }
+      }
+
       /* ============================================================
          Site footer: publication colophon
          ============================================================ */
@@ -434,7 +537,16 @@ const onAbout = path.includes('/about');
         <a href={`${base}/`} class="site-masthead">Toronto Micro-Atlas</a>
         <nav aria-label="Site navigation">
           <ul class="site-nav">
-            <li><a href={`${base}/#field-guides`} aria-current={onGuides ? 'true' : undefined}>Field Guides</a></li>
+            <li class="site-nav-dd">
+              <details class="nav-dd">
+                <summary class:list={['nav-dd-summary', { 'is-current': onGuides }]}>Field Guides</summary>
+                <ul class="nav-dd-menu">
+                  <li><a href={`${base}/guides/hidden-landscapes/`} data-astro-reload>01 &middot; Hidden Landscapes</a></li>
+                  <li><a href={`${base}/guides/sidewalk-forest/`} data-astro-reload>02 &middot; Sidewalk Forest</a></li>
+                  <li><a href={`${base}/#field-guides`} class="nav-dd-all">All field guides</a></li>
+                </ul>
+              </details>
+            </li>
             <li><a href={`${base}/about/`} aria-current={onAbout ? 'page' : undefined}>About</a></li>
           </ul>
         </nav>
@@ -499,6 +611,25 @@ const onAbout = path.includes('/about');
       };
       revealAll();
       document.addEventListener('astro:page-load', revealAll);
+
+      // Field Guides dropdown: close on outside-click or Escape. Document-level
+      // listeners are added once and survive view transitions.
+      if (!(window as any).__navDdWired) {
+        (window as any).__navDdWired = true;
+        const closeAll = (except?: Element | null) => {
+          document.querySelectorAll('details.nav-dd[open]').forEach((dd) => {
+            if (dd !== except) dd.removeAttribute('open');
+          });
+        };
+        document.addEventListener('click', (e) => {
+          const t = e.target;
+          const inside = t instanceof Element ? t.closest('details.nav-dd') : null;
+          closeAll(inside);
+        });
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') closeAll(null);
+        });
+      }
     </script>
   </body>
 </html>

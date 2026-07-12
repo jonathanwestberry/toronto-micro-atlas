@@ -39,6 +39,9 @@ const WASH_BOUNDS: maplibregl.LngLatBoundsLike = [
 const XF_LO = 13.2;
 const XF_HI = 13.85;
 
+// The selection source starts empty; a tap seats one point in it.
+const EMPTY_FC = { type: 'FeatureCollection', features: [] } as GeoJSON.FeatureCollection;
+
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 const DESKTOP_QUERY = '(min-width: 768px)';
 
@@ -109,8 +112,8 @@ const WARD_CALLOUTS = [
   // Anchored inside their wards but clear of the desktop story column. The
   // near-identical per-km2 figures under wildly different totals are the
   // chapter's whole point (the raw gap is ward area, not planting).
-  { name: 'Ward 2 · Etobicoke Centre', count: '52,659 trees', density: '1,414 / km²', lng: -79.513, lat: 43.692 },
-  { name: 'Ward 13 · Toronto Centre', count: '8,558 trees', density: '1,464 / km²', lng: -79.369, lat: 43.667 },
+  { name: 'Etobicoke Centre', count: '52,659 trees', density: 'about the same, street for street', lng: -79.513, lat: 43.692 },
+  { name: 'Downtown · Toronto Centre', count: '8,558 trees', density: 'about the same, street for street', lng: -79.369, lat: 43.667 },
 ];
 
 function prefersReducedMotion(): boolean {
@@ -140,6 +143,7 @@ class SidewalkForest {
   private streets: [string, number, number, number][] | null = null;
   private announcer: HTMLElement | null;
   private scrollyEl: HTMLElement;
+  private bloomRaf = 0;
 
   constructor(container: HTMLElement, base: string, scrollyEl: HTMLElement) {
     this.base = base;
@@ -297,9 +301,46 @@ class SidewalkForest {
       bounds: [-79.6593, 43.561, -79.0953, 43.8755],
     });
 
+    // Colour by genus: the small-int 'g' maps to a category hue, else slate.
     const colorMatch: unknown[] = ['match', ['get', 'g']];
     this.meta.categories.forEach((c, i) => { colorMatch.push(i, c.color); });
     colorMatch.push('#637388');
+    const colorExpr = colorMatch as maplibregl.ExpressionSpecification;
+
+    // Trunk-driven size. The ledger's DBH (cm) scales every dot so a veteran
+    // reads larger than a sapling; interpolate clamps the ends, which also tames
+    // the data's junk outliers (a 9380 cm "trunk" simply pins to the cap).
+    const dbhFactor = (): unknown[] => [
+      'interpolate', ['linear'], ['coalesce', ['get', 'd'], 18],
+      5, 0.8,
+      80, 2.0,
+    ];
+    const radius = (mult: number, add = 0): maplibregl.ExpressionSpecification =>
+      ([
+        'interpolate', ['linear'], ['zoom'],
+        13.2, ['+', ['*', 1.6 * mult, dbhFactor()], add],
+        14, ['+', ['*', 2.4 * mult, dbhFactor()], add],
+        16, ['+', ['*', 5 * mult, dbhFactor()], add],
+        18.5, ['+', ['*', 9 * mult, dbhFactor()], add],
+      ] as unknown as maplibregl.ExpressionSpecification);
+    const fadeIn = (peak: number): maplibregl.ExpressionSpecification =>
+      (['interpolate', ['linear'], ['zoom'], XF_LO, 0, XF_HI, peak] as maplibregl.ExpressionSpecification);
+
+    // Canopy glow: a soft, low-opacity halo under each dot so the street trees
+    // read as luminous crowns at dusk. Cheap: the vector tiles only ever hand us
+    // the culled on-screen subset at z13+.
+    this.map.addLayer({
+      id: 'trees-glow',
+      type: 'circle',
+      source: 'trees',
+      'source-layer': 'trees',
+      paint: {
+        'circle-color': colorExpr,
+        'circle-radius': radius(2.2),
+        'circle-opacity': fadeIn(0.22),
+        'circle-blur': 1,
+      },
+    });
 
     this.map.addLayer({
       id: 'trees-circles',
@@ -307,23 +348,35 @@ class SidewalkForest {
       source: 'trees',
       'source-layer': 'trees',
       paint: {
-        'circle-color': colorMatch as maplibregl.ExpressionSpecification,
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 13.2, 1.6, 14, 2.4, 16, 5, 18.5, 9],
-        'circle-opacity': ['interpolate', ['linear'], ['zoom'], XF_LO, 0, XF_HI, 1],
+        'circle-color': colorExpr,
+        'circle-radius': radius(1),
+        'circle-opacity': fadeIn(1),
         'circle-blur': 0.15,
       },
     });
 
-    // Selected-tree highlight ring
+    // Selection sits on its own one-feature source, independent of tile feature
+    // ids (the vector tiles don't guarantee them). trees-bloom is the transient
+    // ripple on tap; trees-selected is the steady gold ring the tapped tree keeps.
+    this.map.addSource('sel', { type: 'geojson', data: EMPTY_FC });
+    this.map.addLayer({
+      id: 'trees-bloom',
+      type: 'circle',
+      source: 'sel',
+      paint: {
+        'circle-color': 'hsl(48, 90%, 64%)',
+        'circle-radius': 0,
+        'circle-opacity': 0,
+        'circle-blur': 0.6,
+      },
+    });
     this.map.addLayer({
       id: 'trees-selected',
       type: 'circle',
-      source: 'trees',
-      'source-layer': 'trees',
-      filter: ['==', ['id'], -1],
+      source: 'sel',
       paint: {
         'circle-color': 'transparent',
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 14, 7, 18.5, 14],
+        'circle-radius': radius(1, 5),
         'circle-stroke-color': 'hsl(48, 90%, 64%)',
         'circle-stroke-width': 2,
       },
@@ -499,6 +552,39 @@ class SidewalkForest {
     }
   }
 
+  /**
+   * Open the explorer as a full-screen takeover. The story scrolls (progress);
+   * the explorer manipulates (zoom/pan), so it gets its own mode: the sticky
+   * stage lifts to a fixed full-viewport tool, page scroll is locked so the map
+   * never fights the Methods/footer, and cooperative gestures give way to plain
+   * scroll-to-zoom now that the page can't scroll underneath.
+   */
+  enterExplore(): void {
+    if (this.mode === 'explore') return;
+    const root = this.scrollyEl.closest<HTMLElement>('.fg2');
+    root?.classList.add('is-exploring');
+    document.documentElement.classList.add('fg2-scroll-lock');
+    this.map.cooperativeGestures.disable();
+    this.setMode('explore');
+    // The stage just went sticky -> fixed full viewport; MapLibre must recompute
+    // its canvas size or it paints at the old (story-fit) dimensions.
+    requestAnimationFrame(() => this.map.resize());
+  }
+
+  /** Close the takeover and return to the narrative where the reader left it. */
+  exitExplore(): void {
+    if (this.mode !== 'explore') return;
+    const root = this.scrollyEl.closest<HTMLElement>('.fg2');
+    root?.classList.remove('is-exploring');
+    document.documentElement.classList.remove('fg2-scroll-lock');
+    this.map.cooperativeGestures.enable();
+    this.setMode('story');
+    // Leave a clean citywide map behind the story rather than the reader's last
+    // zoomed-in street; the chapter observers take over again on the next scroll.
+    this.moveCamera('city', true);
+    requestAnimationFrame(() => this.map.resize());
+  }
+
   /** Swap only the overlay raster (the maple chapter's in-card toggle). */
   applyChapterOverlayOnly(key: string): void {
     this.setOverlay(key);
@@ -507,6 +593,7 @@ class SidewalkForest {
   /** Legend isolation: null restores all categories. */
   isolate(genus: number | null): void {
     if (!this.meta) return;
+    this.clearSelection();
     if (genus === null) {
       this.map.setPaintProperty('trees-base', 'raster-opacity', this.rasterOpacityExpr(1));
       this.currentBaseOpacity = 1;
@@ -604,6 +691,8 @@ class SidewalkForest {
       .setLngLat([coords[0], coords[1]])
       .setDOMContent(el)
       .addTo(this.map);
+    this.popup.on('close', () => this.clearSelection());
+    this.selectTree([coords[0], coords[1]], p.d, p.g);
 
     this.announce(`${common}. ${botanical}. ${bits.join('. ')}`);
 
@@ -615,6 +704,50 @@ class SidewalkForest {
         ?.querySelector<HTMLButtonElement>('.maplibregl-popup-close-button');
       closeBtn?.focus();
     }
+  }
+
+  // --- Grow-on-tap: bloom + ring --------------------------------------------
+
+  /** Light up the tapped tree: seat the ring on it and fire the bloom ripple. */
+  private selectTree(coords: [number, number], d: number | undefined, g: number): void {
+    const src = this.map.getSource('sel') as maplibregl.GeoJSONSource | undefined;
+    if (!src) return;
+    src.setData({
+      type: 'FeatureCollection',
+      features: [
+        { type: 'Feature', geometry: { type: 'Point', coordinates: coords }, properties: { d: d ?? 18, g } },
+      ],
+    } as GeoJSON.FeatureCollection);
+    this.bloom(d);
+  }
+
+  /** A one-shot gold ripple, scaled up for bigger trunks. */
+  private bloom(d: number | undefined): void {
+    if (!this.map.getLayer('trees-bloom')) return;
+    cancelAnimationFrame(this.bloomRaf);
+    if (prefersReducedMotion()) {
+      this.map.setPaintProperty('trees-bloom', 'circle-opacity', 0);
+      return;
+    }
+    const peak = 30 * dbhFactorJs(d);
+    const start = performance.now();
+    const dur = 480;
+    const step = (now: number): void => {
+      const t = Math.min(1, (now - start) / dur);
+      const eased = 1 - Math.pow(1 - t, 3);
+      this.map.setPaintProperty('trees-bloom', 'circle-radius', 4 + eased * peak);
+      this.map.setPaintProperty('trees-bloom', 'circle-opacity', 0.5 * (1 - t));
+      if (t < 1) this.bloomRaf = requestAnimationFrame(step);
+      else this.map.setPaintProperty('trees-bloom', 'circle-opacity', 0);
+    };
+    this.bloomRaf = requestAnimationFrame(step);
+  }
+
+  private clearSelection(): void {
+    cancelAnimationFrame(this.bloomRaf);
+    const src = this.map.getSource('sel') as maplibregl.GeoJSONSource | undefined;
+    src?.setData(EMPTY_FC);
+    if (this.map.getLayer('trees-bloom')) this.map.setPaintProperty('trees-bloom', 'circle-opacity', 0);
   }
 
   // --- Street search ---------------------------------------------------------
@@ -786,6 +919,13 @@ class SidewalkForest {
   }
 }
 
+/** Mirror of the map's DBH size expression: trunk cm -> radius multiplier. */
+function dbhFactorJs(d: number | undefined): number {
+  const v = typeof d === 'number' ? d : 18;
+  const c = Math.max(5, Math.min(80, v));
+  return 0.8 + ((c - 5) / 75) * 1.2;
+}
+
 /** 'Maple, Norway' -> 'Norway maple'; 'Ginkgo' stays 'Ginkgo'. */
 function formatCommonName(raw: string): string {
   if (!raw.includes(',')) return raw;
@@ -825,19 +965,8 @@ export function initSidewalkForest(): void {
   );
   steps.forEach((s) => stepIO.observe(s));
 
-  // --- Explorer sentinel -----------------------------------------------------
-  const explorer = document.getElementById('fg2-explorer');
-  if (explorer) {
-    const modeIO = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          forest.setMode(entry.isIntersecting ? 'explore' : 'story');
-        }
-      },
-      { threshold: 0.35 },
-    );
-    modeIO.observe(explorer);
-  }
+  // The explorer is opened as a full-screen takeover by the "Explore" buttons
+  // (wired below), not by scrolling a sentinel into view.
 
   // --- Maple toggle ----------------------------------------------------------
   const mapleBtn = document.getElementById('fg2-maple-toggle');
@@ -850,15 +979,11 @@ export function initSidewalkForest(): void {
     });
   }
 
-  // --- Explore / skip buttons -------------------------------------------------
+  // --- Explore takeover: open / close ----------------------------------------
   document.querySelectorAll<HTMLElement>('[data-scroll-to-explorer]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      explorer?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
-    });
+    btn.addEventListener('click', () => forest.enterExplore());
   });
-  document.getElementById('fg2-back-to-story')?.addEventListener('click', () => {
-    document.querySelector('.fg2-step--hero')?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
-  });
+  document.getElementById('fg2-back-to-story')?.addEventListener('click', () => forest.exitExplore());
   document.getElementById('fg2-reset')?.addEventListener('click', () => forest.resetView());
 
   // Panel collapse (matters most on phones, where the panel is a bottom sheet)

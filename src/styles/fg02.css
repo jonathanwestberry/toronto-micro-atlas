@@ -386,6 +386,11 @@ body:has(.fg2) .site-header .site-nav a[aria-current] {
   box-shadow: 0 0 0 2px var(--n-gold), 0 0 14px 2px hsla(48, 90%, 64%, 0.5);
   cursor: pointer;
   padding: 0;
+  /* The story-mode map is pointer-events:none so scrolling stays fluid, but the
+     singleton markers must stay tappable there (Chapter 7 is a story chapter):
+     a descendant re-enabling pointer-events is still a hit target under an
+     inert ancestor. Hidden markers force none again via .fg2-marker-hidden. */
+  pointer-events: auto;
 }
 
 .fg2-single:focus-visible {
@@ -481,22 +486,55 @@ body:has(.fg2) .site-header .site-nav a[aria-current] {
    Explorer panel
    ============================================================ */
 
+/* The explorer is a full-screen takeover opened by a button, not a scroll
+   target: the section takes no layout space, so no blank screen sits between
+   the last chapter and the Methods section. Its UI mounts as a fixed overlay
+   above the map only while exploring. */
 .fg2-explorer {
   position: relative;
-  height: 100svh;
+  height: 0;
 }
 
 .fg2-explorer-ui {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  z-index: 6;
+  z-index: 901;
   pointer-events: none;
   opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--dur-3) var(--ease-out), visibility 0s linear var(--dur-3);
+}
+
+.fg2.is-exploring .fg2-explorer-ui {
+  opacity: 1;
+  visibility: visible;
   transition: opacity var(--dur-3) var(--ease-out);
 }
 
-.fg2-scrolly[data-mode='explore'] .fg2-explorer-ui {
-  opacity: 1;
+/* Explore takeover: the sticky map stage lifts to a fixed, full-viewport tool
+   above the page. Reading (scroll = progress) and manipulating (scroll = zoom)
+   want opposite scroll behaviour, so exploring gets its own mode: body scroll is
+   locked (.fg2-scroll-lock) and the live map never fights the Methods/footer. */
+.fg2.is-exploring .fg2-stage {
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  z-index: 900;
+}
+
+html.fg2-scroll-lock,
+html.fg2-scroll-lock body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fg2-explorer-ui {
+    transition: visibility 0s linear var(--dur-3);
+  }
+  .fg2.is-exploring .fg2-explorer-ui {
+    transition: none;
+  }
 }
 
 .fg2-panel {
