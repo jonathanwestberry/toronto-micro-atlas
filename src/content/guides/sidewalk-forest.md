@@ -7,4 +7,4 @@ updated: 2026-07-12
 status: live
 ---
 
-Field Guide 02 renders the City of Toronto's entire street tree inventory as a single map: every tree a dot, every dot a record. The story moves from the maple paradox to the ash elegy to the fifteen one-of-a-kind trees, then hands the map over. Zoom in, tap a dot, and the city tells you the name of the tree outside your door.
+Sidewalk Forest renders the City of Toronto's entire street tree inventory as a single map: every tree a dot, every dot a record. The story moves from the maple paradox to the ash elegy to the seven one-of-a-kind trees, then hands the map over. Zoom in, tap a dot, and the city tells you the name of the tree outside your door.
