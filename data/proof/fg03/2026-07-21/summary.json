@@ -1,0 +1,171 @@
+{
+  "generated_at": "2026-07-21T16:43:18.270983-04:00",
+  "snapshot_date": "2026-07-21",
+  "walking_cutoff_metres": 400.0,
+  "transit_window_minutes": 15,
+  "facility_count_inside": 475,
+  "underlying_source_records": 582,
+  "facility_count_outside": 1,
+  "outside_facilities": [
+    {
+      "facility_id": "ttc:vaughan-metropolitan-centre",
+      "source": "ttc",
+      "name": "Vaughan Metropolitan Centre station",
+      "address": "Vaughan Metropolitan Centre",
+      "lon": -79.527489,
+      "lat": 43.794239,
+      "hours_raw": "Mon-Sat 6 a.m. to 2 a.m.; Sun 8 a.m. to 2 a.m.",
+      "schedule": {
+        "0": [
+          [
+            360,
+            1560
+          ]
+        ],
+        "1": [
+          [
+            360,
+            1560
+          ]
+        ],
+        "2": [
+          [
+            360,
+            1560
+          ]
+        ],
+        "3": [
+          [
+            360,
+            1560
+          ]
+        ],
+        "4": [
+          [
+            360,
+            1560
+          ]
+        ],
+        "5": [
+          [
+            360,
+            1560
+          ]
+        ],
+        "6": [
+          [
+            480,
+            1560
+          ]
+        ]
+      },
+      "accessible": true,
+      "all_gender": null,
+      "temporarily_closed": false,
+      "partial_service": false,
+      "record_count": 1,
+      "source_url": "https://www.ttc.ca/riding-the-ttc/Washrooms-at-TTC-subway-stations",
+      "notes": "Located in the fare-paid area."
+    }
+  ],
+  "network_nodes": 64715,
+  "network_edges": 87096,
+  "facility_snap_max_m": 186.00590660132258,
+  "facility_snap_median_m": 40.32043386498949,
+  "snap_over_200m": 0,
+  "snapshots": [
+    {
+      "slug": "1200",
+      "label": "Noon",
+      "open_access_points": 314,
+      "open_facility_records": 321,
+      "scheduled_closed": 37,
+      "temporarily_closed": 37,
+      "unknown_hours": 80,
+      "confirmed_accessible_open": 120,
+      "active_transit_stops": 8142,
+      "covered_transit_stops": 985,
+      "transit_coverage_pct": 12.097764676983543,
+      "open_by_source": {
+        "crem": 8,
+        "library": 56,
+        "museum": 4,
+        "parks": 240,
+        "ttc": 13
+      },
+      "unknown_by_source": {
+        "automated": 4,
+        "crem": 3,
+        "parks": 73
+      }
+    },
+    {
+      "slug": "2030",
+      "label": "8:30 p.m.",
+      "open_access_points": 244,
+      "open_facility_records": 249,
+      "scheduled_closed": 109,
+      "temporarily_closed": 37,
+      "unknown_hours": 80,
+      "confirmed_accessible_open": 112,
+      "active_transit_stops": 8007,
+      "covered_transit_stops": 666,
+      "transit_coverage_pct": 8.317721993255901,
+      "open_by_source": {
+        "crem": 2,
+        "parks": 234,
+        "ttc": 13
+      },
+      "unknown_by_source": {
+        "automated": 4,
+        "crem": 3,
+        "parks": 73
+      }
+    },
+    {
+      "slug": "2200",
+      "label": "10 p.m.",
+      "open_access_points": 19,
+      "open_facility_records": 19,
+      "scheduled_closed": 339,
+      "temporarily_closed": 37,
+      "unknown_hours": 80,
+      "confirmed_accessible_open": 15,
+      "active_transit_stops": 7994,
+      "covered_transit_stops": 98,
+      "transit_coverage_pct": 1.2259194395796849,
+      "open_by_source": {
+        "crem": 1,
+        "parks": 5,
+        "ttc": 13
+      },
+      "unknown_by_source": {
+        "automated": 4,
+        "crem": 3,
+        "parks": 73
+      }
+    },
+    {
+      "slug": "0030",
+      "label": "12:30 a.m. next day",
+      "open_access_points": 14,
+      "open_facility_records": 14,
+      "scheduled_closed": 344,
+      "temporarily_closed": 37,
+      "unknown_hours": 80,
+      "confirmed_accessible_open": 14,
+      "active_transit_stops": 7885,
+      "covered_transit_stops": 90,
+      "transit_coverage_pct": 1.14140773620799,
+      "open_by_source": {
+        "crem": 1,
+        "ttc": 13
+      },
+      "unknown_by_source": {
+        "automated": 4,
+        "crem": 3,
+        "parks": 73
+      }
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+slug,label,open_access_points,open_facility_records,scheduled_closed,temporarily_closed,unknown_hours,confirmed_accessible_open,active_transit_stops,covered_transit_stops,transit_coverage_pct
+1200,Noon,314,321,37,37,80,120,8142,985,12.097764676983543
+2030,8:30 p.m.,244,249,109,37,80,112,8007,666,8.317721993255901
+2200,10 p.m.,19,19,339,37,80,15,7994,98,1.2259194395796849
+0030,12:30 a.m. next day,14,14,344,37,80,14,7885,90,1.14140773620799

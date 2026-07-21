@@ -1,0 +1,7 @@
+source_a,name_a,source_b,name_b,decision,rationale
+parks,Barbara Frum Community Centre Washroom,library,Barbara Frum library,shared access-point cluster,Same civic address and 1.2 m apart
+parks,Douglas Snow Aquatic Centre Washroom,crem,North York Civic Centre,shared access-point cluster,Same civic address within the North York Civic Centre complex
+parks,Jenner Jean-Marie Community Recreation Centre Washroom,library,Thorncliffe library,shared access-point cluster,Same civic address and 25.1 m apart
+parks,High Park Colborne Lodge Coach House Washroom,museum,Colborne Lodge,keep distinct,Different civic addresses and independently described facilities
+parks,Malvern Recreation Centre Washroom,library,Malvern library,shared access-point cluster,Same civic address and 38.1 m apart
+parks,Mel Lastman Square Washroom,crem,North York Civic Centre,shared access-point cluster,Same civic address within the North York Civic Centre complex

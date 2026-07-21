@@ -13,7 +13,7 @@ interface Props {
 
 const {
   title,
-  description = 'An independent web publication of Field Guides about noticing and using Toronto.',
+  description = 'An independent web publication of interactive guides about noticing and using Toronto.',
   ogTitle,
   ogImage,
 } = Astro.props;
@@ -539,11 +539,11 @@ const onAbout = path.includes('/about');
           <ul class="site-nav">
             <li class="site-nav-dd">
               <details class="nav-dd">
-                <summary class:list={['nav-dd-summary', { 'is-current': onGuides }]}>Field Guides</summary>
+                <summary class:list={['nav-dd-summary', { 'is-current': onGuides }]}>Guides</summary>
                 <ul class="nav-dd-menu">
                   <li><a href={`${base}/guides/hidden-landscapes/`} data-astro-reload>01 &middot; Hidden Landscapes</a></li>
                   <li><a href={`${base}/guides/sidewalk-forest/`} data-astro-reload>02 &middot; Sidewalk Forest</a></li>
-                  <li><a href={`${base}/#field-guides`} class="nav-dd-all">All field guides</a></li>
+                  <li><a href={`${base}/#field-guides`} class="nav-dd-all">All guides</a></li>
                 </ul>
               </details>
             </li>
@@ -561,7 +561,7 @@ const onAbout = path.includes('/about');
       <div class="site-footer-inner">
         <div class="site-footer-id">
           <p class="site-footer-mark">Toronto Micro-Atlas</p>
-          <p class="site-footer-tagline">Field Guides about noticing and using Toronto.</p>
+          <p class="site-footer-tagline">Guides about noticing and using Toronto.</p>
           <p class="site-footer-signature">
             <span>Made by</span>
             {/* Hand-lettered signature SVG replaces this text link when the final wordmark is exported */}

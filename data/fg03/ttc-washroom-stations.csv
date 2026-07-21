@@ -1,0 +1,18 @@
+facility_group,line,station,source_url
+subway,1,Bloor-Yonge,https://www.ttc.ca/riding-the-ttc/Washrooms-at-TTC-subway-stations
+subway,1,Eglinton,https://www.ttc.ca/riding-the-ttc/Washrooms-at-TTC-subway-stations
+subway,1,Finch,https://www.ttc.ca/riding-the-ttc/Washrooms-at-TTC-subway-stations
+subway,1,Sheppard-Yonge,https://www.ttc.ca/riding-the-ttc/Washrooms-at-TTC-subway-stations
+subway,1,Sheppard West,https://www.ttc.ca/riding-the-ttc/Washrooms-at-TTC-subway-stations
+subway,1,Vaughan Metropolitan Centre,https://www.ttc.ca/riding-the-ttc/Washrooms-at-TTC-subway-stations
+subway,1,Wilson,https://www.ttc.ca/riding-the-ttc/Washrooms-at-TTC-subway-stations
+subway,2,Kennedy,https://www.ttc.ca/riding-the-ttc/Washrooms-at-TTC-subway-stations
+subway,2,Kipling,https://www.ttc.ca/riding-the-ttc/Washrooms-at-TTC-subway-stations
+subway,4,Don Mills,https://www.ttc.ca/riding-the-ttc/Washrooms-at-TTC-subway-stations
+lrt,5,Mount Dennis,https://www.ttc.ca/riding-the-ttc/Washrooms-at-TTC-subway-stations
+lrt,5,Cedarvale,https://www.ttc.ca/riding-the-ttc/Washrooms-at-TTC-subway-stations
+lrt,5,Eglinton,https://www.ttc.ca/riding-the-ttc/Washrooms-at-TTC-subway-stations
+lrt,5,Kennedy,https://www.ttc.ca/riding-the-ttc/Washrooms-at-TTC-subway-stations
+lrt,6,Humber College,https://www.ttc.ca/riding-the-ttc/Washrooms-at-TTC-subway-stations
+lrt,6,Finch West,https://www.ttc.ca/riding-the-ttc/Washrooms-at-TTC-subway-stations
+

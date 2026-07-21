@@ -220,6 +220,71 @@ Overpass JSON is converted to GeoJSON by `scripts/03_convert_osm.py`.
 
 ---
 
+## Field Guide 03: When Toronto Has to Go
+
+Phase 1 proof retrieved and generated: 2026-07-21. All City datasets use the
+Open Government Licence, Toronto. Raw downloads live in ignored
+`raw/fg03/`; dated proof outputs live in `proof/fg03/2026-07-21/`.
+
+### Facility sources
+
+| Source | Input grain used in the proof | Official page |
+|---|---:|---|
+| Park Washroom Facilities | 354 facility rows | https://open.toronto.ca/dataset/washroom-facilities/ |
+| Library Branch General Information | 82 branches marked as having public washrooms | https://open.toronto.ca/dataset/library-branch-general-information/ |
+| CREM Portfolio Washrooms | 117 public-access washroom records consolidated into 12 buildings | https://open.toronto.ca/dataset/corporate-real-estate-management-portfolio-washrooms/ |
+| Museums and Cultural Centres | 10 locations | https://open.toronto.ca/dataset/museums-and-cultural-centres/ |
+| Automated Public Washrooms | 4 seasonal locations | https://open.toronto.ca/dataset/street-furniture-public-washroom/ |
+| TTC station washrooms | 15 source rows consolidated into 14 station names; Vaughan Metropolitan Centre is outside Toronto, leaving 13 Toronto locations | https://www.ttc.ca/riding-the-ttc/Washrooms-at-TTC-subway-stations |
+
+The Park Washroom Facilities extract includes washrooms in community centres,
+pools, rinks, fieldhouses, and other Parks and Recreation locations. Its 354
+rows should not be described as 354 standalone park buildings.
+
+For 101 Parks and Recreation rows whose hours field links to centre hours, the
+pipeline retrieves the City's facility JSON and converts its daily opening and
+closing values into the same weekly schedule model. Published status values are
+applied as open, partially open, or temporarily closed.
+
+The museums file does not provide coordinates. The pipeline resolves the ten
+published civic addresses against the City Address Points datastore. The four
+automated washrooms remain `hours unknown` because the source publishes their
+season but not their daily hours.
+
+### Activity and network sources
+
+| Source | Role | Official page |
+|---|---|---|
+| Merged TTC GTFS | Scheduled stop activity within 15 minutes of each snapshot | https://open.toronto.ca/dataset/merged-gtfs-ttc-routes-and-schedules/ |
+| Pedestrian Network | 400 m shortest-path catchments | https://open.toronto.ca/dataset/pedestrian-network/ |
+| Regional Municipal Boundary | Toronto-only filtering | https://open.toronto.ca/dataset/regional-municipal-boundary/ |
+
+The active-stop measure means that at least one scheduled departure or arrival
+falls within the 30-minute observation window. It is a service-activity measure,
+not ridership or passenger demand.
+
+The City Pedestrian Network is optimized for topology rather than cartographic
+fidelity and has documented completeness and classification limits. Facility
+and TTC stop snap distances count toward the 400 m cutoff. No in-boundary
+facility in this proof snapped more than 200 m from the network.
+
+### Consolidation and outputs
+
+- CREM washroom rows collapse to public-access buildings. Passenger-only VIA
+  facilities are excluded.
+- Same-address facility records within 100 m share an access-point cluster for
+  headline counts. Their individual coordinates and schedules remain in the
+  coverage calculation.
+- Six cross-source pairs within 50 m were manually inspected. Decisions are in
+  `fg03/nearby-pair-audit.csv`.
+- Unknown hours remain a separate state and never become scheduled closure.
+- The four snapshots use Tuesday, 2026-07-21 at noon, 8:30 p.m., 10 p.m., and
+  12:30 a.m. on the following service day.
+- Phase 1 does not rank priority areas or claim passenger demand. Distance
+  sensitivity at 300 m and 500 m belongs to the Phase 2 analytical prototype.
+
+---
+
 ## Processing environment
 
 - mapshaper 0.7.34 via `npx` (no global install), Node.js v25, Python 3 (stdlib only).

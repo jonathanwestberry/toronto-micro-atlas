@@ -28,6 +28,8 @@ data/raw/
 
 # Python venv for the FG02 tree pipeline (recreated: python3 -m venv .venv)
 data/scripts/.venv/
+__pycache__/
+*.py[cod]
 
 # Tiling intermediate, 97 MB (recreated by data/scripts/11_process_trees.py)
 data/processed/trees-tiling.ndjson
