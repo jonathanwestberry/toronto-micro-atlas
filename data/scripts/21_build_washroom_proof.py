@@ -32,6 +32,7 @@ from fg03_proof import (
     multi_source_distances,
 )
 from fg03_schedule import Availability, availability_at, parse_weekly_hours
+from fg03_transit import active_stop_events
 
 
 DATA_DIR = Path(__file__).resolve().parent.parent
@@ -40,7 +41,7 @@ RAW_DIR = DATA_DIR / "raw" / "fg03"
 CURATED_DIR = DATA_DIR / "fg03"
 BOUNDARY_PATH = DATA_DIR / "processed" / "toronto-boundary.geojson"
 WALKING_CUTOFF_METRES = 400.0
-TRANSIT_WINDOW_SECONDS = 15 * 60
+TRANSIT_WINDOW_MINUTES = 15
 MAX_SNAP_METRES = 200.0
 
 DAY_CODES = [
@@ -60,14 +61,14 @@ class Snapshot:
     label: str
     weekday: int
     minute: int
-    gtfs_seconds: int
+    gtfs_minute: int
 
 
 SNAPSHOTS = [
-    Snapshot("1200", "Noon", 1, 12 * 60, 12 * 60 * 60),
-    Snapshot("2030", "8:30 p.m.", 1, 20 * 60 + 30, (20 * 60 + 30) * 60),
-    Snapshot("2200", "10 p.m.", 1, 22 * 60, 22 * 60 * 60),
-    Snapshot("0030", "12:30 a.m. next day", 2, 30, (24 * 60 + 30) * 60),
+    Snapshot("1200", "Noon", 1, 12 * 60, 12 * 60),
+    Snapshot("2030", "8:30 p.m.", 1, 20 * 60 + 30, 20 * 60 + 30),
+    Snapshot("2200", "10 p.m.", 1, 22 * 60, 22 * 60),
+    Snapshot("0030", "12:30 a.m. next day", 2, 30, 24 * 60 + 30),
 ]
 
 
@@ -295,67 +296,30 @@ def load_facilities(gtfs_path: Path, boundary) -> tuple[list[Facility], list[Fac
     return inside, outside
 
 
-def active_service_ids(
-    archive: zipfile.ZipFile, service_date: date
-) -> set[str]:
-    calendar = read_gtfs_table(archive, "calendar.txt")
-    day_name = service_date.strftime("%A").lower()
-    ymd = service_date.strftime("%Y%m%d")
-    active = {
-        row["service_id"]
-        for row in calendar
-        if row[day_name] == "1" and row["start_date"] <= ymd <= row["end_date"]
-    }
-    for row in read_gtfs_table(archive, "calendar_dates.txt"):
-        if row["date"] != ymd:
-            continue
-        if row["exception_type"] == "1":
-            active.add(row["service_id"])
-        elif row["exception_type"] == "2":
-            active.discard(row["service_id"])
-    return active
-
-
-def gtfs_seconds(raw_time: str) -> int:
-    hours, minutes, seconds = (int(value) for value in raw_time.split(":"))
-    return hours * 3600 + minutes * 60 + seconds
-
-
 def load_active_transit_stops(
     gtfs_path: Path, service_date: date, boundary
 ) -> dict[str, list[dict[str, float | str]]]:
-    by_snapshot = {snapshot.slug: set() for snapshot in SNAPSHOTS}
+    events_by_snapshot = {
+        snapshot.slug: active_stop_events(
+            gtfs_path,
+            service_date,
+            snapshot_minute=snapshot.gtfs_minute,
+            window_minutes=TRANSIT_WINDOW_MINUTES,
+        )
+        for snapshot in SNAPSHOTS
+    }
     with zipfile.ZipFile(gtfs_path) as archive:
-        active_services = active_service_ids(archive, service_date)
-        trips = read_gtfs_table(archive, "trips.txt")
-        active_trips = {
-            row["trip_id"] for row in trips if row["service_id"] in active_services
-        }
-
-        with archive.open("stop_times.txt") as raw:
-            reader = csv.DictReader(io.TextIOWrapper(raw, encoding="utf-8-sig"))
-            for row in reader:
-                if row["trip_id"] not in active_trips:
-                    continue
-                raw_time = row.get("departure_time") or row.get("arrival_time")
-                if not raw_time:
-                    continue
-                seconds = gtfs_seconds(raw_time)
-                for snapshot in SNAPSHOTS:
-                    if abs(seconds - snapshot.gtfs_seconds) <= TRANSIT_WINDOW_SECONDS:
-                        by_snapshot[snapshot.slug].add(row["stop_id"])
-
         stops = read_gtfs_table(archive, "stops.txt")
     stop_lookup = {row["stop_id"]: row for row in stops}
 
     result = {}
-    for slug, stop_ids in by_snapshot.items():
+    for slug, events in events_by_snapshot.items():
         collapsed = {}
-        for stop_id in stop_ids:
-            stop = stop_lookup.get(stop_id)
+        for event in events:
+            stop = stop_lookup.get(event.stop_id)
             if not stop:
                 continue
-            key = stop.get("parent_station") or stop_id
+            key = event.parent_station or event.stop_id
             point_row = stop_lookup.get(key, stop)
             lon = float(point_row["stop_lon"])
             lat = float(point_row["stop_lat"])
@@ -831,7 +795,7 @@ def build(snapshot_date: date) -> Path:
                 "generated_at": datetime.now().astimezone().isoformat(),
                 "snapshot_date": snapshot_date.isoformat(),
                 "walking_cutoff_metres": WALKING_CUTOFF_METRES,
-                "transit_window_minutes": TRANSIT_WINDOW_SECONDS // 60,
+                "transit_window_minutes": TRANSIT_WINDOW_MINUTES,
                 "facility_count_inside": len(facilities),
                 "underlying_source_records": sum(
                     facility.record_count for facility in facilities
