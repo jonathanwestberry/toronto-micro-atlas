@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-21T16:43:18.270983-04:00",
+  "generated_at": "2026-07-25T19:01:01.571116-04:00",
   "snapshot_date": "2026-07-21",
   "walking_cutoff_metres": 400.0,
   "transit_window_minutes": 15,
@@ -61,6 +61,8 @@
       },
       "accessible": true,
       "all_gender": null,
+      "access_condition": "fare_paid",
+      "closure_category": "none",
       "temporarily_closed": false,
       "partial_service": false,
       "record_count": 1,
@@ -68,6 +70,16 @@
       "notes": "Located in the fare-paid area."
     }
   ],
+  "access_condition_counts": {
+    "fare_paid": 13,
+    "unrestricted": 462
+  },
+  "closure_category_counts": {
+    "construction": 8,
+    "none": 430,
+    "seasonal": 15,
+    "temporary": 22
+  },
   "network_nodes": 64715,
   "network_edges": 87096,
   "facility_snap_max_m": 186.00590660132258,

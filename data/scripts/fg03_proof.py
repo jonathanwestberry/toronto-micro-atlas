@@ -3,12 +3,41 @@ import json
 import re
 from dataclasses import dataclass
 from itertools import combinations
+from typing import Literal
 
 import numpy as np
 from pyproj import Transformer
 from scipy.spatial import cKDTree
 
 from fg03_schedule import Schedule, parse_weekly_hours
+
+
+AccessCondition = Literal["unrestricted", "fare_paid"]
+ClosureCategory = Literal["none", "seasonal", "temporary", "construction"]
+
+
+def access_condition_for_source(source: str) -> AccessCondition:
+    return "fare_paid" if source == "ttc" else "unrestricted"
+
+
+def classify_closure_category(reason: str) -> ClosureCategory:
+    value = (reason or "").lower()
+    if "closed for the season" in value:
+        return "seasonal"
+    if "under construction" in value:
+        return "construction"
+    if any(
+        term in value
+        for term in (
+            "maintenance",
+            "repair",
+            "technical",
+            "planned closure",
+            "planned work",
+        )
+    ):
+        return "temporary"
+    return "none"
 
 
 @dataclass(slots=True)
@@ -23,6 +52,8 @@ class Facility:
     schedule: Schedule
     accessible: bool | None
     all_gender: bool | None
+    access_condition: AccessCondition = "unrestricted"
+    closure_category: ClosureCategory = "none"
     temporarily_closed: bool = False
     partial_service: bool = False
     record_count: int = 1
@@ -87,6 +118,8 @@ def consolidate_crem_rows(rows: list[dict[str, str]]) -> list[Facility]:
                     row.get("Gender Inclusive", "").lower() == "yes"
                     for row in group
                 ),
+                access_condition=access_condition_for_source("crem"),
+                closure_category="none",
                 record_count=len(group),
                 source_url=(
                     "https://open.toronto.ca/dataset/"

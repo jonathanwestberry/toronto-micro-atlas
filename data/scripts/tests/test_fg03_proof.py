@@ -5,6 +5,7 @@ from unittest.mock import patch
 import networkx as nx
 from pyproj import Transformer
 
+import fg03_proof
 from fg03_proof import (
     Facility,
     NetworkSnapper,
@@ -38,6 +39,29 @@ def crem_row(
 
 
 class SourceConsolidationTests(unittest.TestCase):
+    def test_source_access_conditions_distinguish_ttc_from_public_sources(self):
+        # A mistaken public default for TTC (or fare-paid default elsewhere) would
+        # overstate access in the published proof.
+        self.assertEqual(fg03_proof.access_condition_for_source("ttc"), "fare_paid")
+        for source in ("parks", "library", "crem", "museum", "automated"):
+            with self.subTest(source=source):
+                self.assertEqual(
+                    fg03_proof.access_condition_for_source(source), "unrestricted"
+                )
+
+    def test_closure_reason_maps_to_distinct_policy_category(self):
+        # Removing any category-specific branch would misstate the closure policy.
+        self.assertEqual(
+            fg03_proof.classify_closure_category("Closed for the Season"), "seasonal"
+        )
+        self.assertEqual(
+            fg03_proof.classify_closure_category("Under Construction"), "construction"
+        )
+        self.assertEqual(
+            fg03_proof.classify_closure_category("Maintenance/Repairs"), "temporary"
+        )
+        self.assertEqual(fg03_proof.classify_closure_category(""), "none")
+
     def test_crem_rows_collapse_to_one_public_access_location(self):
         rows = [
             crem_row("Men's washroom", accessible="No"),
@@ -53,6 +77,7 @@ class SourceConsolidationTests(unittest.TestCase):
 
         self.assertEqual(len(facilities), 1)
         self.assertTrue(facilities[0].accessible)
+        self.assertEqual(facilities[0].access_condition, "unrestricted")
         self.assertEqual(facilities[0].record_count, 2)
 
     def test_placeholder_ids_do_not_merge_different_buildings(self):

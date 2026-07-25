@@ -24,7 +24,9 @@ from shapely.geometry import Point, shape
 from fg03_proof import (
     Facility,
     NetworkSnapper,
+    access_condition_for_source,
     cluster_access_points,
+    classify_closure_category,
     consolidate_crem_rows,
     coordinates_from_geometry,
     multi_source_distances,
@@ -117,6 +119,8 @@ def load_park_facilities() -> list[Facility]:
                 all_gender=(
                     True if "all-gender" in (row.get("type") or "").lower() else None
                 ),
+                access_condition=access_condition_for_source("parks"),
+                closure_category=classify_closure_category(notes),
                 temporarily_closed=row.get("Status") == "0",
                 partial_service=row.get("Status") == "2",
                 source_url=row.get("url") or (
@@ -147,6 +151,8 @@ def load_library_facilities() -> list[Facility]:
                 schedule=parse_weekly_hours(hours_raw),
                 accessible=None,
                 all_gender=None,
+                access_condition=access_condition_for_source("library"),
+                closure_category="none",
                 source_url=row.get("Website", ""),
             )
         )
@@ -184,6 +190,8 @@ def load_museum_facilities() -> list[Facility]:
                     if row.get("Gender Inclusive?", "").lower() == "yes"
                     else False
                 ),
+                access_condition=access_condition_for_source("museum"),
+                closure_category=classify_closure_category(row.get("Notes", "")),
                 source_url=(
                     "https://open.toronto.ca/dataset/museums-and-cultural-centres/"
                 ),
@@ -215,6 +223,8 @@ def load_automated_facilities() -> list[Facility]:
                 schedule=None,
                 accessible=True,
                 all_gender=None,
+                access_condition=access_condition_for_source("automated"),
+                closure_category=classify_closure_category(row.get("STATUS", "")),
                 temporarily_closed=row.get("STATUS") != "Existing",
                 source_url=(
                     "https://open.toronto.ca/dataset/"
@@ -262,6 +272,8 @@ def load_ttc_facilities(gtfs_path: Path) -> list[Facility]:
                 schedule=parse_weekly_hours(hours_raw),
                 accessible=True,
                 all_gender=None,
+                access_condition=access_condition_for_source("ttc"),
+                closure_category="none",
                 record_count=len(group),
                 source_url=group[0]["source_url"],
                 notes="Located in the fare-paid area.",
@@ -609,6 +621,8 @@ def write_readme(
             f"- {len(nearby_pairs)} cross-source pairs within 50 m are listed in `nearby-cross-source-pairs.csv`.",
             "- Manual decisions for those pairs are recorded in `data/fg03/nearby-pair-audit.csv`.",
             "- Same-address records within 100 m share one access-point cluster. Distinct addresses remain separate even when nearby.",
+            "- `access_condition` distinguishes unrestricted public access from TTC facilities in fare-paid areas; every TTC record is marked `fare_paid`.",
+            "- `closure_category` records the Parks reason when published: seasonal, temporary, construction, or none. Partial closures remain available with their source note and flag.",
             "- Automated public washrooms remain information gaps because the official source publishes the season but not daily hours.",
             "- Library accessibility remains unknown because the source confirms public washrooms but does not publish washroom-level accessibility.",
             "",
@@ -752,6 +766,19 @@ def build(snapshot_date: date) -> Path:
             facility_snaps[facility.facility_id][1], 1
         )
         facility_rows.append(row)
+    allowed_access_conditions = {"unrestricted", "fare_paid"}
+    allowed_closure_categories = {"none", "seasonal", "temporary", "construction"}
+    assert all(
+        row["access_condition"] in allowed_access_conditions for row in facility_rows
+    )
+    assert all(
+        row["closure_category"] in allowed_closure_categories for row in facility_rows
+    )
+    assert all(
+        row["access_condition"] == "fare_paid"
+        for row in facility_rows
+        if row["source"] == "ttc"
+    )
     write_csv(output_dir / "facilities.csv", facility_rows)
     write_csv(output_dir / "facility-states.csv", facility_state_rows)
     write_csv(output_dir / "nearby-cross-source-pairs.csv", nearby_pairs)
@@ -777,6 +804,12 @@ def build(snapshot_date: date) -> Path:
                 ),
                 "facility_count_outside": len(outside),
                 "outside_facilities": [asdict(facility) for facility in outside],
+                "access_condition_counts": dict(
+                    sorted(Counter(f.access_condition for f in facilities).items())
+                ),
+                "closure_category_counts": dict(
+                    sorted(Counter(f.closure_category for f in facilities).items())
+                ),
                 "network_nodes": graph.number_of_nodes(),
                 "network_edges": graph.number_of_edges(),
                 "facility_snap_max_m": max(snap_distances),
@@ -804,6 +837,7 @@ def build(snapshot_date: date) -> Path:
 
 
 def main() -> None:
+    global RAW_DIR
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--snapshot-date",
@@ -811,7 +845,14 @@ def main() -> None:
         default=date(2026, 7, 21),
         help="Tuesday service date in YYYY-MM-DD format",
     )
+    parser.add_argument(
+        "--raw-dir",
+        type=Path,
+        default=RAW_DIR,
+        help="directory containing the dated FG03 raw source snapshot",
+    )
     arguments = parser.parse_args()
+    RAW_DIR = arguments.raw_dir
     build(arguments.snapshot_date)
 
 

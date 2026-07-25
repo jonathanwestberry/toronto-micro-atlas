@@ -25,6 +25,8 @@ This passes the temporal-pattern part of the proof. It does not yet rank priorit
 - 6 cross-source pairs within 50 m are listed in `nearby-cross-source-pairs.csv`.
 - Manual decisions for those pairs are recorded in `data/fg03/nearby-pair-audit.csv`.
 - Same-address records within 100 m share one access-point cluster. Distinct addresses remain separate even when nearby.
+- `access_condition` distinguishes unrestricted public access from TTC facilities in fare-paid areas; every TTC record is marked `fare_paid`.
+- `closure_category` records the Parks reason when published: seasonal, temporary, construction, or none. Partial closures remain available with their source note and flag.
 - Automated public washrooms remain information gaps because the official source publishes the season but not daily hours.
 - Library accessibility remains unknown because the source confirms public washrooms but does not publish washroom-level accessibility.
 
