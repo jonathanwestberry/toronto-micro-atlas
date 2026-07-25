@@ -1,12 +1,16 @@
 import csv
 import io
+import runpy
 import tempfile
 import unittest
 import zipfile
 from dataclasses import FrozenInstanceError
 from datetime import date
 from pathlib import Path
+from unittest.mock import patch
 
+import fg03_transit
+from shapely.geometry import box
 from fg03_transit import (
     ActiveStopEvent,
     active_stop_events,
@@ -270,6 +274,70 @@ class TransitActivityTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "calendar_dates.txt"):
             resolve_service_ids(missing_path, SERVICE_DATE)
+
+    def test_batch_snapshots_scan_stop_times_once(self):
+        # Protected break: scanning once per snapshot decompresses the largest table four times.
+        opened_members = []
+        original_open = zipfile.ZipFile.open
+
+        def tracking_open(archive, name, *args, **kwargs):
+            opened_members.append(name)
+            return original_open(archive, name, *args, **kwargs)
+
+        with patch.object(zipfile.ZipFile, "open", new=tracking_open):
+            fg03_transit.active_stop_events_for_windows(
+                self.gtfs_path,
+                SERVICE_DATE,
+                windows={
+                    "noon": (720, 15),
+                    "evening": (1230, 15),
+                    "late": (1320, 15),
+                    "overnight": (1470, 15),
+                },
+            )
+
+        self.assertEqual(opened_members.count("stop_times.txt"), 1)
+
+    def test_overlapping_windows_each_receive_matching_event(self):
+        # Protected break: first-match partitioning drops events from later overlapping windows.
+        events_by_window = fg03_transit.active_stop_events_for_windows(
+            self.gtfs_path,
+            SERVICE_DATE,
+            windows={
+                "exact": (1470, 0),
+                "overlap": (1475, 5),
+            },
+        )
+
+        self.assertEqual(
+            {event.stop_id for event in events_by_window["exact"]},
+            {"stop-a", "stop-c"},
+        )
+        self.assertEqual(
+            {event.stop_id for event in events_by_window["overlap"]},
+            {"stop-a", "stop-b", "stop-c"},
+        )
+
+    def test_phase_one_builder_scans_stop_times_once_for_all_snapshots(self):
+        # Protected break: the Phase 1 adapter can bypass batching and rescan per snapshot.
+        builder = runpy.run_path(
+            str(Path(__file__).parents[1] / "21_build_washroom_proof.py")
+        )
+        opened_members = []
+        original_open = zipfile.ZipFile.open
+
+        def tracking_open(archive, name, *args, **kwargs):
+            opened_members.append(name)
+            return original_open(archive, name, *args, **kwargs)
+
+        with patch.object(zipfile.ZipFile, "open", new=tracking_open):
+            builder["load_active_transit_stops"](
+                self.gtfs_path,
+                SERVICE_DATE,
+                box(-80, 43, -79, 44),
+            )
+
+        self.assertEqual(opened_members.count("stop_times.txt"), 1)
 
 
 if __name__ == "__main__":

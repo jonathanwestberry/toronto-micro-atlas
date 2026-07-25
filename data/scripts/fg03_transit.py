@@ -78,48 +78,80 @@ def active_stop_events(
     window_minutes: int,
 ) -> list[ActiveStopEvent]:
     """Load scheduled platform events near a minute on the supplied service day."""
+    return active_stop_events_for_windows(
+        gtfs_path,
+        service_date,
+        windows={"snapshot": (snapshot_minute, window_minutes)},
+    )["snapshot"]
+
+
+def active_stop_events_for_windows(
+    gtfs_path: Path,
+    service_date: date,
+    *,
+    windows: dict[str, tuple[int, int]],
+) -> dict[str, list[ActiveStopEvent]]:
+    """Load scheduled platform events for multiple service-day windows."""
     active_services = resolve_service_ids(gtfs_path, service_date)
-    snapshot_seconds = snapshot_minute * 60
-    window_seconds = window_minutes * 60
+    windows_in_seconds = {
+        key: (snapshot_minute * 60, window_minutes * 60)
+        for key, (snapshot_minute, window_minutes) in windows.items()
+    }
+    events_by_window = {key: [] for key in windows}
 
     with zipfile.ZipFile(gtfs_path) as archive:
         trips = _read_gtfs_table(archive, "trips.txt")
         stops = _read_gtfs_table(archive, "stops.txt")
-        stop_times = _read_gtfs_table(archive, "stop_times.txt")
-
-    route_by_trip = {
-        row["trip_id"]: row["route_id"]
-        for row in trips
-        if row["service_id"] in active_services
-    }
-    stop_by_id = {row["stop_id"]: row for row in stops}
-    events = []
-    for row in stop_times:
-        trip_id = row["trip_id"]
-        if trip_id not in route_by_trip:
-            continue
-        raw_time = row.get("departure_time") or row.get("arrival_time")
-        if not raw_time:
-            continue
-        event_seconds = gtfs_seconds(raw_time)
-        if abs(event_seconds - snapshot_seconds) > window_seconds:
-            continue
-        stop = stop_by_id.get(row["stop_id"])
-        if stop is None:
-            continue
-        events.append(
-            ActiveStopEvent(
-                stop_id=stop["stop_id"],
-                parent_station=stop.get("parent_station") or "",
-                stop_name=stop["stop_name"],
-                trip_id=trip_id,
-                route_id=route_by_trip[trip_id],
-                event_minute=event_seconds // 60,
-                lon=float(stop["stop_lon"]),
-                lat=float(stop["stop_lat"]),
+        route_by_trip = {
+            row["trip_id"]: row["route_id"]
+            for row in trips
+            if row["service_id"] in active_services
+        }
+        stop_by_id = {row["stop_id"]: row for row in stops}
+        if "stop_times.txt" not in archive.namelist():
+            raise ValueError("GTFS archive missing required member: stop_times.txt")
+        with archive.open("stop_times.txt") as raw:
+            stop_times = csv.DictReader(
+                io.TextIOWrapper(raw, encoding="utf-8-sig")
             )
-        )
-    return sorted(events, key=lambda event: (event.trip_id, event.event_minute, event.stop_id))
+            for row in stop_times:
+                trip_id = row["trip_id"]
+                if trip_id not in route_by_trip:
+                    continue
+                raw_time = row.get("departure_time") or row.get("arrival_time")
+                if not raw_time:
+                    continue
+                event_seconds = gtfs_seconds(raw_time)
+                matching_windows = [
+                    key
+                    for key, (snapshot_seconds, window_seconds) in (
+                        windows_in_seconds.items()
+                    )
+                    if abs(event_seconds - snapshot_seconds) <= window_seconds
+                ]
+                if not matching_windows:
+                    continue
+                stop = stop_by_id.get(row["stop_id"])
+                if stop is None:
+                    continue
+                event = ActiveStopEvent(
+                    stop_id=stop["stop_id"],
+                    parent_station=stop.get("parent_station") or "",
+                    stop_name=stop["stop_name"],
+                    trip_id=trip_id,
+                    route_id=route_by_trip[trip_id],
+                    event_minute=event_seconds // 60,
+                    lon=float(stop["stop_lon"]),
+                    lat=float(stop["stop_lat"]),
+                )
+                for key in matching_windows:
+                    events_by_window[key].append(event)
+
+    sort_key = lambda event: (event.trip_id, event.event_minute, event.stop_id)
+    return {
+        key: sorted(events, key=sort_key)
+        for key, events in events_by_window.items()
+    }
 
 
 def aggregate_catchment(

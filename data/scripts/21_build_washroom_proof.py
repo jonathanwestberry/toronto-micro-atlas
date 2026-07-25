@@ -32,7 +32,7 @@ from fg03_proof import (
     multi_source_distances,
 )
 from fg03_schedule import Availability, availability_at, parse_weekly_hours
-from fg03_transit import active_stop_events
+from fg03_transit import active_stop_events_for_windows
 
 
 DATA_DIR = Path(__file__).resolve().parent.parent
@@ -299,15 +299,14 @@ def load_facilities(gtfs_path: Path, boundary) -> tuple[list[Facility], list[Fac
 def load_active_transit_stops(
     gtfs_path: Path, service_date: date, boundary
 ) -> dict[str, list[dict[str, float | str]]]:
-    events_by_snapshot = {
-        snapshot.slug: active_stop_events(
-            gtfs_path,
-            service_date,
-            snapshot_minute=snapshot.gtfs_minute,
-            window_minutes=TRANSIT_WINDOW_MINUTES,
-        )
-        for snapshot in SNAPSHOTS
-    }
+    events_by_snapshot = active_stop_events_for_windows(
+        gtfs_path,
+        service_date,
+        windows={
+            snapshot.slug: (snapshot.gtfs_minute, TRANSIT_WINDOW_MINUTES)
+            for snapshot in SNAPSHOTS
+        },
+    )
     with zipfile.ZipFile(gtfs_path) as archive:
         stops = read_gtfs_table(archive, "stops.txt")
     stop_lookup = {row["stop_id"]: row for row in stops}
