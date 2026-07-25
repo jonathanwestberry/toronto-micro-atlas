@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-25T19:01:01.571116-04:00",
+  "generated_at": "2026-07-25T19:09:22.196219-04:00",
   "snapshot_date": "2026-07-21",
   "walking_cutoff_metres": 400.0,
   "transit_window_minutes": 15,
@@ -89,21 +89,22 @@
     {
       "slug": "1200",
       "label": "Noon",
-      "open_access_points": 314,
-      "open_facility_records": 321,
+      "open_access_points": 301,
+      "open_facility_records": 308,
+      "fare_paid_open_access_points": 13,
+      "fare_paid_open_facility_records": 13,
       "scheduled_closed": 37,
       "temporarily_closed": 37,
       "unknown_hours": 80,
-      "confirmed_accessible_open": 120,
+      "confirmed_accessible_open": 107,
       "active_transit_stops": 8142,
-      "covered_transit_stops": 985,
-      "transit_coverage_pct": 12.097764676983543,
+      "covered_transit_stops": 922,
+      "transit_coverage_pct": 11.323999017440432,
       "open_by_source": {
         "crem": 8,
         "library": 56,
         "museum": 4,
-        "parks": 240,
-        "ttc": 13
+        "parks": 240
       },
       "unknown_by_source": {
         "automated": 4,
@@ -114,19 +115,20 @@
     {
       "slug": "2030",
       "label": "8:30 p.m.",
-      "open_access_points": 244,
-      "open_facility_records": 249,
+      "open_access_points": 231,
+      "open_facility_records": 236,
+      "fare_paid_open_access_points": 13,
+      "fare_paid_open_facility_records": 13,
       "scheduled_closed": 109,
       "temporarily_closed": 37,
       "unknown_hours": 80,
-      "confirmed_accessible_open": 112,
+      "confirmed_accessible_open": 99,
       "active_transit_stops": 8007,
-      "covered_transit_stops": 666,
-      "transit_coverage_pct": 8.317721993255901,
+      "covered_transit_stops": 585,
+      "transit_coverage_pct": 7.3061071562382915,
       "open_by_source": {
         "crem": 2,
-        "parks": 234,
-        "ttc": 13
+        "parks": 234
       },
       "unknown_by_source": {
         "automated": 4,
@@ -137,19 +139,20 @@
     {
       "slug": "2200",
       "label": "10 p.m.",
-      "open_access_points": 19,
-      "open_facility_records": 19,
+      "open_access_points": 6,
+      "open_facility_records": 6,
+      "fare_paid_open_access_points": 13,
+      "fare_paid_open_facility_records": 13,
       "scheduled_closed": 339,
       "temporarily_closed": 37,
       "unknown_hours": 80,
-      "confirmed_accessible_open": 15,
+      "confirmed_accessible_open": 2,
       "active_transit_stops": 7994,
-      "covered_transit_stops": 98,
-      "transit_coverage_pct": 1.2259194395796849,
+      "covered_transit_stops": 18,
+      "transit_coverage_pct": 0.22516887665749313,
       "open_by_source": {
         "crem": 1,
-        "parks": 5,
-        "ttc": 13
+        "parks": 5
       },
       "unknown_by_source": {
         "automated": 4,
@@ -160,18 +163,19 @@
     {
       "slug": "0030",
       "label": "12:30 a.m. next day",
-      "open_access_points": 14,
-      "open_facility_records": 14,
+      "open_access_points": 1,
+      "open_facility_records": 1,
+      "fare_paid_open_access_points": 13,
+      "fare_paid_open_facility_records": 13,
       "scheduled_closed": 344,
       "temporarily_closed": 37,
       "unknown_hours": 80,
-      "confirmed_accessible_open": 14,
+      "confirmed_accessible_open": 1,
       "active_transit_stops": 7885,
-      "covered_transit_stops": 90,
-      "transit_coverage_pct": 1.14140773620799,
+      "covered_transit_stops": 8,
+      "transit_coverage_pct": 0.10145846544071022,
       "open_by_source": {
-        "crem": 1,
-        "ttc": 13
+        "crem": 1
       },
       "unknown_by_source": {
         "automated": 4,

@@ -412,6 +412,8 @@ def source_offsets_for_open_facilities(
 ) -> dict[tuple[float, float], float]:
     offsets = {}
     for facility in facilities:
+        if facility.access_condition != "unrestricted":
+            continue
         if states[facility.facility_id] != Availability.OPEN:
             continue
         node, offset = facility_snaps[facility.facility_id]
@@ -457,7 +459,7 @@ def plot_snapshot(
     )
     axis.set_title(
         f"{snapshot.label}\n"
-        f"{summary['open_access_points']} open access points  |  "
+        f"{summary['open_access_points']} unrestricted access points  |  "
         f"{summary['covered_transit_stops']:,} of "
         f"{summary['active_transit_stops']:,} active TTC stops covered",
         loc="left",
@@ -495,7 +497,7 @@ def plot_snapshot(
             markerfacecolor="#151515",
             markeredgecolor="none",
             markersize=5,
-            label="Documented open washroom",
+            label="Documented unrestricted open washroom",
         ),
     ]
     axis.legend(handles=legend, loc="lower left", frameon=False, fontsize=8)
@@ -579,6 +581,11 @@ def write_readme(
     late = by_slug["2200"]
     overnight = by_slug["0030"]
     open_drop = 100 * (1 - late["open_access_points"] / noon["open_access_points"])
+    overnight_access_point_label = (
+        "access point"
+        if overnight["open_access_points"] == 1
+        else "access points"
+    )
     lines = [
         "# Field Guide 03 data proof",
         "",
@@ -587,11 +594,14 @@ def write_readme(
         "## Result",
         "",
         (
-            f"Documented open access points fall from {noon['open_access_points']} at noon "
-            f"to {late['open_access_points']} at 10 p.m., a {open_drop:.1f}% contraction. "
+            f"Documented unrestricted open access points fall from "
+            f"{noon['open_access_points']} at noon to {late['open_access_points']} at "
+            f"10 p.m., a {open_drop:.1f}% contraction. "
             f"At 12:30 a.m., {overnight['active_transit_stops']:,} TTC stops still show "
             f"scheduled activity within the 30-minute observation window, while only "
-            f"{overnight['open_access_points']} washroom access points remain reliably open."
+            f"{overnight['open_access_points']} unrestricted public washroom "
+            f"{overnight_access_point_label} remains reliably open. Fare-paid TTC washrooms "
+            f"are reported separately and do not seed public walking coverage."
         ),
         "",
         "This passes the temporal-pattern part of the proof. It does not yet rank priority "
@@ -600,13 +610,15 @@ def write_readme(
         "",
         "## Snapshot summary",
         "",
-        "| Time | Open access points | Open facility records | Unknown hours | Active TTC stops | TTC stops covered |",
-        "|---|---:|---:|---:|---:|---:|",
+        "| Time | Unrestricted open access points | Unrestricted open records | Fare-paid open records | Unknown unrestricted hours | Active TTC stops | TTC stops covered by unrestricted facilities |",
+        "|---|---:|---:|---:|---:|---:|---:|",
     ]
     for summary in summaries:
         lines.append(
             f"| {summary['label']} | {summary['open_access_points']} | "
-            f"{summary['open_facility_records']} | {summary['unknown_hours']} | "
+            f"{summary['open_facility_records']} | "
+            f"{summary['fare_paid_open_facility_records']} | "
+            f"{summary['unknown_hours']} | "
             f"{summary['active_transit_stops']:,} | {summary['covered_transit_stops']:,} "
             f"({summary['transit_coverage_pct']:.1f}%) |"
         )
@@ -631,9 +643,10 @@ def write_readme(
             "1. Consolidate Parks, libraries, CREM buildings, museums and cultural centres, automated public washrooms, and TTC washroom stations.",
             "2. Normalize published weekly hours. Keep unknown hours distinct from scheduled closure.",
             "3. Apply live Parks closure status. Partial closures remain available with a flag.",
-            "4. Snap open facilities and scheduled TTC stops to the City Pedestrian Network.",
-            "5. Run a multi-source 400 m shortest-path search with the facility-to-network snap offset included.",
-            "6. Count a TTC stop as covered only when its network distance plus stop snap distance is at most 400 m.",
+            "4. Exclude fare-paid TTC washrooms from unrestricted public coverage and report their open count separately.",
+            "5. Snap unrestricted open facilities and scheduled TTC stops to the City Pedestrian Network.",
+            "6. Run a multi-source 400 m shortest-path search with the facility-to-network snap offset included.",
+            "7. Count a TTC stop as covered only when its network distance plus stop snap distance is at most 400 m.",
             "",
             "The City describes the pedestrian network as topologically focused and notes known completeness and classification limitations. These maps show documented scheduled access, not guaranteed real-time availability or passenger demand.",
         ]
@@ -652,6 +665,14 @@ def build(snapshot_date: date) -> Path:
     )
     gtfs_path = RAW_DIR / "completegtfs.zip"
     facilities, outside = load_facilities(gtfs_path, boundary)
+    unrestricted_facilities = [
+        facility
+        for facility in facilities
+        if facility.access_condition == "unrestricted"
+    ]
+    fare_paid_facilities = [
+        facility for facility in facilities if facility.access_condition == "fare_paid"
+    ]
     clusters = cluster_access_points(facilities)
 
     print(f"Facilities inside Toronto: {len(facilities)}")
@@ -681,7 +702,7 @@ def build(snapshot_date: date) -> Path:
             for facility in facilities
         }
         offsets = source_offsets_for_open_facilities(
-            facilities, states, facility_snaps
+            unrestricted_facilities, states, facility_snaps
         )
         distances = multi_source_distances(
             graph, offsets, cutoff=WALKING_CUTOFF_METRES
@@ -693,12 +714,21 @@ def build(snapshot_date: date) -> Path:
         reached_edges = edges[reached_mask]
         open_facilities = [
             facility
-            for facility in facilities
+            for facility in unrestricted_facilities
+            if states[facility.facility_id] == Availability.OPEN
+            and facility_snaps[facility.facility_id][1] <= MAX_SNAP_METRES
+        ]
+        fare_paid_open_facilities = [
+            facility
+            for facility in fare_paid_facilities
             if states[facility.facility_id] == Availability.OPEN
             and facility_snaps[facility.facility_id][1] <= MAX_SNAP_METRES
         ]
         open_clusters = {
             clusters[facility.facility_id] for facility in open_facilities
+        }
+        fare_paid_open_clusters = {
+            clusters[facility.facility_id] for facility in fare_paid_open_facilities
         }
 
         transit_rows = active_stops[snapshot.slug]
@@ -708,11 +738,13 @@ def build(snapshot_date: date) -> Path:
             if distances.get(node, float("inf")) + snap_distance <= WALKING_CUTOFF_METRES:
                 covered_transit += 1
 
-        state_counts = Counter(states.values())
+        state_counts = Counter(
+            states[facility.facility_id] for facility in unrestricted_facilities
+        )
         open_by_source = Counter(facility.source for facility in open_facilities)
         unknown_by_source = Counter(
             facility.source
-            for facility in facilities
+            for facility in unrestricted_facilities
             if states[facility.facility_id] == Availability.UNKNOWN
         )
         summary = {
@@ -720,6 +752,8 @@ def build(snapshot_date: date) -> Path:
             "label": snapshot.label,
             "open_access_points": len(open_clusters),
             "open_facility_records": len(open_facilities),
+            "fare_paid_open_access_points": len(fare_paid_open_clusters),
+            "fare_paid_open_facility_records": len(fare_paid_open_facilities),
             "scheduled_closed": state_counts[Availability.CLOSED],
             "temporarily_closed": state_counts[Availability.TEMPORARILY_CLOSED],
             "unknown_hours": state_counts[Availability.UNKNOWN],

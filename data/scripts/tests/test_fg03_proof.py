@@ -1,5 +1,7 @@
 import json
+import runpy
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import networkx as nx
@@ -13,7 +15,7 @@ from fg03_proof import (
     consolidate_crem_rows,
     multi_source_distances,
 )
-from fg03_schedule import parse_weekly_hours
+from fg03_schedule import Availability, parse_weekly_hours
 
 
 def crem_row(
@@ -135,6 +137,52 @@ class SourceConsolidationTests(unittest.TestCase):
 
 
 class NetworkCoverageTests(unittest.TestCase):
+    def test_fare_paid_facility_does_not_seed_unrestricted_coverage(self):
+        builder = runpy.run_path(
+            str(Path(__file__).parents[1] / "21_build_washroom_proof.py")
+        )
+        source_offsets = builder["source_offsets_for_open_facilities"]
+        unrestricted = Facility(
+            facility_id="public",
+            source="parks",
+            name="Public washroom",
+            address="1 Main St",
+            lon=-79.4,
+            lat=43.65,
+            hours_raw="",
+            schedule=None,
+            accessible=None,
+            all_gender=None,
+            access_condition="unrestricted",
+        )
+        fare_paid = Facility(
+            facility_id="fare-paid",
+            source="ttc",
+            name="Station washroom",
+            address="Station",
+            lon=-79.39,
+            lat=43.66,
+            hours_raw="",
+            schedule=None,
+            accessible=True,
+            all_gender=None,
+            access_condition="fare_paid",
+        )
+
+        offsets = source_offsets(
+            [unrestricted, fare_paid],
+            {
+                unrestricted.facility_id: Availability.OPEN,
+                fare_paid.facility_id: Availability.OPEN,
+            },
+            {
+                unrestricted.facility_id: ((0.0, 0.0), 25.0),
+                fare_paid.facility_id: ((1.0, 1.0), 10.0),
+            },
+        )
+
+        self.assertEqual(offsets, {(0.0, 0.0): 25.0})
+
     def test_network_snapper_builds_coordinate_transformer_once(self):
         graph = nx.Graph()
         graph.add_nodes_from([(-79.4, 43.65), (-79.39, 43.66)])
