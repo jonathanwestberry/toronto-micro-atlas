@@ -467,6 +467,9 @@ git commit -m "feat: build the third Toronto Micro-Atlas guide"
 - Create: `public/social/og-when-toronto-has-to-go.jpg`
 - Modify: `public/_headers`
 - Modify: `.github/workflows/deploy.yml`
+- Modify: `package.json`
+- Modify: `package-lock.json`
+- Modify: `src/content.config.ts`
 - Modify: `README.md`
 - Create: `docs/fg03-maintenance.md`
 - Modify: `tests/fg03-contract.test.mjs`
@@ -506,11 +509,15 @@ Keep the `pages.dev` noindex rule. Add immutable caching for dated FG03 data and
 
 Add Python setup, install `requirements-fg03.txt`, run synthetic FG03 tests, run Node tests, run `astro check`, then build. Deployment remains the final job step and uses the existing Cloudflare secrets.
 
-- [ ] **Step 8: Document maintenance**
+- [ ] **Step 8: Upgrade Astro to the current patched release**
+
+Upgrade Astro from 5.x to exactly `7.1.3`, keep Node at `22.12.0` or newer, and use the official Astro 6 and 7 migration guidance. Convert both Markdown collections in `src/content.config.ts` to `glob()` loaders before removing legacy collection syntax. Preserve static output, `ClientRouter`, `getStaticPaths()` routes, sitemap generation, and canonical metadata. Run the complete build and route contract before and after the upgrade, then run `npm audit --omit=dev`; document any advisory that remains and its actual static-site exposure.
+
+- [ ] **Step 9: Document maintenance**
 
 Document architecture, sources, transformations, data refresh order, raw snapshot placement, public schema, styling, copy, URL state, analytics event names, accessibility contract, local development, all test commands, build, Cloudflare deployment, production verification, and limitations.
 
-- [ ] **Step 9: Run the full automated suite and commit**
+- [ ] **Step 10: Run the full automated suite and commit**
 
 ```bash
 PYTHONPATH=data/scripts data/scripts/.venv/bin/python -m unittest discover \
@@ -521,7 +528,8 @@ npm run build
 git diff --check
 git add src/layouts/Base.astro src/pages/index.astro src/pages/about.astro \
   public/social/og-when-toronto-has-to-go.jpg public/_headers \
-  .github/workflows/deploy.yml README.md docs/fg03-maintenance.md tests/fg03-contract.test.mjs
+  .github/workflows/deploy.yml package.json package-lock.json src/content.config.ts \
+  README.md docs/fg03-maintenance.md tests/fg03-contract.test.mjs
 git commit -m "feat: integrate and release FG03"
 ```
 
