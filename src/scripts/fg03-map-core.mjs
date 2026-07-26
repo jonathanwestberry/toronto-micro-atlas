@@ -35,6 +35,14 @@ const FG03_CONTEXT_FILES = Object.freeze({
   boundary: "/data/toronto-boundary.geojson",
   labels: "/data/orientation-labels.geojson"
 });
+const FG03_SYMBOL_RECIPES = Object.freeze([
+  Object.freeze(["fg03-fare-paid", "diamond", "#1a1f2a", "#f3eddd"]),
+  Object.freeze(["fg03-extend", "square", "#c9a8ba", "#1a1f2a"]),
+  Object.freeze(["fg03-new", "triangle", "#1a1f2a", "#1a1f2a"]),
+  Object.freeze(["fg03-verify", "diamond", "#f3eddd", "#8a4a70"]),
+  Object.freeze(["fg03-retrofit", "plus", "#f3eddd", "#8a4a70"]),
+  Object.freeze(["fg03-unknown", "cross", "#f3eddd", "#d09020"])
+]);
 function asRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value : null;
 }
@@ -377,12 +385,12 @@ async function initializeFg03RuntimeState({
   applyCameraState,
   centerSelection
 }) {
-  const state = parseFg03State(search, validPlaceIds);
-  const canonicalSearch = serializeFg03State(state);
-  applyState(
-    state,
+  const parsedState = parseFg03State(search, validPlaceIds);
+  const canonicalSearch = serializeFg03State(parsedState);
+  const state = applyState(
+    parsedState,
     search === canonicalSearch ? "data-load" : "initial-cleanup"
-  );
+  ) ?? parsedState;
   if (state.place !== null) {
     await loadReach(state);
   }
@@ -463,6 +471,11 @@ function formatFg03Status({
 }
 function shouldShowFg03ResultLabels(zoom) {
   return typeof zoom === "number" && Number.isFinite(zoom) && zoom >= 13.5;
+}
+function getFg03InvalidationCause(cause) {
+  return cause === "search" || cause === "data-load" || cause === "initial-cleanup"
+    ? "search-invalidation"
+    : cause;
 }
 function transitionAnalytics(state, input) {
   switch (input.cause) {
@@ -755,6 +768,7 @@ function createFg03LifecycleController({
   };
 }
 export {
+  FG03_SYMBOL_RECIPES,
   FG03_CONTEXT_FILES,
   createFg03Cleanup,
   createFg03DeferredLoader,
@@ -763,6 +777,7 @@ export {
   createFg03OperationalLayers,
   chooseFg03CloseFocus,
   formatFg03Status,
+  getFg03InvalidationCause,
   initializeFg03RuntimeState,
   loadFg03Data,
   reduceFg03Transition,

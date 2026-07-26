@@ -17,7 +17,9 @@ import {
   createFg03MapStartController,
   createFg03OperationalLayers,
   FG03_CONTEXT_FILES,
+  FG03_SYMBOL_RECIPES,
   formatFg03Status,
+  getFg03InvalidationCause,
   initializeFg03RuntimeState,
   loadFg03Data,
   reduceFg03Transition,
@@ -36,7 +38,9 @@ export {
   createFg03MapStartController,
   createFg03OperationalLayers,
   FG03_CONTEXT_FILES,
+  FG03_SYMBOL_RECIPES,
   formatFg03Status,
+  getFg03InvalidationCause,
   initializeFg03RuntimeState,
   loadFg03Data,
   reduceFg03Transition,
@@ -217,7 +221,7 @@ const initializeRuntimeState = initializeFg03RuntimeState as unknown as (
   options: {
     search: string;
     validPlaceIds?: Set<string>;
-    applyState: (state: Fg03State, cause: string) => void;
+    applyState: (state: Fg03State, cause: string) => Fg03State;
     loadReach: (state: Fg03State) => Promise<void>;
     applyCameraState: (state: Fg03State) => void;
     centerSelection: (options: { animate: boolean; state: Fg03State }) => void;
@@ -484,7 +488,7 @@ function addContextLayers(
   });
 }
 
-type SymbolShape = 'square' | 'triangle' | 'diamond' | 'cross';
+type SymbolShape = 'square' | 'triangle' | 'diamond' | 'cross' | 'plus';
 
 function createMapSymbol(
   shape: SymbolShape,
@@ -518,13 +522,18 @@ function createMapSymbol(
     context.lineTo(10, 18);
     context.lineTo(2, 10);
     context.closePath();
-  } else {
+  } else if (shape === 'cross') {
     context.moveTo(4, 4);
     context.lineTo(16, 16);
     context.moveTo(16, 4);
     context.lineTo(4, 16);
+  } else {
+    context.moveTo(10, 3);
+    context.lineTo(10, 17);
+    context.moveTo(3, 10);
+    context.lineTo(17, 10);
   }
-  if (shape !== 'cross') {
+  if (shape !== 'cross' && shape !== 'plus') {
     context.fill();
   }
   context.stroke();
@@ -532,14 +541,9 @@ function createMapSymbol(
 }
 
 function addShapeImages(map: MlMap): void {
-  const shapes: Array<[string, SymbolShape, string, string]> = [
-    ['fg03-fare-paid', 'diamond', '#1a1f2a', '#f3eddd'],
-    ['fg03-extend', 'square', '#c9a8ba', '#1a1f2a'],
-    ['fg03-new', 'triangle', '#1a1f2a', '#1a1f2a'],
-    ['fg03-verify', 'diamond', '#f3eddd', '#8a4a70'],
-    ['fg03-retrofit', 'cross', '#f3eddd', '#8a4a70'],
-    ['fg03-unknown', 'cross', '#f3eddd', '#d09020'],
-  ];
+  const shapes = FG03_SYMBOL_RECIPES as ReadonlyArray<
+    readonly [string, SymbolShape, string, string]
+  >;
   for (const [name, shape, fill, stroke] of shapes) {
     if (!map.hasImage(name)) {
       map.addImage(name, createMapSymbol(shape, fill, stroke), {
@@ -1362,7 +1366,7 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
       kind: 'facility' | 'intervention';
       source: 'map' | 'list' | 'search';
     };
-  }): void {
+  }): Fg03State {
     let transition = reduceTransition(currentState, input);
     let result: DerivedFg03Results | null = null;
     if (dataReady) {
@@ -1379,12 +1383,10 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
           'The explorer data is invalid. The published proof remains available.',
         );
         reportError('explorer', error);
-        return;
+        return currentState;
       }
       if (result.selectionInvalidated && transition.state.place !== null) {
-        const invalidationCause = input.cause === 'search'
-          ? 'search-invalidation'
-          : input.cause;
+        const invalidationCause = getFg03InvalidationCause(input.cause);
         transition = reduceTransition(transition.state, {
           cause: invalidationCause,
           patch: { place: null },
@@ -1454,6 +1456,7 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
       }
       lastSelectionOpener = focusTarget;
     }
+    return currentState;
   }
 
   const applyLoadedContext = (): void => {
@@ -1617,7 +1620,7 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
         search: window.location.search,
         validPlaceIds,
         applyState(state, cause) {
-          applyInput({
+          return applyInput({
             cause,
             nextState: state,
           });

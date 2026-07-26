@@ -348,6 +348,36 @@ test('initial runtime reconciliation cleans the URL and hydrates a direct select
   ]);
 });
 
+test('initial runtime reconciliation returns the action-compatible state', async () => {
+  const calls = [];
+  const selectedId = 'extend-hours:library:DP';
+  const initialize = mapModule.initializeFg03RuntimeState;
+
+  const state = await initialize({
+    search: `?action=new&place=${encodeURIComponent(selectedId)}`,
+    validPlaceIds: new Set([selectedId]),
+    applyState(nextState, cause) {
+      calls.push(['state', cause, nextState.place]);
+      return { ...nextState, place: null };
+    },
+    async loadReach(nextState) {
+      calls.push(['reach', nextState.place]);
+    },
+    applyCameraState() {
+      calls.push(['camera']);
+    },
+    centerSelection() {
+      calls.push(['center']);
+    },
+  });
+
+  assert.equal(state.action, 'new');
+  assert.equal(state.place, null);
+  assert.deepEqual(calls, [
+    ['state', 'data-load', selectedId],
+  ]);
+});
+
 test('an explicit map view wins over direct-selection centring', async () => {
   const calls = [];
   const selectedId = 'extend-hours:library:MD';
@@ -376,6 +406,19 @@ test('an explicit map view wins over direct-selection centring', async () => {
     ['reach', selectedId],
     ['camera', [-79.38, 43.65, 14]],
   ]);
+});
+
+test('map symbols keep unknown conditions and retrofit actions distinct without color', () => {
+  const recipes = new Map(
+    mapModule.FG03_SYMBOL_RECIPES.map(([name, shape]) => [name, shape]),
+  );
+
+  assert.equal(recipes.get('fg03-unknown'), 'cross');
+  assert.equal(recipes.get('fg03-retrofit'), 'plus');
+  assert.notEqual(
+    recipes.get('fg03-unknown'),
+    recipes.get('fg03-retrofit'),
+  );
 });
 
 test('map retry removes a failed instance and never duplicates a healthy instance', async () => {
@@ -556,6 +599,19 @@ test('state transitions keep history intent and make popstate a silent replay', 
   });
   assert.equal(invalidation.history, 'replace');
   assert.equal(invalidation.analytics, null);
+
+  assert.equal(
+    mapModule.getFg03InvalidationCause('data-load'),
+    'search-invalidation',
+  );
+  assert.equal(
+    mapModule.getFg03InvalidationCause('initial-cleanup'),
+    'search-invalidation',
+  );
+  assert.equal(
+    mapModule.getFg03InvalidationCause('action-change'),
+    'action-change',
+  );
 });
 
 test('history writes preserve Astro state while serializing only FG03 state', () => {
