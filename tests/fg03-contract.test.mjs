@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { test } from 'node:test';
 
+const distPath = new URL('../dist/', import.meta.url);
 const routePath = new URL(
   '../dist/guides/when-toronto-has-to-go/index.html',
   import.meta.url,
@@ -384,12 +385,37 @@ test('production headers preserve indexing, caching, and browser security', () =
   assert.match(headers, /X-Frame-Options: DENY/);
   assert.match(headers, /Referrer-Policy: strict-origin-when-cross-origin/);
   assert.match(headers, /Content-Security-Policy:/);
-  assert.match(
-    headers,
-    /script-src 'self' 'unsafe-inline' https:\/\/static\.cloudflareinsights\.com/,
-  );
+  assert.doesNotMatch(headers, /cloudflareinsights/);
   assert.match(headers, /connect-src 'self'/);
   assert.match(headers, /worker-src 'self' blob:/);
+  for (const route of ['/', '/index.html', '/about/*', '/guides/*', '/404.html']) {
+    const escapedRoute = route.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    assert.match(
+      headers,
+      new RegExp(
+        `(?:^|\\n)${escapedRoute}\\n\\s+Cache-Control: `
+        + 'public, no-cache, must-revalidate, no-transform',
+      ),
+      `HTML route must prevent automatic third-party transformation: ${route}`,
+    );
+  }
+  assert.equal(
+    (headers.match(/\bno-transform\b/g) ?? []).length,
+    5,
+    'Only the five HTML cache rules may disable Cloudflare transformation',
+  );
+
+  const beaconMarkup = /cloudflareinsights|beacon\.min\.js|data-cf-beacon/i;
+  const htmlFiles = readdirSync(distPath, { recursive: true })
+    .filter((path) => path.endsWith('.html'));
+  assert.ok(htmlFiles.length > 0, 'Expected built HTML files to scan');
+  for (const htmlFile of htmlFiles) {
+    assert.doesNotMatch(
+      readText(new URL(htmlFile, distPath)),
+      beaconMarkup,
+      `Built HTML must not contain analytics beacon markup: ${htmlFile}`,
+    );
+  }
 });
 
 test('CI tests data and web output before the final Cloudflare deployment step', () => {
