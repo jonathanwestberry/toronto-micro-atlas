@@ -108,6 +108,12 @@ The optional analytics bridge dispatches a sanitized `tma:analytics` custom even
 
 Properties are allowlisted in `src/scripts/atlas-events.mjs`. Analytics failure must never block the explorer.
 
+### Cloudflare injection policy
+
+Keep `Cache-Control: no-transform` on the five HTML rules in `public/_headers`: `/`, `/index.html`, `/about/*`, `/guides/*`, and `/404.html`. Production testing found that Cloudflare's automatically injected Web Analytics beacon version `2026.6.0` emitted a malformed `https:://` SPA payload. `no-transform` prevents automatic HTML injection while Cloudflare edge analytics remain available.
+
+Do not remove `no-transform` or widen the same-origin CSP for the automatic beacon without retesting the current beacon, Astro `ClientRouter` navigation, History API payloads, direct page loads, and browser console output. See the [Cloudflare Web Analytics FAQ](https://developers.cloudflare.com/web-analytics/faq/) and [Cloudflare SPA analytics guidance](https://developers.cloudflare.com/web-analytics/get-started/web-analytics-spa/).
+
 ## Accessibility contract
 
 - The complete argument and a useful default result list exist without JavaScript.
