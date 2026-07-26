@@ -37,11 +37,11 @@ const FG03_CONTEXT_FILES = Object.freeze({
 });
 const FG03_SYMBOL_RECIPES = Object.freeze([
   Object.freeze(["fg03-fare-paid", "diamond", "#1a1f2a", "#f3eddd"]),
-  Object.freeze(["fg03-extend", "square", "#c9a8ba", "#1a1f2a"]),
+  Object.freeze(["fg03-extend", "square", "#2A5BD0", "#1a1f2a"]),
   Object.freeze(["fg03-new", "triangle", "#1a1f2a", "#1a1f2a"]),
-  Object.freeze(["fg03-verify", "diamond", "#f3eddd", "#8a4a70"]),
-  Object.freeze(["fg03-retrofit", "plus", "#f3eddd", "#8a4a70"]),
-  Object.freeze(["fg03-unknown", "cross", "#f3eddd", "#d09020"])
+  Object.freeze(["fg03-verify", "diamond", "#f3eddd", "#1A2F66"]),
+  Object.freeze(["fg03-retrofit", "plus", "#f3eddd", "#1A2F66"]),
+  Object.freeze(["fg03-unknown", "cross", "#f3eddd", "#C9A52E"])
 ]);
 function asRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value : null;
@@ -254,7 +254,7 @@ function createFg03OperationalLayers() {
       type: "line",
       source: "fg03-reach",
       paint: {
-        "line-color": "#8a4a70",
+        "line-color": "#1A2F66",
         "line-width": ["interpolate", ["linear"], ["zoom"], 9, 1.2, 16, 3.5],
         "line-opacity": 0.72,
         "line-dasharray": [2, 1.4]
@@ -280,7 +280,7 @@ function createFg03OperationalLayers() {
       paint: {
         "circle-color": "#f3eddd",
         "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 1.8, 16, 4],
-        "circle-stroke-color": "#d09020",
+        "circle-stroke-color": "#C9A52E",
         "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 9, 1, 16, 2],
         "circle-opacity": 0.92
       }
@@ -292,7 +292,7 @@ function createFg03OperationalLayers() {
       paint: {
         "circle-color": "#f3eddd",
         "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 1.8, 16, 4.4],
-        "circle-stroke-color": "#8a4a70",
+        "circle-stroke-color": "#1A2F66",
         "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 9, 0.8, 16, 1.8],
         "circle-opacity": 0.94
       }
@@ -370,7 +370,7 @@ function createFg03OperationalLayers() {
       paint: {
         "circle-color": "rgba(0,0,0,0)",
         "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 9, 16, 16],
-        "circle-stroke-color": "#d09020",
+        "circle-stroke-color": "#F37E2A",
         "circle-stroke-width": 3,
         "circle-opacity": 0.98
       }

@@ -1,12 +1,30 @@
 .fg03 {
-  --fg03-paper: #f3eddd;
-  --fg03-paper-raised: #fffaf0;
-  --fg03-ink: #1a1f2a;
-  --fg03-ink-muted: #565a63;
-  --fg03-mauve: #8a4a70;
-  --fg03-mauve-soft: #dec6d3;
-  --fg03-line: rgba(26, 31, 42, 0.3);
-  --fg03-line-strong: rgba(26, 31, 42, 0.72);
+  /* Guide theme "When Toronto Has to Go": cream ground, Deep Navy as the
+     readable structural accent (transit/infrastructure that persists), Hot
+     Orange as the energy/alarm accent (access that collapses on the clock).
+     Orange never carries text on cream (~2:1); navy does the reading (~11:1).
+     Sets the shared --atlas-* contract for this guide; the --fg03-* names stay
+     as thin aliases so existing rules keep working. */
+  --atlas-ground:      #F3EDDD;                  /* Cream */
+  --atlas-surface:     #FFFAF0;
+  --atlas-ink:         #1A1F2A;                  /* Contour */
+  --atlas-ink-muted:   #565A63;
+  --atlas-line:        rgba(26, 31, 42, 0.3);
+  --atlas-line-strong: rgba(26, 31, 42, 0.72);
+  --atlas-accent:      #1A2F66;                  /* Deep Navy: text/links/markers */
+  --atlas-accent-2:    #F37E2A;                  /* Hot Orange: active/alarm fills */
+  --atlas-focus:       #1A2F66;
+
+  /* Compat aliases mapping the old private names onto the contract */
+  --fg03-paper: var(--atlas-ground);
+  --fg03-paper-raised: var(--atlas-surface);
+  --fg03-ink: var(--atlas-ink);
+  --fg03-ink-muted: var(--atlas-ink-muted);
+  --fg03-mauve: var(--atlas-accent);             /* was #8a4a70 mauve */
+  --fg03-mauve-soft: #CCDFF2;                    /* Pale Ice (was #dec6d3) */
+  --fg03-active: var(--atlas-accent-2);          /* Hot Orange */
+  --fg03-line: var(--atlas-line);
+  --fg03-line-strong: var(--atlas-line-strong);
   --fg03-water: #c8dbe0;
   --fg03-warning: #7b5221;
   --fg03-error: #87291f;
@@ -587,8 +605,8 @@
 
 .fg03-map {
   background:
-    linear-gradient(rgba(138, 74, 112, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(138, 74, 112, 0.04) 1px, transparent 1px),
+    linear-gradient(rgba(26, 47, 102, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(26, 47, 102, 0.05) 1px, transparent 1px),
     var(--fg03-paper);
   background-size: 2rem 2rem;
   min-height: max(52svh, 25rem);
@@ -793,7 +811,7 @@
 
 .fg03-result-list > li[data-selected="true"],
 .fg03-result-list > li.is-selected {
-  background: rgba(138, 74, 112, 0.09);
+  background: rgba(26, 47, 102, 0.09);
   box-shadow: inset 0.25rem 0 0 var(--fg03-mauve);
   padding-inline: 1rem;
 }
