@@ -7,7 +7,9 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "maps": "node scripts/build-contextual-maps.mjs"
+    "maps": "node scripts/build-contextual-maps.mjs",
+    "check": "astro check",
+    "test:web": "node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.3",
