@@ -184,12 +184,14 @@ class SidewalkForest {
     });
     this.map.touchZoomRotate.disableRotation();
 
-    // Attribution bottom-left, uncollapsed: it was sharing the bottom-right
-    // corner with zoom, and its compact ⓘ toggle was being read as a help
-    // button. Help is now a labelled control of its own.
+    // Attribution moves to bottom-left, out of the corner it was sharing with
+    // zoom. `compact` is left unset so MapLibre expands it where there is room
+    // and collapses it only on narrow screens: the audit asked for attribution
+    // uncollapsed "where space allows", and the reason its ⓘ was read as a help
+    // button was that it was the only info affordance on the map. It no longer
+    // is, so a compact button on a phone is honest rather than misleading.
     this.map.addControl(
       new maplibregl.AttributionControl({
-        compact: false,
         customAttribution: 'Tree data: City of Toronto Open Data · Map data © OpenStreetMap contributors',
       }),
       'bottom-left',

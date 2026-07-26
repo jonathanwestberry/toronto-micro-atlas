@@ -505,18 +505,15 @@
     font-size: 0.625rem;
   }
 
-  /* Icon-only help on narrow screens; the accessible name stays in the SVG's
-     sibling span, which is clipped rather than removed. */
-  .map-stage__btn--howto span {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-    border: 0;
+  /* The help control keeps its label on narrow screens.
+     Hiding it would leave a bare ⓘ sitting near MapLibre's compact attribution
+     button, which is also a bare ⓘ, and confusing those two is the exact
+     problem this control was added to solve. The label is what makes it
+     unambiguous, so it stays and the type shrinks instead. */
+  .map-stage__btn--howto {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.5625rem;
+    letter-spacing: 0.02em;
   }
 
   /* Sits below the top row rather than centre-bottom, clearing both the

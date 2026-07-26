@@ -33,6 +33,21 @@ interface Props {
    * group instead, which keeps it a two-item toolbar rather than a stack.
    */
   helpCorner?: 'top-left' | 'top-right';
+  /**
+   * Element to render as. Defaults to `figure`, which is what a map with a
+   * caption is. fg03 already wraps its map in a `figure` that its contract test
+   * asserts against, so it passes `div` rather than nesting one inside another.
+   */
+  as?: 'figure' | 'div';
+  /**
+   * Render the stage's own loading / partial / empty / error region.
+   *
+   * fg03 sets this false. It already owns a richer, contract-tested state
+   * machine wired to its results panel, and two overlays both claiming to
+   * describe the same map is worse than one. Guides that own their status keep
+   * it; the rest get the stage's.
+   */
+  status?: boolean;
 }
 
 const {
@@ -43,13 +58,20 @@ const {
   id = 'map-stage',
   class: className = '',
   helpCorner = 'top-left',
-} = Astro.props;
+  as = 'figure',
+  status = true,
+  // Cast rather than annotate: the dynamic `Root` element below stops Astro
+  // inferring Props for Astro.props, and an annotation would then demand every
+  // optional prop at the call site.
+} = Astro.props as Props;
 
 const howtoId = `${id}-howto`;
 const statusId = `${id}-status`;
+const Root = as;
+const Caption = as === 'figure' ? 'figcaption' : 'div';
 ---
 
-<figure
+<Root
   class:list={['map-stage', className]}
   data-map-stage
   data-map-stage-mode={expanded ? 'expanded' : 'embedded'}
@@ -173,25 +195,31 @@ const statusId = `${id}-status`;
       Loading / empty / error. Hidden once the map reports ready. A failed
       fetch has to say so; a blank rectangle is not a state.
     -->
-    <div
-      class="map-stage__status"
-      id={statusId}
-      data-map-status
-      data-map-state="loading"
-      role="status"
-      aria-live="polite"
-    >
-      <p class="map-stage__status-text" data-map-status-text>Loading the map</p>
-      <div class="map-stage__status-actions">
-        <button type="button" class="map-stage__btn map-stage__btn--retry" data-map-retry hidden>
-          Retry
-        </button>
-        <slot name="status-fallback" />
-      </div>
-    </div>
+    {
+      status && (
+        <div
+          class="map-stage__status"
+          id={statusId}
+          data-map-status
+          data-map-state="loading"
+          role="status"
+          aria-live="polite"
+        >
+          <p class="map-stage__status-text" data-map-status-text>
+            Loading the map
+          </p>
+          <div class="map-stage__status-actions">
+            <button type="button" class="map-stage__btn map-stage__btn--retry" data-map-retry hidden>
+              Retry
+            </button>
+            <slot name="status-fallback" />
+          </div>
+        </div>
+      )
+    }
   </div>
 
-  <figcaption class="map-stage__caption">
+  <Caption class="map-stage__caption">
     <slot name="caption" />
-  </figcaption>
-</figure>
+  </Caption>
+</Root>
