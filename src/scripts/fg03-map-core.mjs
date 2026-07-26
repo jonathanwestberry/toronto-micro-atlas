@@ -10,6 +10,19 @@ import {
   getSourceLabel
 } from "./fg03-results.mjs";
 const ACTIONS = /* @__PURE__ */ new Set(["open", "extend", "new", "verify", "retrofit"]);
+const TIME_LABELS = Object.freeze({
+  "1200": "Noon",
+  "2030": "8:30 p.m.",
+  "2200": "10 p.m.",
+  "0030": "12:30 a.m."
+});
+const ACTION_STATUS_LABELS = Object.freeze({
+  open: "current open facility records",
+  extend: "audited extend-hours opportunities",
+  new: "audited new-facility zones",
+  verify: "audited information checks",
+  retrofit: "audited accessibility retrofits"
+});
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const LOCAL_DATA_PATH = /^\/data\/[A-Za-z0-9._~!$&'()*+,;=:@%/?#-]+$/;
 const FG03_CONTEXT_FILES = Object.freeze({
@@ -194,6 +207,12 @@ async function loadFg03Data({
     });
   }
   const manifest = manifestValue;
+  if (!gate.passed) {
+    return {
+      manifest,
+      resources: null
+    };
+  }
   const corePromises = [
     settleGeoJson(files.facilities, fetchJson, signal),
     settleGeoJson(files.interventions, fetchJson, signal),
@@ -219,6 +238,231 @@ async function loadFg03Data({
       context
     }
   };
+}
+function createFg03OperationalLayers() {
+  return [
+    {
+      id: "fg03-reach",
+      type: "line",
+      source: "fg03-reach",
+      paint: {
+        "line-color": "#8a4a70",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 9, 1.2, 16, 3.5],
+        "line-opacity": 0.72,
+        "line-dasharray": [2, 1.4]
+      }
+    },
+    {
+      id: "fg03-stops-uncovered",
+      type: "circle",
+      source: "fg03-stops",
+      paint: {
+        "circle-color": "#6f716e",
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 1.3, 16, 3.2],
+        "circle-opacity": 0.34
+      }
+    },
+    {
+      id: "fg03-stops-unknown",
+      type: "circle",
+      source: "fg03-stops",
+      metadata: {
+        "fg03-condition": "unknown-or-missing"
+      },
+      paint: {
+        "circle-color": "#f3eddd",
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 1.8, 16, 4],
+        "circle-stroke-color": "#d09020",
+        "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 9, 1, 16, 2],
+        "circle-opacity": 0.92
+      }
+    },
+    {
+      id: "fg03-stops-covered",
+      type: "circle",
+      source: "fg03-stops",
+      paint: {
+        "circle-color": "#f3eddd",
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 1.8, 16, 4.4],
+        "circle-stroke-color": "#8a4a70",
+        "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 9, 0.8, 16, 1.8],
+        "circle-opacity": 0.94
+      }
+    },
+    {
+      id: "fg03-facilities-unrestricted",
+      type: "circle",
+      source: "fg03-facilities",
+      filter: ["==", ["get", "accessCondition"], "unrestricted"],
+      paint: {
+        "circle-color": "#f3eddd",
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 3.5, 16, 7],
+        "circle-stroke-color": "#1a1f2a",
+        "circle-stroke-width": 2
+      }
+    },
+    {
+      id: "fg03-facilities-fare-paid",
+      type: "symbol",
+      source: "fg03-facilities",
+      filter: ["==", ["get", "accessCondition"], "fare_paid"],
+      layout: {
+        "icon-image": "fg03-fare-paid",
+        "icon-allow-overlap": true,
+        "icon-size": ["interpolate", ["linear"], ["zoom"], 8, 0.72, 16, 1.12]
+      }
+    },
+    {
+      id: "fg03-facilities-unknown",
+      type: "symbol",
+      source: "fg03-facilities",
+      metadata: {
+        "fg03-condition": "unknown-or-missing"
+      },
+      filter: [
+        "!",
+        [
+          "in",
+          ["get", "accessCondition"],
+          ["literal", ["unrestricted", "fare_paid"]]
+        ]
+      ],
+      layout: {
+        "icon-image": "fg03-unknown",
+        "icon-allow-overlap": true,
+        "icon-size": ["interpolate", ["linear"], ["zoom"], 8, 0.72, 16, 1.12]
+      }
+    },
+    {
+      id: "fg03-interventions",
+      type: "symbol",
+      source: "fg03-interventions",
+      layout: {
+        "icon-image": [
+          "match",
+          ["get", "action"],
+          "extend",
+          "fg03-extend",
+          "new",
+          "fg03-new",
+          "verify",
+          "fg03-verify",
+          "retrofit",
+          "fg03-retrofit",
+          "fg03-unknown"
+        ],
+        "icon-allow-overlap": true,
+        "icon-size": ["interpolate", ["linear"], ["zoom"], 8, 0.76, 16, 1.18]
+      }
+    },
+    {
+      id: "fg03-selected-halo",
+      type: "circle",
+      source: "fg03-selected",
+      paint: {
+        "circle-color": "rgba(0,0,0,0)",
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 9, 16, 16],
+        "circle-stroke-color": "#d09020",
+        "circle-stroke-width": 3,
+        "circle-opacity": 0.98
+      }
+    }
+  ];
+}
+async function initializeFg03RuntimeState({
+  search,
+  validPlaceIds,
+  applyState,
+  loadReach,
+  applyCameraState,
+  centerSelection
+}) {
+  const state = parseFg03State(search, validPlaceIds);
+  const canonicalSearch = serializeFg03State(state);
+  applyState(
+    state,
+    search === canonicalSearch ? "data-load" : "initial-cleanup"
+  );
+  if (state.place !== null) {
+    await loadReach(state);
+  }
+  if (state.map !== null) {
+    applyCameraState(state);
+  } else if (state.place !== null) {
+    centerSelection({ animate: false, state });
+  }
+  return state;
+}
+function createFg03MapStartController({
+  hasMap,
+  isHealthy,
+  destroy,
+  start
+}) {
+  let pending = null;
+  const ensureStarted = () => {
+    if (isHealthy()) {
+      return Promise.resolve();
+    }
+    if (pending !== null) {
+      return pending;
+    }
+    if (hasMap()) {
+      destroy();
+    }
+    pending = Promise.resolve().then(start).catch((error) => {
+      if (hasMap()) {
+        destroy();
+      }
+      throw error;
+    }).finally(() => {
+      pending = null;
+    });
+    return pending;
+  };
+  return {
+    start: ensureStarted
+  };
+}
+function withholdFg03Explorer({
+  controls,
+  destroyMap,
+  explorer,
+  mapElement,
+  root,
+  template
+}) {
+  root.dataset.fg03GateStatus = "failed";
+  controls.inert = true;
+  controls.setAttribute("aria-disabled", "true");
+  mapElement.inert = true;
+  mapElement.tabIndex = -1;
+  mapElement.setAttribute("aria-disabled", "true");
+  destroyMap();
+  explorer.replaceWith(template.content.cloneNode(true));
+}
+function chooseFg03CloseFocus(opener, replacement) {
+  if (opener?.isConnected) {
+    return opener;
+  }
+  return replacement?.isConnected ? replacement : null;
+}
+function formatFg03Status({
+  action,
+  access,
+  count,
+  time,
+  walk
+}) {
+  const safeCount = typeof count === "number" && Number.isFinite(count) && count >= 0 ? Math.floor(count) : 0;
+  const accessLabel = access === "rider" ? "TTC rider access" : "public access";
+  const actionLabel = ACTION_STATUS_LABELS[action] ?? ACTION_STATUS_LABELS.extend;
+  const timeLabel = TIME_LABELS[time] ?? TIME_LABELS["2200"];
+  const walkDistance = [300, 400, 500].includes(walk) ? walk : 400;
+  return `Showing ${safeCount.toLocaleString("en-CA")} ${actionLabel} for ${timeLabel}, ${accessLabel}, and a ${walkDistance} m walk.`;
+}
+function shouldShowFg03ResultLabels(zoom) {
+  return typeof zoom === "number" && Number.isFinite(zoom) && zoom >= 13.5;
 }
 function transitionAnalytics(state, input) {
   switch (input.cause) {
@@ -515,9 +759,16 @@ export {
   createFg03Cleanup,
   createFg03DeferredLoader,
   createFg03LifecycleController,
+  createFg03MapStartController,
+  createFg03OperationalLayers,
+  chooseFg03CloseFocus,
+  formatFg03Status,
+  initializeFg03RuntimeState,
   loadFg03Data,
   reduceFg03Transition,
   renderFg03ResultItem,
   safeFg03Href,
+  shouldShowFg03ResultLabels,
+  withholdFg03Explorer,
   writeFg03History
 };

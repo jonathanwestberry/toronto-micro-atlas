@@ -9,9 +9,11 @@ type ActionId = 'open' | 'extend' | 'new' | 'verify' | 'retrofit';
 interface Phase1Headline {
   activeTransitPointCount: number;
   farePaidOpenAccessPointCount: number;
+  farePaidOpenFacilityRecordCount: number;
   unit: 'grouped transit points';
   unrestrictedCoveredTransitPointCount: number;
   unrestrictedOpenAccessPointCount: number;
+  unrestrictedOpenFacilityRecordCount: number;
 }
 
 interface Phase2Headline {
@@ -159,14 +161,14 @@ const defaultUrlAccess = defaultAccess === 'rider_conditional' ? 'rider' : 'publ
 const defaultSnapshotLabel = snapshotLabels[defaultTime];
 const defaultPhase1 = manifest.headlines.bySnapshot[defaultTime].phase1Grouped;
 const actionLabels: Record<ActionId, string> = {
-  open: 'Current open washrooms',
+  open: 'Current open facility records',
   extend: 'Extend hours',
   new: 'New facility zone',
   verify: 'Verify published information',
   retrofit: 'Accessibility retrofit',
 };
 const actionStatusLabels: Record<ActionId, string> = {
-  open: 'current open washrooms',
+  open: 'current open facility records',
   extend: 'audited extend-hours opportunities',
   new: 'audited new-facility zones',
   verify: 'audited information checks',
@@ -262,7 +264,7 @@ const defaultResults = gatePassed
   : [];
 
 const riderConditionalCount =
-  manifest.headlines.bySnapshot[defaultTime].phase1Grouped.farePaidOpenAccessPointCount;
+  manifest.headlines.bySnapshot[defaultTime].phase1Grouped.farePaidOpenFacilityRecordCount;
 const config = JSON.stringify({
   defaultState: {
     ...manifest.defaultState,
@@ -366,10 +368,11 @@ const config = JSON.stringify({
         <div>
           <h3>Fare-gate washrooms are a separate network</h3>
           <p>
-            The TTC reports <strong>13 fare-gate washrooms</strong> open at every
-            snapshot. They require paid-area access, so they never seed the public
-            coverage finding. Turn on “TTC rider access” in the explorer to test that
-            different assumption.
+            The TTC reports{' '}
+            <strong>{number.format(riderConditionalCount)}</strong>{' '}
+            fare-gate facility records open at every snapshot. They require paid-area
+            access, so they never seed the public coverage finding. Turn on “TTC rider
+            access” in the explorer to test that different assumption.
           </p>
         </div>
       </div>
@@ -381,7 +384,9 @@ const config = JSON.stringify({
           <p>
             Phase 1 groups related stop records into transit points for the public
             finding above. Phase 2 retains individual GTFS stops and platforms for
-            the intervention audit below.
+            the intervention audit below. The explorer’s Current open count uses
+            facility records, while the proof groups co-located unrestricted records
+            into access points.
           </p>
         </div>
         <table>
@@ -681,10 +686,61 @@ const config = JSON.stringify({
 
                 <div class="fg03-legend" data-fg03-legend aria-label="Map legend">
                   <h3>Legend</h3>
+                  <p><b>Transit and selection</b></p>
+                  <ul>
+                    <li>
+                      <span
+                        class="fg03-symbol fg03-symbol--circle"
+                        aria-hidden="true"
+                        style="border-color: var(--fg03-mauve);"
+                      />
+                      <span><b class="fg03-shape-name">Ring</b> Covered transit stop</span>
+                    </li>
+                    <li>
+                      <span
+                        class="fg03-symbol fg03-symbol--circle"
+                        aria-hidden="true"
+                        style="background: var(--fg03-ink-muted); border-color: var(--fg03-ink-muted); opacity: 0.55;"
+                      />
+                      <span><b class="fg03-shape-name">Dot</b> Uncovered transit stop</span>
+                    </li>
+                    <li>
+                      <span
+                        class="fg03-symbol fg03-symbol--circle"
+                        aria-hidden="true"
+                        style="border-color: #d09020;"
+                      />
+                      <span><b class="fg03-shape-name">Amber ring</b> Unknown or missing coverage</span>
+                    </li>
+                    <li>
+                      <span
+                        aria-hidden="true"
+                        style="border-top: 2px dashed var(--fg03-mauve); display: block; width: 1rem;"
+                      />
+                      <span><b class="fg03-shape-name">Dashed line</b> Selected walking reach</span>
+                    </li>
+                    <li>
+                      <span
+                        class="fg03-symbol fg03-symbol--circle"
+                        aria-hidden="true"
+                        style="border-color: #d09020; box-shadow: 0 0 0 2px var(--fg03-paper-raised);"
+                      />
+                      <span><b class="fg03-shape-name">Amber halo</b> Selected place halo</span>
+                    </li>
+                  </ul>
+                  <p><b>Facilities and actions</b></p>
                   <ul>
                     <li>
                       <span class="fg03-symbol fg03-symbol--circle" aria-hidden="true" />
-                      <span><b class="fg03-shape-name">Circle</b> Current open facility</span>
+                      <span><b class="fg03-shape-name">Circle</b> Current open facility record</span>
+                    </li>
+                    <li>
+                      <span
+                        class="fg03-symbol fg03-symbol--diamond"
+                        aria-hidden="true"
+                        style="background: var(--fg03-ink); border-color: var(--fg03-paper-raised);"
+                      />
+                      <span><b class="fg03-shape-name">Filled diamond</b> Fare-paid facility</span>
                     </li>
                     <li>
                       <span class="fg03-symbol fg03-symbol--square" aria-hidden="true" />
@@ -696,11 +752,15 @@ const config = JSON.stringify({
                     </li>
                     <li>
                       <span class="fg03-symbol fg03-symbol--diamond" aria-hidden="true" />
-                      <span><b class="fg03-shape-name">Diamond</b> Verify information</span>
+                      <span><b class="fg03-shape-name">Outline diamond</b> Verify information</span>
                     </li>
                     <li>
-                      <span class="fg03-symbol fg03-symbol--diamond" aria-hidden="true" />
-                      <span><b class="fg03-shape-name">Diamond</b> Fare-paid facility</span>
+                      <span
+                        class="fg03-symbol fg03-symbol--cross"
+                        aria-hidden="true"
+                        style="border-color: #d09020; color: #d09020;"
+                      >×</span>
+                      <span><b class="fg03-shape-name">Amber cross</b> Unknown or missing facility data</span>
                     </li>
                     <li>
                       <span class="fg03-symbol fg03-symbol--cross" aria-hidden="true">+</span>

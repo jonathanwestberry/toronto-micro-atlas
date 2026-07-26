@@ -76,7 +76,7 @@ test('proof keeps each snapshot count and measurement unit together', () => {
   assert.match(html, /grouped transit points/);
   assert.match(html, /GTFS stops and platforms/);
   assert.match(html, /data-fg03-rider-conditional-count="13"/);
-  assert.match(html, /13 fare-gate washrooms/);
+  assert.match(html, /<strong>13<\/strong> fare-gate facility records/);
 });
 
 test('native controls expose the complete shareable state contract before the map', () => {
@@ -132,12 +132,30 @@ test('map shell explains keyboard use, symbol shapes, date, and attribution', ()
   assert.match(html, /circle[\s\S]*Current open facility/);
   assert.match(html, /square[\s\S]*Extend hours/);
   assert.match(html, /triangle[\s\S]*New facility zone/);
-  assert.match(html, /diamond[\s\S]*Verify information/);
-  assert.match(html, /diamond[\s\S]*Fare-paid facility/);
+  assert.match(html, /outline diamond[\s\S]*Verify information/i);
+  assert.match(html, /filled diamond[\s\S]*Fare-paid facility/i);
   assert.match(html, /cross[\s\S]*Accessibility retrofit/);
+  assert.match(html, /covered transit stop/i);
+  assert.match(html, /uncovered transit stop/i);
+  assert.match(html, /unknown or missing coverage/i);
+  assert.match(html, /selected walking reach/i);
+  assert.match(html, /selected place halo/i);
   assert.match(html, /Snapshot: July 21, 2026/);
   assert.match(html, /OpenStreetMap contributors/);
   assert.match(html, /Open Government Licence - Toronto/);
+});
+
+test('access-point proof and facility-record explorer use explicit counting grains', () => {
+  const html = normalize(readRoute());
+
+  assert.match(
+    html,
+    /fare-gate facility records open at every snapshot/i,
+  );
+  assert.match(
+    html,
+    /current open count[\s\S]*facility records[\s\S]*co-located[\s\S]*access points/i,
+  );
 });
 
 test('default recommendation list is complete, ranked, and useful without JavaScript', () => {

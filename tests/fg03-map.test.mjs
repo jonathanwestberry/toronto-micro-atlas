@@ -243,6 +243,259 @@ test('manifest loads first and every dependent source settles independently', as
   );
 });
 
+test('a failed manifest gate withholds every dependent request', async () => {
+  const calls = [];
+  const manifest = {
+    files: {
+      facilities: '/data/fg03/facilities.geojson',
+      interventions: '/data/fg03/interventions.geojson',
+      stops2200: '/data/fg03/stops-2200.geojson',
+    },
+    gate: {
+      passed: false,
+      reason: 'audit failed',
+    },
+    snapshotDate: '2026-07-21',
+  };
+
+  const loaded = await mapModule.loadFg03Data({
+    manifestUrl: '/data/fg03/manifest.json',
+    snapshot: '2200',
+    contextFiles: {
+      boundary: '/data/toronto-boundary.geojson',
+    },
+    async fetchJson(url) {
+      calls.push(url);
+      if (url !== '/data/fg03/manifest.json') {
+        throw new Error(`Unexpected dependent request: ${url}`);
+      }
+      return manifest;
+    },
+  });
+
+  assert.equal(loaded.manifest, manifest);
+  assert.equal(loaded.resources, null);
+  assert.deepEqual(calls, ['/data/fg03/manifest.json']);
+});
+
+test('operational layers expose complete, ordered, non-color-only map semantics', () => {
+  const buildLayers = mapModule.createFg03OperationalLayers;
+
+  assert.equal(typeof buildLayers, 'function');
+  const layers = buildLayers();
+  const ids = layers.map((layer) => layer.id);
+
+  assert.deepEqual(ids, [
+    'fg03-reach',
+    'fg03-stops-uncovered',
+    'fg03-stops-unknown',
+    'fg03-stops-covered',
+    'fg03-facilities-unrestricted',
+    'fg03-facilities-fare-paid',
+    'fg03-facilities-unknown',
+    'fg03-interventions',
+    'fg03-selected-halo',
+  ]);
+  assert.equal(layers.at(-1).id, 'fg03-selected-halo');
+  assert.notDeepEqual(
+    layers.find((layer) => layer.id === 'fg03-stops-covered').paint,
+    layers.find((layer) => layer.id === 'fg03-stops-uncovered').paint,
+  );
+  assert.match(
+    JSON.stringify(layers.find((layer) => layer.id === 'fg03-stops-unknown')),
+    /unknown|missing/i,
+  );
+  assert.notEqual(
+    layers
+      .find((layer) => layer.id === 'fg03-facilities-fare-paid')
+      .layout['icon-image'],
+    layers
+      .find((layer) => layer.id === 'fg03-interventions')
+      .layout['icon-image'][7],
+  );
+});
+
+test('initial runtime reconciliation cleans the URL and hydrates a direct selection', async () => {
+  const calls = [];
+  const selectedId = 'extend-hours:library:MD';
+  const initialize = mapModule.initializeFg03RuntimeState;
+
+  assert.equal(typeof initialize, 'function');
+  const state = await initialize({
+    search:
+      `?time=2200&time=2200&unknown=x&place=${encodeURIComponent(selectedId)}`,
+    validPlaceIds: new Set([selectedId]),
+    applyState(nextState, cause) {
+      calls.push(['state', cause, nextState]);
+    },
+    async loadReach(nextState) {
+      calls.push(['reach', nextState.place]);
+    },
+    applyCameraState() {
+      calls.push(['camera']);
+    },
+    centerSelection({ animate }) {
+      calls.push(['center', animate]);
+    },
+  });
+
+  assert.equal(state.place, selectedId);
+  assert.equal(state.map, null);
+  assert.deepEqual(calls, [
+    ['state', 'initial-cleanup', state],
+    ['reach', selectedId],
+    ['center', false],
+  ]);
+});
+
+test('an explicit map view wins over direct-selection centring', async () => {
+  const calls = [];
+  const selectedId = 'extend-hours:library:MD';
+  const initialize = mapModule.initializeFg03RuntimeState;
+  const state = await initialize({
+    search:
+      `?place=${encodeURIComponent(selectedId)}`
+      + '&map=-79.380000,43.650000,14.000',
+    validPlaceIds: new Set([selectedId]),
+    applyState(nextState, cause) {
+      calls.push(['state', cause, nextState]);
+    },
+    async loadReach(nextState) {
+      calls.push(['reach', nextState.place]);
+    },
+    applyCameraState(nextState) {
+      calls.push(['camera', nextState.map]);
+    },
+    centerSelection() {
+      calls.push(['center']);
+    },
+  });
+
+  assert.deepEqual(calls, [
+    ['state', 'initial-cleanup', state],
+    ['reach', selectedId],
+    ['camera', [-79.38, 43.65, 14]],
+  ]);
+});
+
+test('map retry removes a failed instance and never duplicates a healthy instance', async () => {
+  let mapExists = false;
+  let healthy = false;
+  let starts = 0;
+  let destroys = 0;
+  const starter = mapModule.createFg03MapStartController({
+    hasMap: () => mapExists,
+    isHealthy: () => healthy,
+    destroy() {
+      destroys += 1;
+      mapExists = false;
+      healthy = false;
+    },
+    async start() {
+      starts += 1;
+      mapExists = true;
+      if (starts === 1) {
+        throw new Error('partial map startup');
+      }
+      healthy = true;
+    },
+  });
+
+  await assert.rejects(starter.start, /partial map startup/);
+  await starter.start();
+  await starter.start();
+
+  assert.equal(starts, 2);
+  assert.equal(destroys, 1);
+  assert.equal(mapExists, true);
+  assert.equal(healthy, true);
+});
+
+test('failed gate replacement removes the explorer and marks the runtime withheld', () => {
+  const calls = [];
+  const root = { dataset: { fg03GateStatus: 'passed' } };
+  const controls = {
+    inert: false,
+    setAttribute(name, value) {
+      calls.push(['controls-attribute', name, value]);
+    },
+  };
+  const mapElement = {
+    inert: false,
+    tabIndex: 0,
+    setAttribute(name, value) {
+      calls.push(['map-attribute', name, value]);
+    },
+  };
+  const replacement = { kind: 'failed-gate' };
+  const explorer = {
+    replaceWith(node) {
+      calls.push(['replace', node]);
+    },
+  };
+  const template = {
+    content: {
+      cloneNode(deep) {
+        calls.push(['clone', deep]);
+        return replacement;
+      },
+    },
+  };
+
+  mapModule.withholdFg03Explorer({
+    controls,
+    destroyMap() {
+      calls.push(['destroy-map']);
+    },
+    explorer,
+    mapElement,
+    root,
+    template,
+  });
+
+  assert.equal(root.dataset.fg03GateStatus, 'failed');
+  assert.equal(controls.inert, true);
+  assert.equal(mapElement.inert, true);
+  assert.equal(mapElement.tabIndex, -1);
+  assert.deepEqual(calls, [
+    ['controls-attribute', 'aria-disabled', 'true'],
+    ['map-attribute', 'aria-disabled', 'true'],
+    ['destroy-map'],
+    ['clone', true],
+    ['replace', replacement],
+  ]);
+});
+
+test('close focus prefers the connected opener and falls back only after replacement', () => {
+  const mapOpener = { isConnected: true, kind: 'map' };
+  const detachedListOpener = { isConnected: false, kind: 'old-list-button' };
+  const replacement = { isConnected: true, kind: 'new-list-button' };
+  const chooseFocus = mapModule.chooseFg03CloseFocus;
+
+  assert.equal(chooseFocus(mapOpener, replacement), mapOpener);
+  assert.equal(chooseFocus(detachedListOpener, replacement), replacement);
+  assert.equal(chooseFocus(null, replacement), replacement);
+  assert.equal(chooseFocus(detachedListOpener, null), null);
+});
+
+test('status and result-label helpers name the counting grain and zoom threshold', () => {
+  const status = mapModule.formatFg03Status({
+    action: 'open',
+    access: 'public',
+    count: 332,
+    time: '1200',
+    walk: 400,
+  });
+
+  assert.equal(
+    status,
+    'Showing 332 current open facility records for Noon, public access, and a 400 m walk.',
+  );
+  assert.equal(mapModule.shouldShowFg03ResultLabels(13.49), false);
+  assert.equal(mapModule.shouldShowFg03ResultLabels(13.5), true);
+  assert.equal(mapModule.shouldShowFg03ResultLabels(Number.NaN), false);
+});
+
 test('state transitions keep history intent and make popstate a silent replay', () => {
   const current = {
     time: '2200',

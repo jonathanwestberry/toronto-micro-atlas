@@ -10,26 +10,40 @@ import {
   getMatchingQueryCell,
 } from './fg03-results.mjs';
 import {
+  chooseFg03CloseFocus,
   createFg03Cleanup,
   createFg03DeferredLoader,
   createFg03LifecycleController,
+  createFg03MapStartController,
+  createFg03OperationalLayers,
   FG03_CONTEXT_FILES,
+  formatFg03Status,
+  initializeFg03RuntimeState,
   loadFg03Data,
   reduceFg03Transition,
   renderFg03ResultItem,
   safeFg03Href,
+  shouldShowFg03ResultLabels,
+  withholdFg03Explorer,
   writeFg03History,
 } from './fg03-map-core.mjs';
 
 export {
+  chooseFg03CloseFocus,
   createFg03Cleanup,
   createFg03DeferredLoader,
   createFg03LifecycleController,
+  createFg03MapStartController,
+  createFg03OperationalLayers,
   FG03_CONTEXT_FILES,
+  formatFg03Status,
+  initializeFg03RuntimeState,
   loadFg03Data,
   reduceFg03Transition,
   renderFg03ResultItem,
   safeFg03Href,
+  shouldShowFg03ResultLabels,
+  withholdFg03Explorer,
   writeFg03History,
 } from './fg03-map-core.mjs';
 
@@ -122,7 +136,7 @@ const TIME_LABELS: Record<Snapshot, string> = {
   '0030': '12:30 a.m.',
 };
 const ACTION_LABELS: Record<Action, string> = {
-  open: 'current open washrooms',
+  open: 'current open facility records',
   extend: 'audited extend-hours opportunities',
   new: 'audited new-facility zones',
   verify: 'audited information checks',
@@ -186,6 +200,55 @@ const makeLifecycleController = createFg03LifecycleController as unknown as (
   start: () => void;
   dispose: () => void;
 };
+const buildOperationalLayers = createFg03OperationalLayers as unknown as (
+  () => import('maplibre-gl').LayerSpecification[]
+);
+const makeMapStartController = createFg03MapStartController as unknown as (
+  options: {
+    hasMap: () => boolean;
+    isHealthy: () => boolean;
+    destroy: () => void;
+    start: () => Promise<void>;
+  },
+) => {
+  start: () => Promise<void>;
+};
+const initializeRuntimeState = initializeFg03RuntimeState as unknown as (
+  options: {
+    search: string;
+    validPlaceIds?: Set<string>;
+    applyState: (state: Fg03State, cause: string) => void;
+    loadReach: (state: Fg03State) => Promise<void>;
+    applyCameraState: (state: Fg03State) => void;
+    centerSelection: (options: { animate: boolean; state: Fg03State }) => void;
+  },
+) => Promise<Fg03State>;
+const formatStatus = formatFg03Status as unknown as (
+  options: {
+    action: Action;
+    access: Access;
+    count: number;
+    time: Snapshot;
+    walk: 300 | 400 | 500;
+  },
+) => string;
+const showResultLabels = shouldShowFg03ResultLabels as unknown as (
+  zoom: number,
+) => boolean;
+const chooseCloseFocus = chooseFg03CloseFocus as unknown as (
+  opener: HTMLElement | null,
+  replacement: HTMLElement | null,
+) => HTMLElement | null;
+const withholdExplorer = withholdFg03Explorer as unknown as (
+  options: {
+    controls: HTMLFormElement;
+    destroyMap: () => void;
+    explorer: HTMLElement;
+    mapElement: HTMLElement;
+    root: HTMLElement;
+    template: HTMLTemplateElement;
+  },
+) => void;
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -475,6 +538,7 @@ function addShapeImages(map: MlMap): void {
     ['fg03-new', 'triangle', '#1a1f2a', '#1a1f2a'],
     ['fg03-verify', 'diamond', '#f3eddd', '#8a4a70'],
     ['fg03-retrofit', 'cross', '#f3eddd', '#8a4a70'],
+    ['fg03-unknown', 'cross', '#f3eddd', '#d09020'],
   ];
   for (const [name, shape, fill, stroke] of shapes) {
     if (!map.hasImage(name)) {
@@ -496,115 +560,41 @@ function addOperationalLayers(map: MlMap): void {
     ensureGeoJsonSource(map, source, EMPTY_COLLECTION);
   }
 
-  addLayerOnce(map, {
-    id: 'fg03-reach',
-    type: 'line',
-    source: 'fg03-reach',
-    paint: {
-      'line-color': '#8a4a70',
-      'line-width': ['interpolate', ['linear'], ['zoom'], 9, 1.2, 16, 3.5],
-      'line-opacity': 0.72,
-      'line-dasharray': [2, 1.4],
-    },
-  });
-  addLayerOnce(map, {
-    id: 'fg03-stops-uncovered',
-    type: 'circle',
-    source: 'fg03-stops',
-    paint: {
-      'circle-color': '#6f716e',
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 1.3, 16, 3.2],
-      'circle-opacity': 0.34,
-    },
-  });
-  addLayerOnce(map, {
-    id: 'fg03-stops-covered',
-    type: 'circle',
-    source: 'fg03-stops',
-    paint: {
-      'circle-color': '#f3eddd',
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 1.8, 16, 4.4],
-      'circle-stroke-color': '#8a4a70',
-      'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 9, 0.8, 16, 1.8],
-      'circle-opacity': 0.94,
-    },
-  });
-  addLayerOnce(map, {
-    id: 'fg03-facilities-unrestricted',
-    type: 'circle',
-    source: 'fg03-facilities',
-    filter: ['==', ['get', 'accessCondition'], 'unrestricted'],
-    paint: {
-      'circle-color': '#f3eddd',
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 3.5, 16, 7],
-      'circle-stroke-color': '#1a1f2a',
-      'circle-stroke-width': 2,
-    },
-  });
-  addLayerOnce(map, {
-    id: 'fg03-facilities-fare-paid',
-    type: 'symbol',
-    source: 'fg03-facilities',
-    filter: ['==', ['get', 'accessCondition'], 'fare_paid'],
-    layout: {
-      'icon-image': 'fg03-fare-paid',
-      'icon-allow-overlap': true,
-      'icon-size': ['interpolate', ['linear'], ['zoom'], 8, 0.72, 16, 1.12],
-    },
-  });
-  addLayerOnce(map, {
-    id: 'fg03-interventions',
-    type: 'symbol',
-    source: 'fg03-interventions',
-    layout: {
-      'icon-image': [
-        'match',
-        ['get', 'action'],
-        'extend',
-        'fg03-extend',
-        'new',
-        'fg03-new',
-        'verify',
-        'fg03-verify',
-        'retrofit',
-        'fg03-retrofit',
-        'fg03-verify',
-      ],
-      'icon-allow-overlap': true,
-      'icon-size': ['interpolate', ['linear'], ['zoom'], 8, 0.76, 16, 1.18],
-    },
-  });
-  addLayerOnce(map, {
-    id: 'fg03-selected-halo',
-    type: 'circle',
-    source: 'fg03-selected',
-    paint: {
-      'circle-color': 'rgba(0,0,0,0)',
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 9, 16, 16],
-      'circle-stroke-color': '#d09020',
-      'circle-stroke-width': 3,
-      'circle-opacity': 0.98,
-    },
-  });
+  for (const layer of buildOperationalLayers()) {
+    addLayerOnce(map, layer);
+  }
 }
 
 function updateStopFilters(map: MlMap, state: Fg03State): void {
   const access = state.access === 'rider' ? 'rider_conditional' : 'public';
+  const coverage = [
+    'get',
+    String(state.walk),
+    ['get', access, ['get', 'coverage']],
+  ] as import('maplibre-gl').ExpressionSpecification;
   const covered = [
     '==',
-    ['get', String(state.walk), ['get', access, ['get', 'coverage']]],
+    coverage,
     true,
   ] as import('maplibre-gl').FilterSpecification;
   const uncovered = [
-    '!=',
-    ['get', String(state.walk), ['get', access, ['get', 'coverage']]],
-    true,
+    '==',
+    coverage,
+    false,
+  ] as import('maplibre-gl').FilterSpecification;
+  const unknown = [
+    'all',
+    ['!=', coverage, true],
+    ['!=', coverage, false],
   ] as import('maplibre-gl').FilterSpecification;
   if (map.getLayer('fg03-stops-covered')) {
     map.setFilter('fg03-stops-covered', covered);
   }
   if (map.getLayer('fg03-stops-uncovered')) {
     map.setFilter('fg03-stops-uncovered', uncovered);
+  }
+  if (map.getLayer('fg03-stops-unknown')) {
+    map.setFilter('fg03-stops-unknown', unknown);
   }
 }
 
@@ -649,6 +639,56 @@ function addOrientationLabels(
     label.style.textShadow = '0 1px 0 #f3eddd, 1px 0 0 #f3eddd';
     markers.push(
       new maplibre.Marker({ element: label, anchor: 'center' })
+        .setLngLat([coordinates[0], coordinates[1]])
+        .addTo(map),
+    );
+  }
+  return markers;
+}
+
+function addResultLabels(
+  maplibre: MlModule,
+  map: MlMap,
+  features: GeoJsonFeature[],
+): import('maplibre-gl').Marker[] {
+  if (!showResultLabels(map.getZoom())) {
+    return [];
+  }
+  const markers: import('maplibre-gl').Marker[] = [];
+  for (const feature of features.slice(0, 40)) {
+    const properties = featureProperties(feature);
+    const coordinates = feature.geometry.coordinates;
+    if (
+      !Array.isArray(coordinates)
+      || coordinates.length < 2
+      || typeof coordinates[0] !== 'number'
+      || typeof coordinates[1] !== 'number'
+    ) {
+      continue;
+    }
+    const label = document.createElement('span');
+    label.setAttribute('data-fg03-map-result-label', '');
+    label.setAttribute('aria-hidden', 'true');
+    label.textContent = typeof properties.name === 'string'
+      && properties.name.trim() !== ''
+      ? properties.name.trim()
+      : 'Name unavailable';
+    label.style.background = 'rgba(243, 237, 221, 0.94)';
+    label.style.border = '1px solid #8f8678';
+    label.style.borderRadius = '2px';
+    label.style.color = '#1a1f2a';
+    label.style.fontFamily = 'var(--fg03-ui)';
+    label.style.fontSize = '10px';
+    label.style.fontWeight = '650';
+    label.style.lineHeight = '1.2';
+    label.style.maxWidth = '10rem';
+    label.style.overflow = 'hidden';
+    label.style.padding = '2px 4px';
+    label.style.pointerEvents = 'none';
+    label.style.textOverflow = 'ellipsis';
+    label.style.whiteSpace = 'nowrap';
+    markers.push(
+      new maplibre.Marker({ element: label, anchor: 'bottom', offset: [0, -10] })
         .setLngLat([coordinates[0], coordinates[1]])
         .addTo(map),
     );
@@ -769,9 +809,9 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
   let map: MlMap | null = null;
   let maplibre: MlModule | null = null;
   let mapStyleReady = false;
-  let mapStartPromise: Promise<void> | null = null;
   let dataLoadPromise: Promise<void> | null = null;
   let disposed = false;
+  let gateWithheld = false;
   let suppressCameraHistory = false;
   let lastSelectionOpener: HTMLElement | null = null;
   let searchAnalyticsTimer = 0;
@@ -781,7 +821,12 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
   const stopsRequests = new Map<Snapshot, Promise<GeoJsonCollection>>();
   const reachCache = new Map<string, GeoJsonCollection>();
   const orientationMarkers: import('maplibre-gl').Marker[] = [];
+  const resultLabelMarkers: import('maplibre-gl').Marker[] = [];
 
+  const explorer = root.querySelector<HTMLElement>('[data-fg03-gate="passed"]');
+  const failedGateTemplate = root.querySelector<HTMLTemplateElement>(
+    '[data-fg03-gate-failed-template]',
+  );
   const resultsRoot = root.querySelector<HTMLElement>('[data-fg03-results]');
   const standardGroup = root.querySelector<HTMLElement>(
     '[data-fg03-results-group="standard"]',
@@ -867,6 +912,30 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
     return id;
   };
 
+  const destroyMap = (): void => {
+    for (const marker of orientationMarkers) {
+      marker.remove();
+    }
+    orientationMarkers.length = 0;
+    for (const marker of resultLabelMarkers) {
+      marker.remove();
+    }
+    resultLabelMarkers.length = 0;
+    mapStyleReady = false;
+    try {
+      map?.stop();
+    } catch {
+      // A partially initialized map may not have a usable render loop.
+    }
+    try {
+      map?.remove();
+    } catch {
+      // A partially initialized map may already have removed its container.
+    }
+    map = null;
+    delete mapElement.dataset.ready;
+  };
+
   const updateControls = (): void => {
     for (const input of controls.querySelectorAll<HTMLInputElement>(
       'input[type="radio"]',
@@ -885,14 +954,13 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
   };
 
   const statusText = (count: number): string => {
-    const access = currentState.access === 'public'
-      ? 'public access'
-      : 'TTC rider access';
-    return `Showing ${count.toLocaleString('en-CA')} ${
-      ACTION_LABELS[currentState.action]
-    } for ${TIME_LABELS[currentState.time]}, ${access}, and a ${
-      currentState.walk
-    } m walk.`;
+    return formatStatus({
+      action: currentState.action,
+      access: currentState.access,
+      count,
+      time: currentState.time,
+      walk: currentState.walk,
+    });
   };
 
   const findVisibleFeature = (id: string | null): GeoJsonFeature | null => (
@@ -1123,6 +1191,19 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
     };
   };
 
+  const syncResultLabels = (): void => {
+    for (const marker of resultLabelMarkers) {
+      marker.remove();
+    }
+    resultLabelMarkers.length = 0;
+    if (!map || !maplibre || !mapStyleReady) {
+      return;
+    }
+    resultLabelMarkers.push(
+      ...addResultLabels(maplibre, map, currentFeatures),
+    );
+  };
+
   const syncMapData = (): void => {
     if (!map || !mapStyleReady) {
       return;
@@ -1150,6 +1231,7 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
     ensureGeoJsonSource(map, 'fg03-selected', selectedCollection());
     ensureGeoJsonSource(map, 'fg03-reach', reachForSelection());
     updateStopFilters(map, currentState);
+    syncResultLabels();
   };
 
   const moveMapToSelection = (animate: boolean): void => {
@@ -1360,8 +1442,7 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
           )].find(
             (button) => button.getAttribute('data-fg03-select-place') === previous.place,
           ) ?? null;
-      const focusTarget = replacement
-        ?? (lastSelectionOpener?.isConnected ? lastSelectionOpener : null);
+      const focusTarget = chooseCloseFocus(lastSelectionOpener, replacement);
       if (focusTarget) {
         const frame = window.requestAnimationFrame(() => {
           animationFrames.delete(frame);
@@ -1431,16 +1512,33 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
       const loadedManifest = loaded.manifest as Fg03Manifest;
       manifest = loadedManifest;
       if (!loadedManifest.gate.passed) {
-        controls.inert = true;
-        controls.setAttribute('aria-disabled', 'true');
-        mapElement.inert = true;
-        mapElement.setAttribute('aria-disabled', 'true');
-        showState('failed', true);
-        showState('loading', false);
-        showAlert(
-          'The recommendation gate no longer passes. Rankings and map layers are withheld.',
-        );
+        gateWithheld = true;
+        dataReady = false;
+        delete mapElement.dataset.loading;
+        if (explorer && failedGateTemplate) {
+          withholdExplorer({
+            controls,
+            destroyMap,
+            explorer,
+            mapElement,
+            root,
+            template: failedGateTemplate,
+          });
+        } else {
+          root.dataset.fg03GateStatus = 'failed';
+          controls.inert = true;
+          controls.setAttribute('aria-disabled', 'true');
+          mapElement.inert = true;
+          mapElement.tabIndex = -1;
+          mapElement.setAttribute('aria-disabled', 'true');
+          destroyMap();
+        }
         return;
+      }
+      if (loaded.resources === null) {
+        throw Object.assign(new TypeError('FG03 resources were withheld'), {
+          fg03Kind: 'invalid_data',
+        });
       }
 
       facilities = sourceValue(
@@ -1496,12 +1594,6 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
         reportError('explorer', error);
       }
 
-      const validatedState = parseFg03State(
-        window.location.search,
-        validPlaceIds,
-      ) as Fg03State;
-      const needsUrlCleanup = !stateEquals(currentState, validatedState);
-      currentState = validatedState;
       dataReady = true;
       showState('loading', false);
       showState('partial', failures.length > 0);
@@ -1521,9 +1613,20 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
       }
       delete mapElement.dataset.loading;
 
-      applyInput({
-        cause: needsUrlCleanup ? 'initial-cleanup' : 'data-load',
-        nextState: currentState,
+      currentState = await initializeRuntimeState({
+        search: window.location.search,
+        validPlaceIds,
+        applyState(state, cause) {
+          applyInput({
+            cause,
+            nextState: state,
+          });
+        },
+        loadReach: async () => loadReach(),
+        applyCameraState,
+        centerSelection({ animate }) {
+          moveMapToSelection(animate);
+        },
       });
       applyLoadedContext();
       if (!stopsByTime.has(currentState.time)) {
@@ -1537,7 +1640,6 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
         showState('loading', false);
         showState('offline', !navigator.onLine);
         showState('error', navigator.onLine);
-        mapElement.dataset.failed = 'true';
         delete mapElement.dataset.loading;
         showAlert(
           navigator.onLine
@@ -1598,6 +1700,7 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
     const interactiveLayers = [
       'fg03-facilities-unrestricted',
       'fg03-facilities-fare-paid',
+      'fg03-facilities-unknown',
       'fg03-interventions',
     ];
     map.on('click', (event) => {
@@ -1632,6 +1735,7 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
       });
     });
     map.on('resize', measureMinimumZoom);
+    map.on('zoomend', syncResultLabels);
 
     const stopMotion = (): void => {
       map?.stop();
@@ -1664,125 +1768,139 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
     });
   };
 
+  const buildMap = async (): Promise<void> => {
+    const [module] = await Promise.all([
+      import('maplibre-gl'),
+      import('maplibre-gl/dist/maplibre-gl.css'),
+    ]);
+    if (disposed || gateWithheld) {
+      return;
+    }
+    maplibre = module.default;
+    if (!hasWebGlSupport()) {
+      throw Object.assign(new Error('WebGL is unavailable'), {
+        fg03Kind: 'webgl',
+      });
+    }
+
+    map = new maplibre.Map({
+      container: mapElement,
+      style: {
+        version: 8,
+        sources: {},
+        layers: [
+          {
+            id: 'fg03-paper',
+            type: 'background',
+            paint: { 'background-color': '#f3eddd' },
+          },
+        ],
+      },
+      bounds: CITY_BOUNDS,
+      fitBoundsOptions: { padding: 24 },
+      maxBounds: MAP_BOUNDS,
+      minZoom: 8,
+      maxZoom: MAP_MAX_ZOOM,
+      dragRotate: false,
+      pitchWithRotate: false,
+      cooperativeGestures: true,
+      attributionControl: false,
+    });
+    map.touchZoomRotate.disableRotation();
+    map.addControl(
+      new maplibre.NavigationControl({
+        showCompass: false,
+        showZoom: true,
+        visualizePitch: false,
+      }),
+      'bottom-right',
+    );
+    map.addControl(
+      new maplibre.ScaleControl({
+        maxWidth: 100,
+        unit: 'metric',
+      }),
+      'bottom-left',
+    );
+    map.addControl(
+      new maplibre.AttributionControl({
+        compact: true,
+        customAttribution:
+          'Map data © OpenStreetMap contributors · City data under the Open Government Licence - Toronto',
+      }),
+      'bottom-right',
+    );
+
+    await new Promise<void>((resolve, reject) => {
+      const onLoad = (): void => {
+        map?.off('error', onError);
+        resolve();
+      };
+      const onError = (event: import('maplibre-gl').ErrorEvent): void => {
+        if (!mapStyleReady) {
+          map?.off('load', onLoad);
+          reject(
+            Object.assign(event.error ?? new Error('Map failed to load'), {
+              fg03Kind: 'webgl',
+            }),
+          );
+        }
+      };
+      map?.once('load', onLoad);
+      map?.once('error', onError);
+    });
+    if (disposed || gateWithheld || !map) {
+      if (gateWithheld) {
+        destroyMap();
+      }
+      return;
+    }
+
+    mapStyleReady = true;
+    measureMinimumZoom();
+    addShapeImages(map);
+    addOperationalLayers(map);
+    applyLoadedContext();
+    syncMapData();
+    if (currentState.map !== null) {
+      applyCameraState(currentState);
+    } else if (currentState.place !== null) {
+      moveMapToSelection(false);
+    }
+    syncResultLabels();
+    wireMapEvents();
+    mapElement.dataset.ready = 'true';
+    delete mapElement.dataset.failed;
+    delete mapElement.dataset.loading;
+  };
+
+  const mapStarter = makeMapStartController({
+    hasMap: () => map !== null,
+    isHealthy: () => map !== null && mapStyleReady,
+    destroy: destroyMap,
+    start: buildMap,
+  });
+
   const startMap = async (): Promise<void> => {
-    if (mapStartPromise) {
-      return mapStartPromise;
+    if (disposed || gateWithheld || (map !== null && mapStyleReady)) {
+      return;
     }
     mapElement.dataset.loading = 'true';
-    mapStartPromise = (async () => {
-      const [module] = await Promise.all([
-        import('maplibre-gl'),
-        import('maplibre-gl/dist/maplibre-gl.css'),
-      ]);
-      if (disposed) {
+    try {
+      await mapStarter.start();
+    } catch (error) {
+      if (controller.signal.aborted || disposed || gateWithheld) {
         return;
       }
-      maplibre = module.default;
-      if (!hasWebGlSupport()) {
-        throw Object.assign(new Error('WebGL is unavailable'), {
-          fg03Kind: 'webgl',
-        });
-      }
-
-      map = new maplibre.Map({
-        container: mapElement,
-        style: {
-          version: 8,
-          sources: {},
-          layers: [
-            {
-              id: 'fg03-paper',
-              type: 'background',
-              paint: { 'background-color': '#f3eddd' },
-            },
-          ],
-        },
-        bounds: CITY_BOUNDS,
-        fitBoundsOptions: { padding: 24 },
-        maxBounds: MAP_BOUNDS,
-        minZoom: 8,
-        maxZoom: MAP_MAX_ZOOM,
-        dragRotate: false,
-        pitchWithRotate: false,
-        cooperativeGestures: true,
-        attributionControl: false,
-      });
-      map.touchZoomRotate.disableRotation();
-      map.addControl(
-        new maplibre.NavigationControl({
-          showCompass: false,
-          showZoom: true,
-          visualizePitch: false,
-        }),
-        'bottom-right',
-      );
-      map.addControl(
-        new maplibre.ScaleControl({
-          maxWidth: 100,
-          unit: 'metric',
-        }),
-        'bottom-left',
-      );
-      map.addControl(
-        new maplibre.AttributionControl({
-          compact: true,
-          customAttribution:
-            'Map data © OpenStreetMap contributors · City data under the Open Government Licence - Toronto',
-        }),
-        'bottom-right',
-      );
-
-      await new Promise<void>((resolve, reject) => {
-        const onLoad = (): void => {
-          map?.off('error', onError);
-          resolve();
-        };
-        const onError = (event: import('maplibre-gl').ErrorEvent): void => {
-          if (!mapStyleReady) {
-            map?.off('load', onLoad);
-            reject(
-              Object.assign(event.error ?? new Error('Map failed to load'), {
-                fg03Kind: 'webgl',
-              }),
-            );
-          }
-        };
-        map?.once('load', onLoad);
-        map?.once('error', onError);
-      });
-      if (disposed || !map) {
-        return;
-      }
-
-      mapStyleReady = true;
-      measureMinimumZoom();
-      addShapeImages(map);
-      addOperationalLayers(map);
-      applyLoadedContext();
-      wireMapEvents();
-      syncMapData();
-      applyCameraState(currentState);
-      mapElement.dataset.ready = 'true';
-      delete mapElement.dataset.failed;
+      mapElement.dataset.failed = 'true';
       delete mapElement.dataset.loading;
-    })()
-      .catch((error) => {
-        if (controller.signal.aborted || disposed) {
-          return;
-        }
-        mapElement.dataset.failed = 'true';
-        delete mapElement.dataset.loading;
-        showState('partial', dataReady);
-        showState('error', !dataReady);
-        showAlert(
-          'The interactive map is unavailable. The synchronized result list remains fully usable.',
-        );
-        reportError('map', error);
-      })
-      .finally(() => {
-        mapStartPromise = null;
-      });
-    return mapStartPromise;
+      showState('partial', dataReady);
+      showState('error', !dataReady);
+      showAlert(
+        'The interactive map is unavailable. The synchronized result list remains fully usable.',
+      );
+      reportError('map', error);
+    }
   };
 
   const startEnhancement = async (): Promise<void> => {
@@ -2003,10 +2121,7 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
     cleanupCalled = true;
     disposed = true;
     loadSequence += 1;
-    for (const marker of orientationMarkers) {
-      marker.remove();
-    }
-    orientationMarkers.length = 0;
+    destroyMap();
     resourceCleanup();
     controls.inert = true;
     controls.setAttribute('aria-disabled', 'true');
