@@ -3,6 +3,13 @@
 /* Font faces */
 @import "@fontsource-variable/archivo/wght.css";
 @import "@fontsource-variable/source-serif-4/wght.css";
+/* Family type voices (Bebas display + Space Mono data/labels). @font-face
+   declarations only; the browser fetches these woff2 files lazily, when an
+   element actually uses the family, so importing here adds no payload or
+   visual change until a selector opts in (Phase 2+). */
+@import "@fontsource/bebas-neue/400.css";
+@import "@fontsource/space-mono/400.css";
+@import "@fontsource/space-mono/700.css";
 
 :root {
   /* Colour palette */
@@ -80,4 +87,84 @@
 
   /* Full-bleed guide-map hero (desktop fills viewport below the header) */
   --header-h: 67px;    /* measured height of .site-header (normal flow, not sticky) */
+
+  /* ==========================================================================
+     ONE PALETTE  (canon: Figma "Design System | Jonathan Westberry")
+     24 colours in 6 hue families + 3 utilities. Raw values only; surfaces
+     consume the semantic --atlas-* contract below, never these directly.
+     Additive in Phase 1: nothing references these yet, so no visual change.
+     ========================================================================== */
+  --c-pale-ice:   #CCDFF2;
+  --c-sky:        #92BAE6;
+  --c-cobalt:     #2A5BD0;
+  --c-deep-navy:  #1A2F66;
+
+  --c-pale-lime:  #E1EFA8;
+  --c-lime:       #C5DE5F;
+  --c-kelly:      #45A26A;
+  --c-forest:     #1F4F30;
+
+  --c-pale-lemon: #FBF8C8;
+  --c-lemon:      #F0E54B;
+  --c-mustard:    #C9A52E;
+
+  --c-pale-peach: #FBE5CE;
+  --c-coral:      #F4A285;
+  --c-hot-orange: #F37E2A;
+  --c-tomato:     #E84A2A;
+
+  --c-blush:      #F7D8DC;
+  --c-hot-pink:   #F085A0;
+  --c-magenta:    #C84478;
+
+  --c-pale-plum:  #E8C8DC;
+  --c-mauve:      #8A4A70;
+  --c-plum:       #4A1F3F;
+
+  --c-cream:      #F3EDDD;   /* NB: distinct from the atlas --paper #FAF6EC;
+                               shell migrates to true Cream in Phase 2/3 */
+  --c-kraft:      #D3CFA6;
+  --c-contour:    #1A1F2A;
+
+  /* ==========================================================================
+     Radius scale (THE GRID / DEPTH). Additive; unused until Phase 2+.
+     ========================================================================== */
+  --radius-0: 0;
+  --radius-1: 3px;
+  --radius-2: 8px;
+  --radius-3: 16px;
+  --radius-round: 44px;
+
+  /* ==========================================================================
+     Type voices (THREE VOICES). --font-display and --font-mono are the shared
+     family signature; the atlas keeps a reading serif for body (--font-body).
+     Existing --font-heading / --font-ui stay on Archivo in Phase 1 so nothing
+     re-renders; the redesign phases repoint headings/UI to these.
+     ========================================================================== */
+  --font-display: "Bebas Neue", "Archivo Variable", system-ui, sans-serif;
+  --font-mono:    "Space Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  /* ==========================================================================
+     Theme contract  (semantic tokens every surface reads).
+     Default = the atlas shell theme. Phase 1 maps each token to the CURRENT
+     computed value so rendering is pixel-identical; per-guide themes will
+     override this set via [data-guide-theme="..."] in Phase 2. This replaces
+     the private --n-* (fg02) and --fg03-* (fg03) namespaces.
+     ========================================================================== */
+  --atlas-ground:      var(--paper);          /* page background */
+  --atlas-surface:     var(--card);           /* raised card / panel */
+  --atlas-ink:         var(--ink);            /* primary text */
+  --atlas-ink-muted:   var(--ink-2);          /* secondary text */
+  --atlas-ink-faint:   var(--ink-3);          /* tertiary text */
+  --atlas-line:        var(--street-minor);   /* hairline */
+  --atlas-line-strong: var(--street-major);   /* stronger rule */
+  --atlas-accent:      var(--threshold);      /* primary accent (Tomato-adjacent) */
+  --atlas-accent-2:    var(--landscape);      /* secondary accent */
+  --atlas-link:        var(--ink);            /* link colour */
+  --atlas-focus:       var(--ink);            /* focus ring colour */
+  --atlas-marker:      var(--threshold);      /* map marker fill */
+  --atlas-marker-alt:  var(--landscape);      /* second marker category */
+  --atlas-layer:       var(--landscape);      /* map layer wash */
+  --atlas-hover:       var(--threshold-active);
+  --atlas-active:      var(--threshold-active);
 }
