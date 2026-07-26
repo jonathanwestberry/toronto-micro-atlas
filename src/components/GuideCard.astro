@@ -55,6 +55,7 @@ const statusLabel = status === 'new' ? 'New' : status === 'forthcoming' ? 'Forth
     overflow: hidden;
     text-decoration: none;
     color: inherit;
+    height: 100%;
   }
   .guide-card--fg01 { --card-accent: #2A5BD0; --plate-bg: #dbe6f2; }
   .guide-card--fg02 { --card-accent: #45A26A; --plate-bg: #12331f; }
@@ -112,6 +113,7 @@ const statusLabel = status === 'new' ? 'New' : status === 'forthcoming' ? 'Forth
     flex-direction: column;
     gap: var(--space-3);
     padding: var(--space-5) var(--space-5) var(--space-6);
+    flex: 1;
   }
 
   .guide-card-tag {
@@ -139,10 +141,19 @@ const statusLabel = status === 'new' ? 'New' : status === 'forthcoming' ? 'Forth
     line-height: 1.55;
     color: var(--ink-2);
     margin: 0;
+    /* Uniform 3-line block so every card's title, blurb, and CTA align
+       row-to-row regardless of copy length. */
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    overflow: hidden;
+    min-height: calc(3 * 1.55em);
   }
 
   .guide-card-cta {
-    margin-top: var(--space-2);
+    margin-top: auto;
+    padding-top: var(--space-2);
     font-family: var(--font-ui);
     font-size: 0.8125rem;
     font-weight: 700;
