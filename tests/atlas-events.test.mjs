@@ -162,6 +162,75 @@ test('invalid values cannot pass through an otherwise allowed property key', asy
   }
 });
 
+test('analytics properties are captured once before validation and dispatch', () => {
+  let reads = 0;
+  const properties = {};
+  Object.defineProperty(properties, 'state_shape', {
+    enumerable: true,
+    get() {
+      reads += 1;
+      return reads === 1 ? 'filtered' : 'private-value';
+    },
+  });
+  const plausibleCalls = [];
+  const restore = installTestWindow({
+    plausible: (...args) => plausibleCalls.push(args),
+  });
+
+  try {
+    const details = captureEvents(globalThis.window);
+    trackAtlasEvent('fg03_entry', properties);
+
+    assert.equal(reads, 1);
+    assert.deepEqual(details, [{
+      name: 'fg03_entry',
+      properties: { state_shape: 'filtered' },
+    }]);
+    assert.deepEqual(plausibleCalls, [[
+      'fg03_entry',
+      { props: { state_shape: 'filtered' } },
+    ]]);
+  } finally {
+    restore();
+  }
+});
+
+test('a throwing analytics property is dropped while other valid properties survive', () => {
+  const properties = { source: 'list', action: 'verify' };
+  Object.defineProperty(properties, 'kind', {
+    enumerable: true,
+    get() {
+      throw new Error('private getter detail');
+    },
+  });
+  const plausibleCalls = [];
+  const restore = installTestWindow({
+    plausible: (...args) => plausibleCalls.push(args),
+  });
+
+  try {
+    const details = captureEvents(globalThis.window);
+    assert.doesNotThrow(() => {
+      trackAtlasEvent('fg03_feature_select', properties);
+    });
+
+    const expected = {
+      name: 'fg03_feature_select',
+      properties: {
+        source: 'list',
+        action: 'verify',
+      },
+    };
+    assert.deepEqual(details, [expected]);
+    assert.deepEqual(plausibleCalls, [[
+      'fg03_feature_select',
+      { props: expected.properties },
+    ]]);
+  } finally {
+    restore();
+  }
+});
+
 test('browser listeners cannot inject properties into the Plausible payload', () => {
   const plausibleCalls = [];
   const restore = installTestWindow({
@@ -243,5 +312,60 @@ test('missing window and throwing Plausible callbacks never affect the interface
     } else {
       globalThis.window = previousWindow;
     }
+  }
+});
+
+test('browser event construction and dispatch failures do not block Plausible', async (t) => {
+  const cases = [
+    [
+      'CustomEvent constructor',
+      (target) => {
+        target.CustomEvent = class {
+          constructor() {
+            throw new Error('event construction unavailable');
+          }
+        };
+      },
+    ],
+    [
+      'CustomEvent getter',
+      (target) => {
+        Object.defineProperty(target, 'CustomEvent', {
+          get() {
+            throw new Error('event constructor unavailable');
+          },
+        });
+      },
+    ],
+    [
+      'dispatchEvent',
+      (target) => {
+        target.dispatchEvent = () => {
+          throw new Error('event dispatch unavailable');
+        };
+      },
+    ],
+  ];
+
+  for (const [label, breakBrowserChannel] of cases) {
+    await t.test(label, () => {
+      const plausibleCalls = [];
+      const restore = installTestWindow({
+        plausible: (...args) => plausibleCalls.push(args),
+      });
+      breakBrowserChannel(globalThis.window);
+
+      try {
+        assert.doesNotThrow(() => {
+          trackAtlasEvent('fg03_entry', { state_shape: 'mapped' });
+        });
+        assert.deepEqual(plausibleCalls, [[
+          'fg03_entry',
+          { props: { state_shape: 'mapped' } },
+        ]]);
+      } finally {
+        restore();
+      }
+    });
   }
 });

@@ -31,16 +31,29 @@ function roundMap([longitude, latitude, zoom]) {
   ];
 }
 
+function snapshotMap(value) {
+  try {
+    if (!Array.isArray(value) || value.length !== 3) {
+      return null;
+    }
+    return [value[0], value[1], value[2]];
+  } catch {
+    return null;
+  }
+}
+
 function normalizeMap(value) {
+  const snapshot = snapshotMap(value);
   if (
-    !Array.isArray(value)
-    || value.length !== 3
-    || value.some((part) => typeof part !== 'number' || !Number.isFinite(part))
+    snapshot === null
+    || snapshot.some(
+      (part) => typeof part !== 'number' || !Number.isFinite(part),
+    )
   ) {
     return null;
   }
 
-  const [longitude, latitude, zoom] = value;
+  const [longitude, latitude, zoom] = snapshot;
   if (
     longitude < MAP_BOUNDS.minLongitude
     || longitude > MAP_BOUNDS.maxLongitude
@@ -52,7 +65,7 @@ function normalizeMap(value) {
     return null;
   }
 
-  return roundMap(value);
+  return roundMap(snapshot);
 }
 
 function parseMap(value) {
@@ -67,23 +80,46 @@ function parseMap(value) {
   return normalizeMap(parts.map(Number));
 }
 
+function snapshotState(state) {
+  const source = state && typeof state === 'object' ? state : {};
+  const snapshot = {};
+
+  for (const key of ['time', 'access', 'walk', 'action', 'place', 'map']) {
+    try {
+      snapshot[key] = source[key];
+    } catch {
+      snapshot[key] = undefined;
+    }
+  }
+
+  return snapshot;
+}
+
 function normalizeState(state) {
-  const value = state && typeof state === 'object' ? state : {};
+  const {
+    time,
+    access,
+    walk,
+    action,
+    place,
+    map,
+  } = snapshotState(state);
+
   return {
-    time: TIMES.has(value.time) ? value.time : DEFAULT_FG03_STATE.time,
-    access: ACCESS_MODES.has(value.access)
-      ? value.access
+    time: TIMES.has(time) ? time : DEFAULT_FG03_STATE.time,
+    access: ACCESS_MODES.has(access)
+      ? access
       : DEFAULT_FG03_STATE.access,
-    walk: WALK_DISTANCES.has(value.walk)
-      ? value.walk
+    walk: WALK_DISTANCES.has(walk)
+      ? walk
       : DEFAULT_FG03_STATE.walk,
-    action: ACTIONS.has(value.action)
-      ? value.action
+    action: ACTIONS.has(action)
+      ? action
       : DEFAULT_FG03_STATE.action,
-    place: typeof value.place === 'string' && SAFE_PLACE_ID.test(value.place)
-      ? value.place
+    place: typeof place === 'string' && SAFE_PLACE_ID.test(place)
+      ? place
       : null,
-    map: normalizeMap(value.map),
+    map: normalizeMap(map),
   };
 }
 

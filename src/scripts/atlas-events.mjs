@@ -80,19 +80,29 @@ const EVENT_PROPERTIES = new Map([
 ]);
 
 function sanitizeProperties(schema, properties) {
-  const source = properties
-    && typeof properties === 'object'
-    && !Array.isArray(properties)
-    ? properties
-    : {};
+  let source = {};
+  if (properties && typeof properties === 'object') {
+    try {
+      source = Array.isArray(properties) ? {} : properties;
+    } catch {
+      source = {};
+    }
+  }
   const sanitized = {};
 
   for (const [key, allowedValues] of schema) {
-    if (
-      Object.hasOwn(source, key)
-      && allowedValues.has(source[key])
-    ) {
-      sanitized[key] = source[key];
+    let candidate;
+    try {
+      if (!Object.hasOwn(source, key)) {
+        continue;
+      }
+      candidate = source[key];
+    } catch {
+      continue;
+    }
+
+    if (allowedValues.has(candidate)) {
+      sanitized[key] = candidate;
     }
   }
 

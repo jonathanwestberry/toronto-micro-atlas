@@ -14,6 +14,76 @@ const VALID_PLACE_IDS = new Set([
   'place.with-dots',
 ]);
 
+function sequenceProperty(target, key, values) {
+  let reads = 0;
+  Object.defineProperty(target, key, {
+    enumerable: true,
+    get() {
+      const index = Math.min(reads, values.length - 1);
+      reads += 1;
+      return values[index];
+    },
+  });
+  return () => reads;
+}
+
+function changingState() {
+  const state = {};
+  const map = [];
+  const reads = {
+    time: sequenceProperty(state, 'time', ['0030', 'private-time']),
+    access: sequenceProperty(state, 'access', ['rider', 'private-access']),
+    walk: sequenceProperty(state, 'walk', [500, 999]),
+    action: sequenceProperty(state, 'action', ['new', 'private-action']),
+    place: sequenceProperty(
+      state,
+      'place',
+      ['facility:abc', 'facility:abc', '<private-place>'],
+    ),
+    longitude: sequenceProperty(
+      map,
+      '0',
+      [-79.383204, -79.4, -79.2],
+    ),
+    latitude: sequenceProperty(
+      map,
+      '1',
+      [43.653204, 43.7, 43.8],
+    ),
+    zoom: sequenceProperty(map, '2', [12.344, 13, 18]),
+  };
+  reads.map = sequenceProperty(state, 'map', [map, ['private-map']]);
+  return { state, reads };
+}
+
+function throwingState() {
+  const state = {
+    access: 'rider',
+    action: 'new',
+  };
+  const reads = {};
+
+  for (const key of ['time', 'walk', 'place', 'map']) {
+    let count = 0;
+    Object.defineProperty(state, key, {
+      enumerable: true,
+      get() {
+        count += 1;
+        throw new Error(`private ${key} detail`);
+      },
+    });
+    reads[key] = () => count;
+  }
+
+  return { state, reads };
+}
+
+function assertReadOnce(reads) {
+  for (const [key, count] of Object.entries(reads)) {
+    assert.equal(count(), 1, key);
+  }
+}
+
 test('the useful default is immutable and serializes to no query', () => {
   assert.deepEqual(DEFAULT_FG03_STATE, {
     time: '2200',
@@ -247,6 +317,27 @@ test('serialization emits only meaningful state in canonical parameter order', (
   );
 });
 
+test('serialization validates and emits one snapshot of every state value', () => {
+  const { state, reads } = changingState();
+
+  assert.equal(
+    serializeFg03State(state),
+    '?time=0030&access=rider&walk=500&action=new&place=facility%3Aabc&map=-79.38320%2C43.65320%2C12.34',
+  );
+  assertReadOnce(reads);
+});
+
+test('serialization defaults throwing fields while preserving other valid state', () => {
+  const { state, reads } = throwingState();
+  let query;
+
+  assert.doesNotThrow(() => {
+    query = serializeFg03State(state);
+  });
+  assert.equal(query, '?access=rider&action=new');
+  assertReadOnce(reads);
+});
+
 test('serialization, parsing, and equality form an idempotent normalized round trip', () => {
   const original = {
     time: '0030',
@@ -301,6 +392,37 @@ test('stateEquals compares all six normalized fields rather than object identity
   ]) {
     assert.equal(stateEquals(baseline, changed), false);
   }
+});
+
+test('stateEquals compares one validated snapshot from accessor-backed state', () => {
+  const { state, reads } = changingState();
+  const expected = {
+    time: '0030',
+    access: 'rider',
+    walk: 500,
+    action: 'new',
+    place: 'facility:abc',
+    map: [-79.383204, 43.653204, 12.344],
+  };
+
+  assert.equal(stateEquals(state, expected), true);
+  assertReadOnce(reads);
+});
+
+test('stateEquals defaults throwing fields without discarding other valid fields', () => {
+  const { state, reads } = throwingState();
+  const expected = {
+    ...DEFAULT_FG03_STATE,
+    access: 'rider',
+    action: 'new',
+  };
+  let equal;
+
+  assert.doesNotThrow(() => {
+    equal = stateEquals(state, expected);
+  });
+  assert.equal(equal, true);
+  assertReadOnce(reads);
 });
 
 test('URLSearchParams input preserves the leading-zero time', () => {
