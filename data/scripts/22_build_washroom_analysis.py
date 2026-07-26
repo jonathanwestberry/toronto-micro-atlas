@@ -86,7 +86,7 @@ PUBLIC_ACTION_BY_CLASS = {
 MAX_SNAP_METRES = 200.0
 MAX_STOP_SNAP_METRES = 500.0
 PUBLIC_SIZE_LIMIT = 1_500_000
-ANALYSIS_FINGERPRINT_VERSION = 2
+ANALYSIS_FINGERPRINT_VERSION = 3
 PUBLIC_PLACE_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 PUBLIC_ID_NAMESPACE_PATTERN = re.compile(
     r"^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$"
@@ -367,10 +367,7 @@ def _state_name(
     raw_state: str,
     *,
     closure_category: str,
-    partial_service: bool,
 ) -> str:
-    if partial_service:
-        return "open"
     if raw_state == "open":
         return "open"
     if raw_state == "closed":
@@ -438,7 +435,6 @@ def _load_facility_snapshots(
                     observed_state=_state_name(
                         observed_rows[key],
                         closure_category=facility.closure_category,
-                        partial_service=facility.partial_service,
                     ),
                 )
             )
@@ -450,21 +446,15 @@ def _load_facility_snapshots(
                 weekday,
                 minute,
             )
-            if facility.partial_service:
-                observed = "open"
-            elif _bool(raw.get("temporarily_closed")):
-                observed = {
-                    "seasonal": "seasonal_closed",
-                    "construction": "construction_closed",
-                    "temporary": "temporary_closed",
-                    "none": "temporary_closed",
-                }[facility.closure_category]
-            else:
-                observed = {
-                    "open": "open",
-                    "closed": "scheduled_closed",
-                    "unknown": "unknown_hours",
-                }[scheduled]
+            raw_state = (
+                "temporarily_closed"
+                if _bool(raw.get("temporarily_closed"))
+                else scheduled
+            )
+            observed = _state_name(
+                raw_state,
+                closure_category=facility.closure_category,
+            )
             snapshots.append(
                 FacilitySnapshot(
                     facility_id=facility.facility_id,

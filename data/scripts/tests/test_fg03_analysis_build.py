@@ -42,6 +42,56 @@ def write_csv(path, fieldnames, rows):
         writer.writerows(rows)
 
 
+def load_partial_service_snapshots(
+    builder,
+    fixture,
+    *,
+    hours,
+    observed_by_time,
+):
+    facility = builder.FacilityEvidence(
+        facility_id="library:partial",
+        name="Partial Library",
+        source="library",
+        address="1 Test Street",
+        lon=-79.4,
+        lat=43.65,
+        hours=hours,
+        access_condition="unrestricted",
+        closure_category="none",
+        accessibility="accessible",
+        partial_service=True,
+        source_url="https://example.test/library",
+        notes="One washroom is unavailable.",
+    )
+    write_csv(
+        fixture.proof / "facility-states.csv",
+        ["facility_id", "snapshot", "state"],
+        [
+            {
+                "facility_id": facility.facility_id,
+                "snapshot": snapshot,
+                "state": observed_by_time.get(snapshot, "open"),
+            }
+            for snapshot in ("1200", "2030", "2200", "0030")
+        ],
+    )
+    return builder._load_facility_snapshots(
+        fixture.proof,
+        (facility,),
+        {
+            facility.facility_id: {
+                "temporarily_closed": "False",
+            }
+        },
+        {
+            facility.facility_id: builder.parse_weekly_hours(
+                facility.hours
+            )
+        },
+    )
+
+
 class SyntheticFixture:
     def __init__(self, root):
         self.root = Path(root)
@@ -305,6 +355,83 @@ class Phase2BuildContractTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.fixture = SyntheticFixture(self.temporary.name)
+
+    def test_partial_service_stays_open_when_schedule_is_open(self):
+        builder = load_builder()
+
+        snapshots = load_partial_service_snapshots(
+            builder,
+            self.fixture,
+            hours="24 hours",
+            observed_by_time={"2200": "open"},
+        )
+
+        observed = next(
+            snapshot.observed_state
+            for snapshot in snapshots
+            if snapshot.snapshot_id == "2200"
+        )
+        self.assertEqual(observed, "open")
+
+    def test_partial_service_does_not_override_scheduled_closed(self):
+        builder = load_builder()
+
+        snapshots = load_partial_service_snapshots(
+            builder,
+            self.fixture,
+            hours="24 hours",
+            observed_by_time={"2200": "closed"},
+        )
+
+        observed = next(
+            snapshot.observed_state
+            for snapshot in snapshots
+            if snapshot.snapshot_id == "2200"
+        )
+        self.assertEqual(observed, "scheduled_closed")
+
+    def test_partial_service_does_not_override_unknown_hours(self):
+        builder = load_builder()
+
+        snapshots = load_partial_service_snapshots(
+            builder,
+            self.fixture,
+            hours="Unknown",
+            observed_by_time={"2200": "unknown"},
+        )
+
+        observed = next(
+            snapshot.observed_state
+            for snapshot in snapshots
+            if snapshot.snapshot_id == "2200"
+        )
+        self.assertEqual(observed, "unknown_hours")
+
+    def test_saturday_partial_service_respects_the_weekly_schedule(self):
+        builder = load_builder()
+
+        snapshots = load_partial_service_snapshots(
+            builder,
+            self.fixture,
+            hours="Mon-Fri 9:00am-5:00pm",
+            observed_by_time={
+                snapshot: "closed"
+                for snapshot in ("1200", "2030", "2200", "0030")
+            },
+        )
+
+        saturday_states = {
+            snapshot.snapshot_id: snapshot.observed_state
+            for snapshot in snapshots
+            if snapshot.snapshot_id.startswith("sat-")
+        }
+        self.assertEqual(
+            saturday_states,
+            {
+                "sat-2200": "scheduled_closed",
+                "sat-0030": "scheduled_closed",
+            },
+        )
 
     def test_missing_required_input_has_a_coded_actionable_failure(self):
         # Protected break: an opaque file exception does not identify the input
@@ -1036,6 +1163,59 @@ class Phase2BuildContractTests(unittest.TestCase):
                 self.fixture.public,
                 {"secret-trip-2200-1"},
             )
+
+    def test_published_headlines_distinguish_access_points_from_facility_records(self):
+        # Protected break: the route presents a grouped access-point count as
+        # though it were the count of individual exported facility records.
+        repo = SCRIPT_PATH.parents[2]
+        public = repo / "public" / "data" / "fg03" / "2026-07-21"
+        manifest = json.loads((public / "manifest.json").read_text())
+        facilities = json.loads(
+            (public / "facilities.geojson").read_text()
+        )["features"]
+        expected_access_points = {
+            "1200": 324,
+            "2030": 242,
+            "2200": 6,
+            "0030": 1,
+        }
+        expected_facility_records = {
+            "1200": 332,
+            "2030": 247,
+            "2200": 6,
+            "0030": 1,
+        }
+
+        for snapshot, expected_records in expected_facility_records.items():
+            headline = manifest["headlines"]["bySnapshot"][snapshot][
+                "phase1Grouped"
+            ]
+            exported_records = sum(
+                feature["properties"]["accessCondition"] == "unrestricted"
+                and feature["properties"]["stateByTime"][snapshot][
+                    "observed"
+                ]
+                == "open"
+                for feature in facilities
+            )
+            self.assertEqual(
+                headline["unrestrictedOpenAccessPointCount"],
+                expected_access_points[snapshot],
+            )
+            self.assertEqual(
+                headline["unrestrictedOpenFacilityRecordCount"],
+                expected_records,
+            )
+            self.assertEqual(exported_records, expected_records)
+
+        self.assertNotEqual(
+            expected_access_points["1200"],
+            expected_facility_records["1200"],
+        )
+        self.assertNotEqual(
+            expected_access_points["2030"],
+            expected_facility_records["2030"],
+        )
 
     def test_fixed_clock_build_is_deterministic_and_satisfies_public_contract(self):
         # Protected break: timestamps, unstable iteration, schema drift, leaked
