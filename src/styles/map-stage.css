@@ -1,0 +1,514 @@
+/* ==========================================================================
+   Map stage — the shared frame around every guide map.
+
+   Themes itself entirely from the --atlas-* contract, so a guide changes the
+   stage's colour by setting its theme and nothing else.
+
+   Corner allocation (the fix for three control groups piled bottom-right):
+
+       top-left      How to read this map
+       top-right     zoom (MapLibre NavigationControl)
+       bottom-left   scale, then attribution
+       bottom-right  Expand map
+       bottom-centre gesture hint
+
+   Every corner holds one thing. Nothing stacks.
+   ========================================================================== */
+
+.map-stage {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.map-stage__frame {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: var(--radius-1);
+  background: var(--atlas-ground);
+}
+
+/* The guide's own canvas fills the frame. */
+.map-stage__frame > :first-child {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* --------------------------------------------------------------------------
+   Chrome layer
+   The layer never eats a click; only the controls inside it do. Without this
+   the whole map would be covered by a transparent lid.
+   -------------------------------------------------------------------------- */
+
+.map-stage__chrome {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: var(--space-3);
+}
+
+.map-stage__chrome-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+/* Top-left holds help; top-right is left empty for MapLibre's zoom group. */
+.map-stage__chrome-row--top {
+  justify-content: flex-start;
+  padding-inline-end: 44px;
+}
+
+/* Bottom-right holds expand; bottom-left is left empty for scale + attribution. */
+.map-stage__chrome-row--bottom {
+  justify-content: flex-end;
+  align-items: flex-end;
+  padding-inline-start: 140px;
+}
+
+/* --------------------------------------------------------------------------
+   Stage buttons
+   One button language across help, expand, back, and retry. Space Mono at a
+   small size with generous letter-spacing reads as instrumentation rather than
+   as page furniture, which is what keeps the chrome subordinate to the map.
+   -------------------------------------------------------------------------- */
+
+.map-stage__btn {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--atlas-line);
+  border-radius: var(--radius-1);
+  background: var(--atlas-surface);
+  color: var(--atlas-ink);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  cursor: pointer;
+  /* Top light source: a small lift, not a glow. */
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 2px 6px rgb(0 0 0 / 0.06);
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.map-stage__btn svg {
+  flex: none;
+  display: block;
+}
+
+.map-stage__btn:hover {
+  border-color: var(--atlas-line-strong);
+  background: var(--atlas-hover);
+  color: var(--atlas-surface);
+}
+
+.map-stage__btn:focus-visible {
+  outline: 2px solid var(--atlas-focus);
+  outline-offset: 2px;
+}
+
+/* Expand is the stage's primary action, so it carries the accent while help
+   stays quiet. Hierarchy comes from weight and colour, not from size. */
+.map-stage__btn--expand {
+  background: var(--atlas-accent);
+  border-color: var(--atlas-accent);
+  color: var(--atlas-surface);
+  font-weight: 700;
+}
+
+.map-stage__btn--expand:hover {
+  background: var(--atlas-active);
+  border-color: var(--atlas-active);
+  color: var(--atlas-surface);
+}
+
+.map-stage__btn--howto[aria-expanded='true'] {
+  background: var(--atlas-ink);
+  border-color: var(--atlas-ink);
+  color: var(--atlas-ground);
+}
+
+/* --------------------------------------------------------------------------
+   Gesture hint
+   Replaces cooperative gestures' full-cover scrim. A scrim reads as a wall;
+   a small line of text reads as an invitation, and it never blocks the first
+   click from reaching a marker.
+   -------------------------------------------------------------------------- */
+
+.map-stage__hint {
+  position: absolute;
+  left: 50%;
+  bottom: var(--space-3);
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0.35rem 0.65rem;
+  max-width: calc(100% - 2 * var(--space-3));
+  border-radius: var(--radius-round);
+  background: color-mix(in srgb, var(--atlas-ink) 82%, transparent);
+  color: var(--atlas-ground);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 200ms ease;
+}
+
+/* Once the reader is driving the map, the hint has done its job. */
+.map-stage__hint[data-map-hint-state='active'] {
+  opacity: 0;
+}
+
+.map-stage:hover .map-stage__hint[data-map-hint-state='active'],
+.map-stage:focus-within .map-stage__hint[data-map-hint-state='active'] {
+  opacity: 0.75;
+}
+
+[data-map-stage-mode='expanded'] .map-stage__hint {
+  display: none;
+}
+
+/* --------------------------------------------------------------------------
+   "How to read this map"
+   -------------------------------------------------------------------------- */
+
+.map-stage__howto {
+  position: absolute;
+  z-index: 4;
+  top: calc(var(--space-3) + 2.25rem);
+  left: var(--space-3);
+  width: min(30ch, calc(100% - 2 * var(--space-3)));
+  padding: var(--space-4);
+  border: 1px solid var(--atlas-line-strong);
+  border-radius: var(--radius-2);
+  background: var(--atlas-surface);
+  color: var(--atlas-ink);
+  box-shadow: 0 4px 10px rgb(0 0 0 / 0.1), 0 12px 28px rgb(0 0 0 / 0.12);
+}
+
+.map-stage__howto[hidden] {
+  display: none;
+}
+
+.map-stage__howto-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.map-stage__howto-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--atlas-ink);
+}
+
+.map-stage__howto-close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 1px solid var(--atlas-line);
+  border-radius: var(--radius-1);
+  background: transparent;
+  color: var(--atlas-ink-muted);
+  cursor: pointer;
+}
+
+.map-stage__howto-close:hover {
+  border-color: var(--atlas-line-strong);
+  color: var(--atlas-ink);
+}
+
+.map-stage__howto-close:focus-visible {
+  outline: 2px solid var(--atlas-focus);
+  outline-offset: 2px;
+}
+
+.map-stage__howto-body {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--atlas-ink-muted);
+}
+
+.map-stage__howto-body > * + * {
+  margin-top: var(--space-3);
+}
+
+.map-stage__howto-body p {
+  margin: 0;
+}
+
+.map-stage__howto-body dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+  align-items: center;
+}
+
+.map-stage__howto-body dt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.map-stage__howto-body dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--atlas-ink);
+}
+
+/* --------------------------------------------------------------------------
+   Status: loading / empty / error
+   Covers the canvas because in every one of these states there is nothing
+   underneath worth looking at.
+   -------------------------------------------------------------------------- */
+
+.map-stage__status {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  text-align: center;
+  background: color-mix(in srgb, var(--atlas-ground) 92%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.map-stage__status[hidden] {
+  display: none;
+}
+
+.map-stage__status-text {
+  margin: 0;
+  max-width: 38ch;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  letter-spacing: 0.02em;
+  color: var(--atlas-ink-muted);
+}
+
+.map-stage__status[data-map-state='error'] .map-stage__status-text {
+  color: var(--atlas-ink);
+}
+
+/* Loading gets a determinate-looking pulse on the label rather than a spinner:
+   a spinner promises progress the fetch cannot actually report. */
+.map-stage__status[data-map-state='loading'] .map-stage__status-text::after {
+  content: '';
+  display: inline-block;
+  width: 0.4em;
+  margin-left: 0.15em;
+  overflow: hidden;
+  vertical-align: bottom;
+  animation: map-stage-ellipsis 1.4s steps(4, end) infinite;
+}
+
+@keyframes map-stage-ellipsis {
+  from { width: 0; }
+  to   { width: 1.2em; }
+}
+
+.map-stage__status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.map-stage__status-actions:empty {
+  display: none;
+}
+
+.map-stage__btn--retry[hidden] {
+  display: none;
+}
+
+.map-stage__caption:empty {
+  display: none;
+}
+
+/* --------------------------------------------------------------------------
+   MapLibre control placement
+   The native controls are pushed to their assigned corners and restyled onto
+   the atlas type and colour so they stop looking like a third-party widget.
+   -------------------------------------------------------------------------- */
+
+.map-stage .maplibregl-ctrl-top-right {
+  top: var(--space-3);
+  right: var(--space-3);
+}
+
+.map-stage .maplibregl-ctrl-bottom-left {
+  bottom: var(--space-3);
+  left: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+/* The bottom-right corner belongs to Expand map. Controls are moved out of it
+   in each guide's init, but this is deliberately a *shift*, not a
+   `display: none`: OSM attribution is a licence obligation, and a stylesheet
+   that silently swallows a missed migration is how you lose it. Anything still
+   landing here rides above the expand button instead of under it. */
+.map-stage .maplibregl-ctrl-bottom-right {
+  bottom: calc(var(--space-3) + 2.5rem);
+  right: var(--space-3);
+}
+
+.map-stage .maplibregl-ctrl-group {
+  border: 1px solid var(--atlas-line);
+  border-radius: var(--radius-1);
+  background: var(--atlas-surface);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 2px 6px rgb(0 0 0 / 0.06);
+}
+
+.map-stage .maplibregl-ctrl-group button {
+  width: 32px;
+  height: 32px;
+}
+
+.map-stage .maplibregl-ctrl-group button:focus-visible {
+  outline: 2px solid var(--atlas-focus);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+.map-stage .maplibregl-ctrl-scale {
+  margin: 0;
+  border: 1px solid var(--atlas-line);
+  border-top: none;
+  border-radius: 0 0 var(--radius-1) var(--radius-1);
+  background: color-mix(in srgb, var(--atlas-surface) 88%, transparent);
+  color: var(--atlas-ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.04em;
+}
+
+.map-stage .maplibregl-ctrl-attrib {
+  border-radius: var(--radius-1);
+  background: color-mix(in srgb, var(--atlas-surface) 88%, transparent);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+}
+
+.map-stage .maplibregl-ctrl-attrib a {
+  color: var(--atlas-ink-muted);
+}
+
+/* --------------------------------------------------------------------------
+   Expanded route
+   The map owns the viewport. No hint, no expand link, and a Back link that is
+   a real anchor, so Back, bookmark, and share all behave.
+   -------------------------------------------------------------------------- */
+
+.map-stage--expanded,
+.map-stage--expanded .map-stage__frame {
+  height: 100%;
+  border-radius: 0;
+}
+
+.map-stage--expanded {
+  gap: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Narrow screens
+   The hint moves off centre-bottom so it cannot collide with attribution, and
+   the reserved gutters shrink because the controls do.
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 640px) {
+  .map-stage__chrome {
+    padding: var(--space-2);
+  }
+
+  .map-stage__chrome-row--bottom {
+    padding-inline-start: 0;
+    align-items: flex-end;
+  }
+
+  .map-stage__btn {
+    padding: 0.45rem 0.6rem;
+    font-size: 0.625rem;
+  }
+
+  /* Icon-only help on narrow screens; the accessible name stays in the SVG's
+     sibling span, which is clipped rather than removed. */
+  .map-stage__btn--howto span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* Sits below the top row rather than centre-bottom, clearing both the
+     icon-only help button above it and attribution below it. */
+  .map-stage__hint {
+    left: var(--space-2);
+    right: var(--space-2);
+    bottom: auto;
+    top: calc(var(--space-2) + 2.75rem);
+    transform: none;
+    max-width: none;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .map-stage__howto {
+    top: auto;
+    bottom: var(--space-2);
+    left: var(--space-2);
+    right: var(--space-2);
+    width: auto;
+  }
+
+  .map-stage .maplibregl-ctrl-scale {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-stage__btn,
+  .map-stage__hint {
+    transition: none;
+  }
+
+  .map-stage__status[data-map-state='loading'] .map-stage__status-text::after {
+    animation: none;
+    width: 1.2em;
+  }
+}

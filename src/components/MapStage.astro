@@ -1,0 +1,186 @@
+---
+/**
+ * MapStage — the shared frame every guide map sits in.
+ *
+ * It deliberately does not own the map container. Each guide passes its own
+ * canvas element through the default slot, so fg03 keeps the exact shell its
+ * contract test asserts against and fg01/fg02 keep their own placeholders.
+ * What the stage owns is everything *around* the canvas: the real "How to read
+ * this map" disclosure, the status region, the gesture hint, and the expand
+ * link. Behaviour lives in src/scripts/map-stage.ts.
+ *
+ * Controls are placed by src/styles/map-stage.css, not here: zoom top-right,
+ * scale bottom-left, attribution bottom-left. Nothing stacks in one corner.
+ */
+interface Props {
+  /** Names the whole stage for assistive tech, e.g. "Street tree map". */
+  label: string;
+  /** Path of the expanded route. Omit on the expanded route itself. */
+  expandPath?: string;
+  /** Where "Back to the guide" goes. Only used when `expanded`. */
+  backHref?: string;
+  /** True when this stage is the expanded route. */
+  expanded?: boolean;
+  /** Unique id stem so several stages can coexist. */
+  id?: string;
+  class?: string;
+}
+
+const {
+  label,
+  expandPath,
+  backHref,
+  expanded = false,
+  id = 'map-stage',
+  class: className = '',
+} = Astro.props;
+
+const howtoId = `${id}-howto`;
+const statusId = `${id}-status`;
+---
+
+<figure
+  class:list={['map-stage', className]}
+  data-map-stage
+  data-map-stage-mode={expanded ? 'expanded' : 'embedded'}
+  data-map-state="loading"
+  data-map-active="false"
+  role="group"
+  aria-label={label}
+>
+  <div class="map-stage__frame">
+    <!-- The guide's own map container. -->
+    <slot />
+
+    <div class="map-stage__chrome" data-map-chrome>
+      <div class="map-stage__chrome-row map-stage__chrome-row--top">
+        <button
+          type="button"
+          class="map-stage__btn map-stage__btn--howto"
+          data-map-howto-toggle
+          aria-expanded="false"
+          aria-controls={howtoId}
+        >
+          <svg width="15" height="15" viewBox="0 0 15 15" aria-hidden="true" focusable="false">
+            <circle cx="7.5" cy="7.5" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4" />
+            <path
+              d="M7.5 6.6v4.2"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+            />
+            <circle cx="7.5" cy="4.3" r="0.95" fill="currentColor" />
+          </svg>
+          <span>How to read this map</span>
+        </button>
+
+        {
+          expanded && backHref && (
+            <a class="map-stage__btn map-stage__btn--back" data-map-back href={backHref}>
+              <svg width="15" height="15" viewBox="0 0 15 15" aria-hidden="true" focusable="false">
+                <path
+                  d="M9.5 2.5 4.5 7.5l5 5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <span>Back to the guide</span>
+            </a>
+          )
+        }
+      </div>
+
+      <div class="map-stage__chrome-row map-stage__chrome-row--bottom">
+        {
+          !expanded && expandPath && (
+            <a class="map-stage__btn map-stage__btn--expand" data-map-expand href={expandPath}>
+              <svg width="15" height="15" viewBox="0 0 15 15" aria-hidden="true" focusable="false">
+                <path
+                  d="M6 1.6H1.6V6M9 13.4h4.4V9"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M1.6 1.6 6 6m7.4 7.4L9 9"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                />
+              </svg>
+              <span>Expand map</span>
+            </a>
+          )
+        }
+      </div>
+
+      <!--
+        Bottom-centre, out of all four corners: the corners belong to help
+        (top-left), zoom (top-right), expand (bottom-right), and scale plus
+        attribution (bottom-left).
+      -->
+      <p class="map-stage__hint" data-map-hint aria-hidden="true">
+        Click the map to zoom and pan
+      </p>
+    </div>
+
+    <!--
+      The disclosure the ⓘ was pretending to be. Attribution stays where it
+      belongs, as attribution.
+    -->
+    <div class="map-stage__howto" id={howtoId} data-map-howto hidden>
+      <div class="map-stage__howto-head">
+        <h2 class="map-stage__howto-title">How to read this map</h2>
+        <button
+          type="button"
+          class="map-stage__howto-close"
+          data-map-howto-close
+          aria-label="Close how to read this map"
+        >
+          <svg width="13" height="13" viewBox="0 0 13 13" aria-hidden="true" focusable="false">
+            <path
+              d="M1.5 1.5l10 10m0-10l-10 10"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+      </div>
+      <div class="map-stage__howto-body">
+        <slot name="howto" />
+      </div>
+    </div>
+
+    <!--
+      Loading / empty / error. Hidden once the map reports ready. A failed
+      fetch has to say so; a blank rectangle is not a state.
+    -->
+    <div
+      class="map-stage__status"
+      id={statusId}
+      data-map-status
+      data-map-state="loading"
+      role="status"
+      aria-live="polite"
+    >
+      <p class="map-stage__status-text" data-map-status-text>Loading the map</p>
+      <div class="map-stage__status-actions">
+        <button type="button" class="map-stage__btn map-stage__btn--retry" data-map-retry hidden>
+          Retry
+        </button>
+        <slot name="status-fallback" />
+      </div>
+    </div>
+  </div>
+
+  <figcaption class="map-stage__caption">
+    <slot name="caption" />
+  </figcaption>
+</figure>
