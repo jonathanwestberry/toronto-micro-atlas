@@ -111,14 +111,20 @@ body[data-full-height] .site-header {
  * rather than padding, because padding would push the current-page underline
  * (an inset box-shadow on the link's own box) away from the text and change
  * how the nav looks in order to fix how it is hit.
+ *
+ * The masthead joined them in Phase 6: it is the same kind of target and was
+ * missed the first time, at 110x21 on a phone. Phase 5 measured the nav and
+ * fixed what it measured; it never measured the wordmark beside it.
  */
 .site-nav a,
-.nav-dd-summary {
+.nav-dd-summary,
+.site-masthead {
   position: relative;
 }
 
 .site-nav a::before,
-.nav-dd-summary::before {
+.nav-dd-summary::before,
+.site-masthead::before {
   content: '';
   position: absolute;
   inset: -6px -4px;

@@ -126,6 +126,7 @@ const mapsUrl = `https://www.google.com/maps?q=${entry.data.lat},${entry.data.ln
                     class="location-source-link"
                   >
                     {source.label}
+                    <span class="visually-hidden"> (opens in a new tab)</span>
                   </a>
                 </li>
               ))}
@@ -523,6 +524,7 @@ const mapsUrl = `https://www.google.com/maps?q=${entry.data.lat},${entry.data.ln
   }
 
   .location-nav-index-link {
+    position: relative;
     font-family: var(--font-ui);
     font-size: var(--text-xs);
     font-weight: 500;
@@ -535,6 +537,14 @@ const mapsUrl = `https://www.google.com/maps?q=${entry.data.lat},${entry.data.ln
 
   .location-nav-index-link:hover {
     color: var(--threshold);
+  }
+
+  /* SC 2.5.8: grown with a pseudo-element rather than padding, so the hit
+     area changes and the layout does not. Same technique as the site nav. */
+  .location-nav-index-link::before {
+    content: '';
+    position: absolute;
+    inset: -6px -4px;
   }
 
   .location-nav-index-link:focus-visible {

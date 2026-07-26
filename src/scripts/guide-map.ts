@@ -596,6 +596,20 @@ export class GuideMap {
       const wrap = document.createElement('div');
       wrap.className = 'gm-marker-wrap';
 
+      /*
+       * SC 2.5.8, documented exception rather than a defect.
+       *
+       * Each marker is 32x32, over the 24x24 minimum. axe still fails two of
+       * them on the *spacing* half of the rule: Nordheimer Ravine and Baldwin
+       * Steps sit 22px apart at 1280 and 6px apart at 320. They are about a
+       * kilometre apart in midtown and cannot be spread out without the map
+       * telling a lie about where they are.
+       *
+       * The "Equivalent" exception applies and is verified: every one of the
+       * eight markers has a same-page link in the location list, measuring
+       * ~270x135 to ~278x177 at both 320 and 1280. Nothing on this map is
+       * reachable only by hitting a pin.
+       */
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'gm-marker';

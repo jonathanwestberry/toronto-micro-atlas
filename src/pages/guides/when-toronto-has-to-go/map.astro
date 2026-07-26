@@ -35,7 +35,17 @@ const guideHref = `${base}/guides/when-toronto-has-to-go/`;
             map plots is also in this list, so the expanded view keeps the
             guide's promise that nothing is map-only.
           */}
-          <aside class="fg03-map-route-rail" aria-label="Filters and ranked results">
+          {/*
+            The rail carries a real h2, not just an aria-label. Fg03Results
+            opens at h3 because on the guide page it sits under that page's
+            h2; on this route the only heading above it was the h1, so the
+            outline jumped h1 -> h3. Naming the rail with a heading fixes the
+            skip and gives the landmark its name from one place instead of
+            two. The heading is hidden because the rail is visually obvious
+            and a visible title here would just repeat the controls below it.
+          */}
+          <aside class="fg03-map-route-rail" aria-labelledby="fg03-rail-title">
+            <h2 id="fg03-rail-title" class="visually-hidden">Filters and ranked results</h2>
             <Fg03Controls />
             <Fg03Status />
             <Fg03Results />

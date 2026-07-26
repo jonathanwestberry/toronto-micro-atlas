@@ -217,6 +217,7 @@ const newestTime = Math.max(...guides.map((g) => g.data.published.getTime()));
     margin: 0;
   }
   .gallery-all {
+    position: relative;
     font-family: var(--font-ui);
     font-size: var(--text-sm);
     font-weight: 700;
@@ -224,6 +225,15 @@ const newestTime = Math.max(...guides.map((g) => g.data.published.getTime()));
     text-transform: uppercase;
     color: var(--atlas-accent-text);
     text-decoration: none;
+  }
+
+  /* SC 2.5.8: grown with a pseudo-element rather than padding, so the hit
+     area changes and the layout does not. Same technique as the site nav. */
+  .gallery-all::before,
+  .about-cta::before {
+    content: '';
+    position: absolute;
+    inset: -6px -4px;
   }
   .gallery-all:hover { text-decoration: underline; }
   .gallery-all:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-ring-offset); }
@@ -261,6 +271,7 @@ const newestTime = Math.max(...guides.map((g) => g.data.published.getTime()));
     margin: 0 0 var(--space-6);
   }
   .about-cta {
+    position: relative;
     font-family: var(--font-ui);
     font-size: var(--text-sm);
     font-weight: 700;

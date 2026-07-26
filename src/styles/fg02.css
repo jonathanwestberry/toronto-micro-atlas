@@ -552,6 +552,9 @@
 }
 
 .fg2-panel-toggle {
+  /* SC 2.5.8: this measured 19px tall. It is a full-width button with no
+     underline to displace, so real height is simpler than a pseudo-element. */
+  min-height: 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;

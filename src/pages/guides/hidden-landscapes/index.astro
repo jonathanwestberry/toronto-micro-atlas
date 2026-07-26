@@ -33,7 +33,7 @@ const mapLocations = locations.map((loc) => ({
   <div class="guide-layout fg01">
 
     <!-- Map + panel row -->
-    <div class="guide-map-row" aria-label="Interactive map of threshold locations">
+    <div class="guide-map-row" role="group" aria-label="Interactive map of threshold locations">
 
       <!-- Map container, inside the shared stage -->
       <MapStage
@@ -88,7 +88,6 @@ const mapLocations = locations.map((loc) => ({
         class="guide-panel guide-welcome-panel"
         id="guide-welcome-panel"
         aria-label="Guide welcome"
-        tabindex="0"
         aria-live="polite"
       >
         <div class="guide-panel-inner">
@@ -106,7 +105,7 @@ const mapLocations = locations.map((loc) => ({
             The legend stays: it is reference the reader wants open, not a
             first-use explanation.
           -->
-          <div class="guide-panel-legend" aria-label="Map legend">
+          <div class="guide-panel-legend" role="group" aria-label="Map legend">
             <div class="legend-item">
               <span class="legend-swatch" style="background-color: var(--landscape);" aria-hidden="true"></span>
               <span class="legend-label">Valley and ravine system</span>
@@ -219,6 +218,38 @@ const mapLocations = locations.map((loc) => ({
 <script>
   import { initGuideMap } from '../../../scripts/guide-map';
   initGuideMap();
+
+  /**
+   * The welcome panel's tab stop, only when it is really a scroll container.
+   *
+   * It carried a hardcoded `tabindex="0"`. On a static container that is a
+   * keyboard stop that lands nowhere and explains nothing. But the panel is
+   * `overflow-y: auto` with `max-height: calc(100vh - ...)` on desktop and it
+   * has no focusable children, so when it *does* overflow, removing the stop
+   * would leave content a keyboard user cannot scroll to (SC 2.1.1).
+   *
+   * Measured, not assumed -- same reasoning as --header-h in Phase 5. At
+   * 1280x900 it does not overflow; at 1280x600 it does, by 122px.
+   */
+  const wireScrollStop = () => {
+    const panel = document.getElementById('guide-welcome-panel');
+    if (!panel) return () => {};
+    const sync = () => {
+      const scrolls = panel.scrollHeight > panel.clientHeight + 1;
+      if (scrolls) panel.setAttribute('tabindex', '0');
+      else panel.removeAttribute('tabindex');
+    };
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(panel);
+    return () => observer.disconnect();
+  };
+
+  let releaseScrollStop = wireScrollStop();
+  document.addEventListener('astro:before-swap', () => releaseScrollStop());
+  document.addEventListener('astro:page-load', () => {
+    releaseScrollStop = wireScrollStop();
+  });
 </script>
 
 <style>
