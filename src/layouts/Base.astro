@@ -163,6 +163,16 @@ const onAbout = path.includes('/about');
          pinned so scrolling belongs to the map alone.
          ============================================================ */
 
+      /* The scrolling root is <html>, not <body>. Constraining only the body
+         left the window free to scroll, and something inside FG03 (focus
+         landing on the map) scrolled it 187px, taking the site header off
+         screen on a page that is not supposed to scroll at all. Both elements
+         are pinned. */
+      html:has(> body[data-full-height]) {
+        height: 100%;
+        overflow: hidden;
+      }
+
       body[data-full-height] {
         height: 100vh;
         height: 100dvh;

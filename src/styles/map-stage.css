@@ -468,6 +468,15 @@
   color: var(--atlas-ink-muted);
 }
 
+/* MapLibre draws the compact ⓘ as a background-image sized to its own 24px
+   button. FG03 raises that button to a 44px touch target, and the image then
+   tiles into a 2x2 grid of ⓘ. Pinning it to one centred copy fixes the four
+   icons that appear over the attribution on a phone. */
+.map-stage .maplibregl-ctrl-attrib-button {
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
 /* --------------------------------------------------------------------------
    Expanded route
    The map owns the viewport. No hint, no expand link, and a Back link that is

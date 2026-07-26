@@ -1,0 +1,204 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Fg03Controls from '../../../components/Fg03Controls.astro';
+import Fg03Status from '../../../components/Fg03Status.astro';
+import Fg03MapFigure from '../../../components/Fg03MapFigure.astro';
+import Fg03Results from '../../../components/Fg03Results.astro';
+import '../../../styles/fg03.css';
+import { base, config, gatePassed, guideDescription, manifest } from '../../../data/fg03';
+
+const guideHref = `${base}/guides/when-toronto-has-to-go/`;
+---
+
+<Base
+  title="When Toronto Has to Go, full map"
+  description={guideDescription}
+  ogImage="/social/og-when-toronto-has-to-go.jpg"
+  fullHeight
+>
+  <article
+    class="fg03 fg03--map-route"
+    data-fg03-root
+    data-fg03-expanded="true"
+    data-fg03-runtime="progressive"
+    data-fg03-snapshot-date={manifest.snapshotDate}
+    data-fg03-gate-status={gatePassed ? 'passed' : 'failed'}
+  >
+    <h1 class="visually-hidden">When Toronto Has to Go, full map</h1>
+
+    {
+      gatePassed ? (
+        <div class="fg03-map-route-layout" data-fg03-gate="passed">
+          {/*
+            The filters and the ranked list travel with the map. Everything the
+            map plots is also in this list, so the expanded view keeps the
+            guide's promise that nothing is map-only.
+          */}
+          <aside class="fg03-map-route-rail" aria-label="Filters and ranked results">
+            <Fg03Controls />
+            <Fg03Status />
+            <Fg03Results />
+          </aside>
+
+          <Fg03MapFigure expanded />
+        </div>
+      ) : (
+        <div class="fg03-map-route-withheld">
+          <h2>Proof published, recommendations withheld</h2>
+          <p>
+            The intervention audit did not pass every product-gate condition, so this
+            edition does not publish rankings or recommendation map layers.
+          </p>
+          <p>Gate reason: {manifest.gate.reason}</p>
+          <p><a href={guideHref}>Read the guide</a></p>
+        </div>
+      )
+    }
+
+    <noscript>
+      <div class="fg03-map-route-withheld">
+        <p>
+          The interactive map needs JavaScript.
+          <a href={guideHref}>Read the guide</a>, which publishes the four-snapshot proof
+          and the full default ranking without it.
+        </p>
+      </div>
+    </noscript>
+
+    <script is:inline id="fg03-config" type="application/json" data-fg03-config set:html={config} />
+    <script>
+      import { registerWhenTorontoHasToGoLifecycle } from '../../../scripts/fg03-map';
+
+      registerWhenTorontoHasToGoLifecycle();
+    </script>
+  </article>
+</Base>
+
+<style is:global>
+  /* Map left, filters and ranking right. The map gets the room because that is
+     what this route exists for; the rail carries the controls and the fallback
+     list, and scrolls on its own so the map never moves. */
+  body[data-full-height] .fg03--map-route {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .fg03-map-route-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 26rem);
+    flex: 1;
+    min-height: 0;
+  }
+
+  .fg03-map-route-rail {
+    grid-column: 2;
+    grid-row: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: var(--space-4);
+    border-left: 1px solid var(--fg03-rule, var(--atlas-line));
+    background: var(--fg03-paper, var(--atlas-ground));
+  }
+
+  .fg03-map-route-layout > .fg03-map-figure {
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .fg03-map-route-layout .fg03-map-frame {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .fg03-map-route-layout .map-stage--expanded {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .fg03-map-route-layout .map-stage--expanded .map-stage__frame {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .fg03-map-route-layout .fg03-map {
+    height: 100%;
+    min-height: 0;
+  }
+
+  /* The legend and the keyboard instructions belong with the controls on this
+     route, not stacked under a full-height map where they would be unreachable. */
+  .fg03-map-route-layout .fg03-legend,
+  .fg03-map-route-layout .fg03-map-instructions,
+  .fg03-map-route-layout .fg03-map-figure figcaption {
+    display: none;
+  }
+
+  /* The rail is a column, not a page width. The search field and the action
+     buttons sit side by side on the guide, where there is room; here that
+     squeezes "Clear search" onto two cramped lines, so they stack. */
+  .fg03-map-route-rail .fg03-control-tools {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+
+  .fg03-map-route-rail .fg03-search > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fg03-map-route-rail .fg03-control-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .fg03-map-route-withheld {
+    padding: var(--space-8);
+    max-width: 60ch;
+  }
+
+  /* Below the split, the rail becomes a sheet under the map rather than a
+     column too narrow to read. */
+  @media (max-width: 900px) {
+    .fg03-map-route-layout {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: 55svh minmax(0, 1fr);
+    }
+
+    .fg03-map-route-layout > .fg03-map-figure {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .fg03-map-route-rail {
+      grid-column: 1;
+      grid-row: 2;
+      border-left: none;
+      border-top: 1px solid var(--fg03-rule, var(--atlas-line));
+    }
+  }
+</style>
+
+<style>
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+</style>

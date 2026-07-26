@@ -1,0 +1,68 @@
+---
+/**
+ * FG03 status, alert, and edge-state stack.
+ *
+ * Shared by the guide and the expanded map route so both report load state the
+ * same way. The eight `data-fg03-state` values here are asserted by
+ * tests/fg03-contract.test.mjs; this is the state machine the shared MapStage
+ * deliberately stands aside for (it renders with `status={false}` on FG03).
+ */
+import {
+  actionStatusLabels,
+  defaultAction,
+  defaultResults,
+  defaultSnapshotLabel,
+  defaultUrlAccess,
+  defaultWalk,
+  number,
+} from '../data/fg03';
+---
+
+
+<p
+  class="fg03-status"
+  role="status"
+  aria-live="polite"
+  aria-atomic="true"
+  data-fg03-status
+>
+  Showing {number.format(defaultResults.length)}{' '}
+  {actionStatusLabels[defaultAction]} for {defaultSnapshotLabel},{' '}
+  {defaultUrlAccess === 'public' ? 'public access' : 'TTC rider access'}, and a{' '}
+  {number.format(defaultWalk)} m walk.
+</p>
+<div class="fg03-alert" role="alert" data-fg03-alert hidden>
+  <p data-fg03-alert-message>
+    Part of the explorer could not load. The proof and server-rendered
+    results remain available.
+  </p>
+  <button type="button" data-fg03-retry>Retry unavailable data</button>
+</div>
+
+<div class="fg03-state-stack" aria-live="polite">
+  <div class="fg03-state" data-fg03-state="loading" hidden>
+    Loading the map and current data snapshot.
+  </div>
+  <div class="fg03-state" data-fg03-state="partial" hidden>
+    Some layers are unavailable. Available evidence and results are still shown.
+  </div>
+  <div class="fg03-state" data-fg03-state="error" hidden>
+    The requested data could not be loaded. Retry or use the downloads below.
+  </div>
+  <div class="fg03-state" data-fg03-state="offline" hidden>
+    You appear to be offline. The built-in proof and default ranking remain readable.
+  </div>
+  <div class="fg03-state" data-fg03-state="stale" hidden>
+    A newer data snapshot may exist. These results remain dated and attributable.
+  </div>
+  <div class="fg03-state" data-fg03-state="empty" hidden>
+    No audited opportunities exist for this action.
+  </div>
+  <div class="fg03-state" data-fg03-state="no-results" hidden>
+    No places match this search and filter combination. Clear search or reset.
+  </div>
+  <div class="fg03-state" data-fg03-state="failed" hidden>
+    The recommendation audit gate did not pass, so recommendations are withheld.
+  </div>
+</div>
+

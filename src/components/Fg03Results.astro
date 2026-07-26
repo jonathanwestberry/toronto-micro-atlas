@@ -1,0 +1,177 @@
+---
+/**
+ * FG03 ranked results.
+ *
+ * Moved out of the guide page unchanged so the guide and the expanded map
+ * route share one server-rendered ranking. This list is the map's fallback:
+ * everything plotted is also here, which is what lets the map fail without
+ * taking the answer with it.
+ */
+import {
+  accessLabelFor,
+  actionLabels,
+  closureLabelFor,
+  defaultAction,
+  defaultResults,
+  defaultSnapshotLabel,
+  number,
+  safePublishedHref,
+  sourceLabelFor,
+} from '../data/fg03';
+---
+
+<div class="fg03-results" data-fg03-results>
+  <header class="fg03-results-header">
+    <div>
+      <p class="fg03-eyebrow">Default ranking</p>
+      <h3>{actionLabels[defaultAction]} at {defaultSnapshotLabel}</h3>
+    </div>
+    <p data-fg03-results-count={defaultResults.length}>
+      {defaultResults.length} places
+    </p>
+  </header>
+
+  <section data-fg03-results-group="standard" aria-labelledby="fg03-standard-results">
+    <h4 id="fg03-standard-results" class="visually-hidden">
+      Ranked intervention results
+    </h4>
+    <ol class="fg03-result-list" data-fg03-result-list>
+      {defaultResults.map(({ feature, cell }) => {
+        const { properties } = feature;
+        const sourceUrl = safePublishedHref(properties.sourceUrl);
+        const sourceLabel = sourceLabelFor(properties);
+        return (
+          <li
+            data-fg03-result-item
+            data-fg03-result-id={properties.id}
+            data-rank={properties.primaryRank}
+          >
+            <div class="fg03-result-summary">
+              <p class="fg03-result-rank">Rank {properties.primaryRank}</p>
+              <h4>{properties.name}</h4>
+              <p>
+                {actionLabels[properties.action]} ·{' '}
+                {accessLabelFor(properties.accessCondition)}
+              </p>
+              <dl>
+                <div>
+                  <dt>GTFS stops and platforms</dt>
+                  <dd>{number.format(cell.activeStops)}</dd>
+                </div>
+                <div>
+                  <dt>Scheduled trips</dt>
+                  <dd>{number.format(cell.uniqueTrips)}</dd>
+                </div>
+                <div>
+                  <dt>Routes</dt>
+                  <dd>{number.format(cell.uniqueRoutes)}</dd>
+                </div>
+              </dl>
+              <button
+                type="button"
+                class="fg03-result-map-button"
+                data-fg03-select-place={properties.id}
+                aria-label={`Map loading before ${properties.name} can be shown`}
+                aria-disabled="true"
+                disabled
+              >
+                Map loading
+              </button>
+            </div>
+            <details data-fg03-result-evidence>
+              <summary>Read the evidence</summary>
+              <div>
+                <p>
+                  Extending this location’s published hours through the
+                  selected snapshot would put {number.format(cell.activeStops)}{' '}
+                  GTFS stops and platforms within a {number.format(cell.walk)} m
+                  pedestrian-network walk.
+                </p>
+                {properties.hours && (
+                  <p>
+                    <strong>Published hours:</strong> {properties.hours}
+                  </p>
+                )}
+                <p>
+                  <strong>Action:</strong> {actionLabels[properties.action]}
+                </p>
+                <p>
+                  <strong>Access condition:</strong>{' '}
+                  {accessLabelFor(properties.accessCondition)}
+                </p>
+                <p>
+                  <strong>Closure evidence:</strong>{' '}
+                  {closureLabelFor(properties.closureCategory)}
+                </p>
+                <p>
+                  <strong>Accessibility:</strong> {properties.accessibility}
+                </p>
+                <p>
+                  <strong>Stability:</strong> {properties.stability}
+                </p>
+                <p>
+                  <strong>Audit status:</strong> {properties.auditStatus}
+                </p>
+                {sourceUrl && (
+                  <p>
+                    <strong>Official source:</strong>{' '}
+                    <a href={sourceUrl}>{sourceLabel}</a>
+                  </p>
+                )}
+              </div>
+            </details>
+          </li>
+        );
+      })}
+    </ol>
+  </section>
+
+  <section
+    class="fg03-verify-group"
+    data-fg03-verify-group="hours"
+    aria-labelledby="fg03-verify-hours-title"
+    hidden
+  >
+    <h4 id="fg03-verify-hours-title">Hours unknown or ambiguous</h4>
+    <p>
+      These places need authoritative daily-hour confirmation before they
+      can be counted open or closed.
+    </p>
+    <ol data-fg03-verify-list="hours" />
+  </section>
+
+  <section
+    class="fg03-verify-group"
+    data-fg03-verify-group="accessibility"
+    aria-labelledby="fg03-verify-accessibility-title"
+    hidden
+  >
+    <h4 id="fg03-verify-accessibility-title">Accessibility unknown</h4>
+    <p>
+      These places need washroom-level accessibility confirmation before a
+      retrofit recommendation can be made.
+    </p>
+    <ol data-fg03-verify-list="accessibility" />
+  </section>
+
+  <aside
+    class="fg03-detail"
+    data-fg03-detail
+    tabindex="-1"
+    aria-live="polite"
+    aria-labelledby="fg03-detail-title"
+  >
+    <p class="fg03-eyebrow">Map-linked detail</p>
+    <h4 id="fg03-detail-title" tabindex="-1">Choose a ranked place</h4>
+    <div data-fg03-detail-body>
+      <p>
+        Select “Show on map” to connect one recommendation to its location
+        and walking reach. The evidence disclosure in each row works without
+        the map.
+      </p>
+    </div>
+    <button type="button" data-fg03-close-detail disabled>
+      Clear selected place
+    </button>
+  </aside>
+</div>
