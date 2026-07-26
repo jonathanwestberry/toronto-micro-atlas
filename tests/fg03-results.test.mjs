@@ -78,6 +78,21 @@ function collectionWithOnceFeatures(features, reads, key) {
   };
 }
 
+function throwingPrimitive(label) {
+  return new Proxy({}, {
+    get(target, key, receiver) {
+      if (
+        key === Symbol.toPrimitive
+        || key === 'toString'
+        || key === 'valueOf'
+      ) {
+        throw new Error(`${label} primitive conversion`);
+      }
+      return Reflect.get(target, key, receiver);
+    },
+  });
+}
+
 function queryCell({
   access = 'public',
   active = true,
@@ -1126,6 +1141,194 @@ test('global ID collection snapshots each collection and feature properties once
     interventions: 1,
     intervention: 1,
   });
+});
+
+test('open filtering degrades a revoked feature array to no results', () => {
+  const revoked = Proxy.revocable([facility('open')], {});
+  revoked.revoke();
+
+  assert.deepEqual(
+    results.filterOpenFacilities(
+      collection(revoked.proxy),
+      { time: '2200', access: 'public' },
+    ),
+    [],
+  );
+});
+
+test('global ID collection gives its generic error for a revoked feature array', () => {
+  const revoked = Proxy.revocable([facility('open')], {});
+  revoked.revoke();
+
+  assert.throws(
+    () => results.collectFg03ResultIds(
+      collection(revoked.proxy),
+      collection([]),
+    ),
+    {
+      name: 'TypeError',
+      message: 'FG03 result data must contain a features array',
+    },
+  );
+});
+
+test('open filtering does not invoke an untrusted feature array map method', () => {
+  const open = facility('open');
+  const features = new Proxy([open], {
+    get(target, key, receiver) {
+      if (key === 'map') {
+        throw new Error('untrusted map method');
+      }
+      return Reflect.get(target, key, receiver);
+    },
+  });
+
+  assert.deepEqual(
+    results.filterOpenFacilities(
+      collection(features),
+      { time: '2200', access: 'public' },
+    ),
+    [open],
+  );
+});
+
+test('intervention filtering degrades revoked query cells to no results', () => {
+  const revoked = Proxy.revocable([queryCell()], {});
+  const candidate = intervention('revoked-cells', {
+    queryCells: revoked.proxy,
+  });
+  revoked.revoke();
+
+  assert.deepEqual(
+    results.filterInterventions(collection([candidate]), {
+      time: '2200',
+      access: 'public',
+      walk: 400,
+      action: 'extend',
+    }),
+    [],
+  );
+});
+
+test('intervention filtering does not invoke an untrusted query-cell filter method', () => {
+  const queryCells = new Proxy([queryCell()], {
+    get(target, key, receiver) {
+      if (key === 'filter') {
+        throw new Error('untrusted filter method');
+      }
+      return Reflect.get(target, key, receiver);
+    },
+  });
+  const candidate = intervention('proxied-cells', { queryCells });
+
+  assert.deepEqual(
+    results.filterInterventions(collection([candidate]), {
+      time: '2200',
+      access: 'public',
+      walk: 400,
+      action: 'extend',
+    }),
+    [candidate],
+  );
+});
+
+test('search does not invoke an untrusted feature-list map method', () => {
+  const candidate = facility('searchable', { name: 'Searchable washroom' });
+  const features = new Proxy([candidate], {
+    get(target, key, receiver) {
+      if (key === 'map') {
+        throw new Error('untrusted search map method');
+      }
+      return Reflect.get(target, key, receiver);
+    },
+  });
+
+  assert.deepEqual(
+    results.searchFg03Results(features, 'searchable'),
+    [candidate],
+  );
+});
+
+test('grouping does not invoke an untrusted feature-list map method', () => {
+  const candidate = intervention('groupable');
+  const features = new Proxy([candidate], {
+    get(target, key, receiver) {
+      if (key === 'map') {
+        throw new Error('untrusted grouping map method');
+      }
+      return Reflect.get(target, key, receiver);
+    },
+  });
+
+  assert.deepEqual(
+    results.groupRankedInterventions(features),
+    [{
+      id: 'extend_hours',
+      items: [candidate],
+    }],
+  );
+});
+
+test('selection reconciliation degrades a revoked feature list to empty', () => {
+  const revoked = Proxy.revocable([facility('selected')], {});
+  revoked.revoke();
+
+  assert.deepEqual(
+    results.reconcileFg03Selection('selected', revoked.proxy),
+    {
+      selectedId: null,
+      invalidated: true,
+    },
+  );
+});
+
+test('facility sorting does not coerce proxy-valued IDs', () => {
+  const first = facility('first', { name: 'Same name' });
+  const second = facility('second', { name: 'Same name' });
+  first.properties.id = throwingPrimitive('first ID');
+  second.properties.id = throwingPrimitive('second ID');
+
+  assert.deepEqual(
+    results.filterOpenFacilities(
+      collection([first, second]),
+      { time: '2200', access: 'public' },
+    ),
+    [first, second],
+  );
+});
+
+test('intervention sorting does not coerce proxy-valued IDs', () => {
+  const first = intervention('first', { primaryRank: 1 });
+  const second = intervention('second', { primaryRank: 1 });
+  first.properties.id = throwingPrimitive('first ID');
+  second.properties.id = throwingPrimitive('second ID');
+
+  assert.deepEqual(
+    results.groupRankedInterventions([first, second]),
+    [{
+      id: 'extend_hours',
+      items: [first, second],
+    }],
+  );
+});
+
+test('action labels degrade a proxy-valued action to an empty label', () => {
+  const candidate = intervention('hostile-action');
+  candidate.properties.action = throwingPrimitive('action');
+
+  assert.equal(results.getActionLabel(candidate), '');
+});
+
+test('search ignores a proxy-valued action without coercing it', () => {
+  const candidate = intervention('hostile-action', {
+    name: 'Neutral candidate',
+  });
+  candidate.properties.action = throwingPrimitive('action');
+
+  assert.deepEqual(
+    results.searchFg03Results([candidate], 'verify'),
+    [],
+  );
 });
 
 test('presentation helpers isolate a feature with a throwing properties accessor', () => {

@@ -31,10 +31,56 @@ function safeRead(source, key) {
   }
 }
 
+function safeArraySnapshot(value) {
+  try {
+    if (!Array.isArray(value)) {
+      return null;
+    }
+  } catch {
+    return null;
+  }
+
+  const length = safeRead(value, 'length');
+  if (!Number.isSafeInteger(length) || length < 0) {
+    return null;
+  }
+
+  const snapshot = [];
+  for (let index = 0; index < length; index += 1) {
+    snapshot.push(safeRead(value, index));
+  }
+  return snapshot;
+}
+
 function safeProperties(feature) {
   const properties = safeRead(feature, 'properties');
   return properties !== null && typeof properties === 'object'
     ? properties
+    : null;
+}
+
+function snapshotString(properties, key, fallback = null) {
+  const value = safeRead(properties, key);
+  return typeof value === 'string' ? value : fallback;
+}
+
+function snapshotOptionalString(properties, key) {
+  const value = safeRead(properties, key);
+  if (value === undefined) {
+    return undefined;
+  }
+  return typeof value === 'string' ? value : '';
+}
+
+function snapshotBoolean(properties, key) {
+  const value = safeRead(properties, key);
+  return typeof value === 'boolean' ? value : null;
+}
+
+function snapshotNumber(properties, key) {
+  const value = safeRead(properties, key);
+  return typeof value === 'number' && Number.isFinite(value)
+    ? value
     : null;
 }
 
@@ -43,27 +89,27 @@ function snapshotFeature(feature) {
   return {
     feature,
     hasProperties: properties !== null,
-    accessCondition: safeRead(properties, 'accessCondition'),
-    action: safeRead(properties, 'action'),
-    actionClass: safeRead(properties, 'actionClass'),
-    address: safeRead(properties, 'address'),
-    facilityId: safeRead(properties, 'facilityId'),
-    id: safeRead(properties, 'id'),
-    materialGain: safeRead(properties, 'materialGain'),
-    name: safeRead(properties, 'name'),
-    primaryRank: safeRead(properties, 'primaryRank'),
-    queryCells: safeRead(properties, 'queryCells'),
-    source: safeRead(properties, 'source'),
-    sourceLabel: safeRead(properties, 'sourceLabel'),
-    sourceUrl: safeRead(properties, 'sourceUrl'),
+    accessCondition: snapshotString(properties, 'accessCondition'),
+    action: snapshotOptionalString(properties, 'action'),
+    actionClass: snapshotString(properties, 'actionClass'),
+    address: snapshotString(properties, 'address'),
+    facilityId: snapshotString(properties, 'facilityId'),
+    id: snapshotString(properties, 'id', ''),
+    materialGain: snapshotBoolean(properties, 'materialGain'),
+    name: snapshotString(properties, 'name'),
+    primaryRank: snapshotNumber(properties, 'primaryRank'),
+    queryCells: safeArraySnapshot(safeRead(properties, 'queryCells')),
+    source: snapshotString(properties, 'source'),
+    sourceLabel: snapshotString(properties, 'sourceLabel'),
+    sourceUrl: snapshotString(properties, 'sourceUrl'),
     stateByTime: safeRead(properties, 'stateByTime'),
-    verificationSubtype: safeRead(properties, 'verificationSubtype'),
+    verificationSubtype: snapshotString(properties, 'verificationSubtype'),
   };
 }
 
 function snapshotCollection(collection, required = false) {
-  const features = safeRead(collection, 'features');
-  if (!Array.isArray(features)) {
+  const features = safeArraySnapshot(safeRead(collection, 'features'));
+  if (features === null) {
     if (required) {
       throw new TypeError('FG03 result data must contain a features array');
     }
@@ -85,8 +131,8 @@ function compareFacilities(left, right) {
     return nameOrder;
   }
   return compareText(
-    String(left.id ?? ''),
-    String(right.id ?? ''),
+    left.id,
+    right.id,
   );
 }
 
@@ -173,7 +219,7 @@ function matchingQueryCell(snapshot, state) {
     snapshot.action !== state.action
     || snapshot.materialGain !== true
     || dataAccess === null
-    || !Array.isArray(snapshot.queryCells)
+    || snapshot.queryCells === null
   ) {
     return null;
   }
@@ -240,8 +286,8 @@ function compareInterventionRank(left, right) {
     return safeLeftRank - safeRightRank;
   }
   return compareText(
-    String(left.id ?? ''),
-    String(right.id ?? ''),
+    left.id,
+    right.id,
   );
 }
 
@@ -336,10 +382,11 @@ function searchSnapshots(snapshots, query) {
 }
 
 export function searchFg03Results(features, query) {
-  if (!Array.isArray(features)) {
+  const featureSnapshot = safeArraySnapshot(features);
+  if (featureSnapshot === null) {
     return [];
   }
-  return searchSnapshots(features.map(snapshotFeature), query).map(
+  return searchSnapshots(featureSnapshot.map(snapshotFeature), query).map(
     (snapshot) => snapshot.feature,
   );
 }
@@ -378,9 +425,10 @@ function reconcileSnapshotSelection(selectedId, visibleSnapshots) {
 }
 
 export function reconcileFg03Selection(selectedId, visibleFeatures) {
-  const snapshots = Array.isArray(visibleFeatures)
-    ? visibleFeatures.map(snapshotFeature)
-    : [];
+  const featureSnapshot = safeArraySnapshot(visibleFeatures);
+  const snapshots = featureSnapshot === null
+    ? []
+    : featureSnapshot.map(snapshotFeature);
   return reconcileSnapshotSelection(selectedId, snapshots);
 }
 
@@ -482,11 +530,14 @@ function groupRankedSnapshots(snapshots) {
 }
 
 export function groupRankedInterventions(features) {
-  if (!Array.isArray(features)) {
+  const featureSnapshot = safeArraySnapshot(features);
+  if (featureSnapshot === null) {
     return [];
   }
-  return groupRankedSnapshots(features.map(snapshotFeature)).map((group) => ({
-    id: group.id,
-    items: group.snapshots.map((snapshot) => snapshot.feature),
-  }));
+  return groupRankedSnapshots(featureSnapshot.map(snapshotFeature)).map(
+    (group) => ({
+      id: group.id,
+      items: group.snapshots.map((snapshot) => snapshot.feature),
+    }),
+  );
 }
