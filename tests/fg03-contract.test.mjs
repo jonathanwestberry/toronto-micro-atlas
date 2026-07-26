@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { test } from 'node:test';
 
+const distPath = new URL('../dist/', import.meta.url);
 const routePath = new URL(
   '../dist/guides/when-toronto-has-to-go/index.html',
   import.meta.url,
@@ -396,6 +397,23 @@ test('production headers preserve indexing, caching, and browser security', () =
         + 'public, no-cache, must-revalidate, no-transform',
       ),
       `HTML route must prevent automatic third-party transformation: ${route}`,
+    );
+  }
+  assert.equal(
+    (headers.match(/\bno-transform\b/g) ?? []).length,
+    5,
+    'Only the five HTML cache rules may disable Cloudflare transformation',
+  );
+
+  const beaconMarkup = /cloudflareinsights|beacon\.min\.js|data-cf-beacon/i;
+  const htmlFiles = readdirSync(distPath, { recursive: true })
+    .filter((path) => path.endsWith('.html'));
+  assert.ok(htmlFiles.length > 0, 'Expected built HTML files to scan');
+  for (const htmlFile of htmlFiles) {
+    assert.doesNotMatch(
+      readText(new URL(htmlFile, distPath)),
+      beaconMarkup,
+      `Built HTML must not contain analytics beacon markup: ${htmlFile}`,
     );
   }
 });
