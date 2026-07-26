@@ -24,12 +24,15 @@ from shapely.geometry import Point, shape
 from fg03_proof import (
     Facility,
     NetworkSnapper,
+    access_condition_for_source,
     cluster_access_points,
+    classify_closure_category,
     consolidate_crem_rows,
     coordinates_from_geometry,
     multi_source_distances,
 )
 from fg03_schedule import Availability, availability_at, parse_weekly_hours
+from fg03_transit import active_stop_events_for_windows
 
 
 DATA_DIR = Path(__file__).resolve().parent.parent
@@ -38,7 +41,7 @@ RAW_DIR = DATA_DIR / "raw" / "fg03"
 CURATED_DIR = DATA_DIR / "fg03"
 BOUNDARY_PATH = DATA_DIR / "processed" / "toronto-boundary.geojson"
 WALKING_CUTOFF_METRES = 400.0
-TRANSIT_WINDOW_SECONDS = 15 * 60
+TRANSIT_WINDOW_MINUTES = 15
 MAX_SNAP_METRES = 200.0
 
 DAY_CODES = [
@@ -58,14 +61,14 @@ class Snapshot:
     label: str
     weekday: int
     minute: int
-    gtfs_seconds: int
+    gtfs_minute: int
 
 
 SNAPSHOTS = [
-    Snapshot("1200", "Noon", 1, 12 * 60, 12 * 60 * 60),
-    Snapshot("2030", "8:30 p.m.", 1, 20 * 60 + 30, (20 * 60 + 30) * 60),
-    Snapshot("2200", "10 p.m.", 1, 22 * 60, 22 * 60 * 60),
-    Snapshot("0030", "12:30 a.m. next day", 2, 30, (24 * 60 + 30) * 60),
+    Snapshot("1200", "Noon", 1, 12 * 60, 12 * 60),
+    Snapshot("2030", "8:30 p.m.", 1, 20 * 60 + 30, 20 * 60 + 30),
+    Snapshot("2200", "10 p.m.", 1, 22 * 60, 22 * 60),
+    Snapshot("0030", "12:30 a.m. next day", 2, 30, 24 * 60 + 30),
 ]
 
 
@@ -80,8 +83,17 @@ def city_hours_as_text(info: dict) -> str:
     for code, label in DAY_CODES:
         opening = str(hours.get(f"oh{code}o") or "").strip()
         closing = str(hours.get(f"oh{code}c") or "").strip()
-        if not opening or not closing or opening.lower() == "closed":
+        pair = (opening.casefold(), closing.casefold())
+        if (
+            not opening
+            or not closing
+            or opening.casefold() == "closed"
+            or closing.casefold() == "closed"
+            or pair in {("location", "closed"), ("permits", "only")}
+        ):
             segments.append(f"{label} Closed")
+        elif opening.casefold().endswith(" and"):
+            segments.append(f"{label} {opening[:-4].rstrip()} & {closing}")
         else:
             segments.append(f"{label} {opening} to {closing}")
     return "; ".join(segments)
@@ -117,6 +129,8 @@ def load_park_facilities() -> list[Facility]:
                 all_gender=(
                     True if "all-gender" in (row.get("type") or "").lower() else None
                 ),
+                access_condition=access_condition_for_source("parks"),
+                closure_category=classify_closure_category(notes),
                 temporarily_closed=row.get("Status") == "0",
                 partial_service=row.get("Status") == "2",
                 source_url=row.get("url") or (
@@ -147,6 +161,8 @@ def load_library_facilities() -> list[Facility]:
                 schedule=parse_weekly_hours(hours_raw),
                 accessible=None,
                 all_gender=None,
+                access_condition=access_condition_for_source("library"),
+                closure_category="none",
                 source_url=row.get("Website", ""),
             )
         )
@@ -184,6 +200,8 @@ def load_museum_facilities() -> list[Facility]:
                     if row.get("Gender Inclusive?", "").lower() == "yes"
                     else False
                 ),
+                access_condition=access_condition_for_source("museum"),
+                closure_category=classify_closure_category(row.get("Notes", "")),
                 source_url=(
                     "https://open.toronto.ca/dataset/museums-and-cultural-centres/"
                 ),
@@ -215,6 +233,8 @@ def load_automated_facilities() -> list[Facility]:
                 schedule=None,
                 accessible=True,
                 all_gender=None,
+                access_condition=access_condition_for_source("automated"),
+                closure_category=classify_closure_category(row.get("STATUS", "")),
                 temporarily_closed=row.get("STATUS") != "Existing",
                 source_url=(
                     "https://open.toronto.ca/dataset/"
@@ -262,6 +282,8 @@ def load_ttc_facilities(gtfs_path: Path) -> list[Facility]:
                 schedule=parse_weekly_hours(hours_raw),
                 accessible=True,
                 all_gender=None,
+                access_condition=access_condition_for_source("ttc"),
+                closure_category="none",
                 record_count=len(group),
                 source_url=group[0]["source_url"],
                 notes="Located in the fare-paid area.",
@@ -283,67 +305,29 @@ def load_facilities(gtfs_path: Path, boundary) -> tuple[list[Facility], list[Fac
     return inside, outside
 
 
-def active_service_ids(
-    archive: zipfile.ZipFile, service_date: date
-) -> set[str]:
-    calendar = read_gtfs_table(archive, "calendar.txt")
-    day_name = service_date.strftime("%A").lower()
-    ymd = service_date.strftime("%Y%m%d")
-    active = {
-        row["service_id"]
-        for row in calendar
-        if row[day_name] == "1" and row["start_date"] <= ymd <= row["end_date"]
-    }
-    for row in read_gtfs_table(archive, "calendar_dates.txt"):
-        if row["date"] != ymd:
-            continue
-        if row["exception_type"] == "1":
-            active.add(row["service_id"])
-        elif row["exception_type"] == "2":
-            active.discard(row["service_id"])
-    return active
-
-
-def gtfs_seconds(raw_time: str) -> int:
-    hours, minutes, seconds = (int(value) for value in raw_time.split(":"))
-    return hours * 3600 + minutes * 60 + seconds
-
-
 def load_active_transit_stops(
     gtfs_path: Path, service_date: date, boundary
 ) -> dict[str, list[dict[str, float | str]]]:
-    by_snapshot = {snapshot.slug: set() for snapshot in SNAPSHOTS}
+    events_by_snapshot = active_stop_events_for_windows(
+        gtfs_path,
+        service_date,
+        windows={
+            snapshot.slug: (snapshot.gtfs_minute, TRANSIT_WINDOW_MINUTES)
+            for snapshot in SNAPSHOTS
+        },
+    )
     with zipfile.ZipFile(gtfs_path) as archive:
-        active_services = active_service_ids(archive, service_date)
-        trips = read_gtfs_table(archive, "trips.txt")
-        active_trips = {
-            row["trip_id"] for row in trips if row["service_id"] in active_services
-        }
-
-        with archive.open("stop_times.txt") as raw:
-            reader = csv.DictReader(io.TextIOWrapper(raw, encoding="utf-8-sig"))
-            for row in reader:
-                if row["trip_id"] not in active_trips:
-                    continue
-                raw_time = row.get("departure_time") or row.get("arrival_time")
-                if not raw_time:
-                    continue
-                seconds = gtfs_seconds(raw_time)
-                for snapshot in SNAPSHOTS:
-                    if abs(seconds - snapshot.gtfs_seconds) <= TRANSIT_WINDOW_SECONDS:
-                        by_snapshot[snapshot.slug].add(row["stop_id"])
-
         stops = read_gtfs_table(archive, "stops.txt")
     stop_lookup = {row["stop_id"]: row for row in stops}
 
     result = {}
-    for slug, stop_ids in by_snapshot.items():
+    for slug, events in events_by_snapshot.items():
         collapsed = {}
-        for stop_id in stop_ids:
-            stop = stop_lookup.get(stop_id)
+        for event in events:
+            stop = stop_lookup.get(event.stop_id)
             if not stop:
                 continue
-            key = stop.get("parent_station") or stop_id
+            key = event.parent_station or event.stop_id
             point_row = stop_lookup.get(key, stop)
             lon = float(point_row["stop_lon"])
             lat = float(point_row["stop_lat"])
@@ -400,6 +384,8 @@ def source_offsets_for_open_facilities(
 ) -> dict[tuple[float, float], float]:
     offsets = {}
     for facility in facilities:
+        if facility.access_condition != "unrestricted":
+            continue
         if states[facility.facility_id] != Availability.OPEN:
             continue
         node, offset = facility_snaps[facility.facility_id]
@@ -445,7 +431,7 @@ def plot_snapshot(
     )
     axis.set_title(
         f"{snapshot.label}\n"
-        f"{summary['open_access_points']} open access points  |  "
+        f"{summary['open_access_points']} unrestricted access points  |  "
         f"{summary['covered_transit_stops']:,} of "
         f"{summary['active_transit_stops']:,} active TTC stops covered",
         loc="left",
@@ -483,7 +469,7 @@ def plot_snapshot(
             markerfacecolor="#151515",
             markeredgecolor="none",
             markersize=5,
-            label="Documented open washroom",
+            label="Documented unrestricted open washroom",
         ),
     ]
     axis.legend(handles=legend, loc="lower left", frameon=False, fontsize=8)
@@ -549,7 +535,11 @@ def write_csv(path: Path, rows: list[dict]) -> None:
     if not rows:
         return
     with path.open("w", encoding="utf-8", newline="") as destination:
-        writer = csv.DictWriter(destination, fieldnames=list(rows[0]))
+        writer = csv.DictWriter(
+            destination,
+            fieldnames=list(rows[0]),
+            lineterminator="\n",
+        )
         writer.writeheader()
         writer.writerows(rows)
 
@@ -567,6 +557,11 @@ def write_readme(
     late = by_slug["2200"]
     overnight = by_slug["0030"]
     open_drop = 100 * (1 - late["open_access_points"] / noon["open_access_points"])
+    overnight_access_point_label = (
+        "access point"
+        if overnight["open_access_points"] == 1
+        else "access points"
+    )
     lines = [
         "# Field Guide 03 data proof",
         "",
@@ -575,26 +570,31 @@ def write_readme(
         "## Result",
         "",
         (
-            f"Documented open access points fall from {noon['open_access_points']} at noon "
-            f"to {late['open_access_points']} at 10 p.m., a {open_drop:.1f}% contraction. "
+            f"Documented unrestricted open access points fall from "
+            f"{noon['open_access_points']} at noon to {late['open_access_points']} at "
+            f"10 p.m., a {open_drop:.1f}% contraction. "
             f"At 12:30 a.m., {overnight['active_transit_stops']:,} TTC stops still show "
             f"scheduled activity within the 30-minute observation window, while only "
-            f"{overnight['open_access_points']} washroom access points remain reliably open."
+            f"{overnight['open_access_points']} unrestricted public washroom "
+            f"{overnight_access_point_label} remains reliably open. Fare-paid TTC washrooms "
+            f"are reported separately and do not seed public walking coverage."
         ),
         "",
-        "This passes the temporal-pattern part of the proof. It does not yet rank priority "
-        "areas or test 300 m and 500 m sensitivity. Those remain Phase 2 work before the "
-        "full product build is committed.",
+        "This is the temporal-pattern layer of the proof. It deliberately does not rank "
+        "priority areas or test 300 m and 500 m sensitivity. The audited Phase 2 package "
+        "in `phase2/` performs those analyses without changing these headline counts.",
         "",
         "## Snapshot summary",
         "",
-        "| Time | Open access points | Open facility records | Unknown hours | Active TTC stops | TTC stops covered |",
-        "|---|---:|---:|---:|---:|---:|",
+        "| Time | Unrestricted open access points | Unrestricted open records | Fare-paid open records | Unknown unrestricted hours | Active TTC stops | TTC stops covered by unrestricted facilities |",
+        "|---|---:|---:|---:|---:|---:|---:|",
     ]
     for summary in summaries:
         lines.append(
             f"| {summary['label']} | {summary['open_access_points']} | "
-            f"{summary['open_facility_records']} | {summary['unknown_hours']} | "
+            f"{summary['open_facility_records']} | "
+            f"{summary['fare_paid_open_facility_records']} | "
+            f"{summary['unknown_hours']} | "
             f"{summary['active_transit_stops']:,} | {summary['covered_transit_stops']:,} "
             f"({summary['transit_coverage_pct']:.1f}%) |"
         )
@@ -605,10 +605,12 @@ def write_readme(
             "",
             f"- {len(facilities)} in-boundary facility locations after source-specific consolidation.",
             f"- {sum(f.record_count for f in facilities)} underlying source records.",
-            f"- {len(outside)} facility locations excluded outside the Toronto boundary.",
+            f"- Out-of-boundary facility locations excluded: {len(outside)}.",
             f"- {len(nearby_pairs)} cross-source pairs within 50 m are listed in `nearby-cross-source-pairs.csv`.",
             "- Manual decisions for those pairs are recorded in `data/fg03/nearby-pair-audit.csv`.",
             "- Same-address records within 100 m share one access-point cluster. Distinct addresses remain separate even when nearby.",
+            "- `access_condition` distinguishes unrestricted public access from TTC facilities in fare-paid areas; every TTC record is marked `fare_paid`.",
+            "- `closure_category` records the Parks reason when published: seasonal, temporary, construction, or none. Partial closures remain available with their source note and flag.",
             "- Automated public washrooms remain information gaps because the official source publishes the season but not daily hours.",
             "- Library accessibility remains unknown because the source confirms public washrooms but does not publish washroom-level accessibility.",
             "",
@@ -617,9 +619,10 @@ def write_readme(
             "1. Consolidate Parks, libraries, CREM buildings, museums and cultural centres, automated public washrooms, and TTC washroom stations.",
             "2. Normalize published weekly hours. Keep unknown hours distinct from scheduled closure.",
             "3. Apply live Parks closure status. Partial closures remain available with a flag.",
-            "4. Snap open facilities and scheduled TTC stops to the City Pedestrian Network.",
-            "5. Run a multi-source 400 m shortest-path search with the facility-to-network snap offset included.",
-            "6. Count a TTC stop as covered only when its network distance plus stop snap distance is at most 400 m.",
+            "4. Exclude fare-paid TTC washrooms from unrestricted public coverage and report their open count separately.",
+            "5. Snap unrestricted open facilities and scheduled TTC stops to the City Pedestrian Network.",
+            "6. Run a multi-source 400 m shortest-path search with the facility-to-network snap offset included.",
+            "7. Count a TTC stop as covered only when its network distance plus stop snap distance is at most 400 m.",
             "",
             "The City describes the pedestrian network as topologically focused and notes known completeness and classification limitations. These maps show documented scheduled access, not guaranteed real-time availability or passenger demand.",
         ]
@@ -638,6 +641,14 @@ def build(snapshot_date: date) -> Path:
     )
     gtfs_path = RAW_DIR / "completegtfs.zip"
     facilities, outside = load_facilities(gtfs_path, boundary)
+    unrestricted_facilities = [
+        facility
+        for facility in facilities
+        if facility.access_condition == "unrestricted"
+    ]
+    fare_paid_facilities = [
+        facility for facility in facilities if facility.access_condition == "fare_paid"
+    ]
     clusters = cluster_access_points(facilities)
 
     print(f"Facilities inside Toronto: {len(facilities)}")
@@ -667,7 +678,7 @@ def build(snapshot_date: date) -> Path:
             for facility in facilities
         }
         offsets = source_offsets_for_open_facilities(
-            facilities, states, facility_snaps
+            unrestricted_facilities, states, facility_snaps
         )
         distances = multi_source_distances(
             graph, offsets, cutoff=WALKING_CUTOFF_METRES
@@ -679,12 +690,21 @@ def build(snapshot_date: date) -> Path:
         reached_edges = edges[reached_mask]
         open_facilities = [
             facility
-            for facility in facilities
+            for facility in unrestricted_facilities
+            if states[facility.facility_id] == Availability.OPEN
+            and facility_snaps[facility.facility_id][1] <= MAX_SNAP_METRES
+        ]
+        fare_paid_open_facilities = [
+            facility
+            for facility in fare_paid_facilities
             if states[facility.facility_id] == Availability.OPEN
             and facility_snaps[facility.facility_id][1] <= MAX_SNAP_METRES
         ]
         open_clusters = {
             clusters[facility.facility_id] for facility in open_facilities
+        }
+        fare_paid_open_clusters = {
+            clusters[facility.facility_id] for facility in fare_paid_open_facilities
         }
 
         transit_rows = active_stops[snapshot.slug]
@@ -694,11 +714,13 @@ def build(snapshot_date: date) -> Path:
             if distances.get(node, float("inf")) + snap_distance <= WALKING_CUTOFF_METRES:
                 covered_transit += 1
 
-        state_counts = Counter(states.values())
+        state_counts = Counter(
+            states[facility.facility_id] for facility in unrestricted_facilities
+        )
         open_by_source = Counter(facility.source for facility in open_facilities)
         unknown_by_source = Counter(
             facility.source
-            for facility in facilities
+            for facility in unrestricted_facilities
             if states[facility.facility_id] == Availability.UNKNOWN
         )
         summary = {
@@ -706,6 +728,8 @@ def build(snapshot_date: date) -> Path:
             "label": snapshot.label,
             "open_access_points": len(open_clusters),
             "open_facility_records": len(open_facilities),
+            "fare_paid_open_access_points": len(fare_paid_open_clusters),
+            "fare_paid_open_facility_records": len(fare_paid_open_facilities),
             "scheduled_closed": state_counts[Availability.CLOSED],
             "temporarily_closed": state_counts[Availability.TEMPORARILY_CLOSED],
             "unknown_hours": state_counts[Availability.UNKNOWN],
@@ -752,6 +776,19 @@ def build(snapshot_date: date) -> Path:
             facility_snaps[facility.facility_id][1], 1
         )
         facility_rows.append(row)
+    allowed_access_conditions = {"unrestricted", "fare_paid"}
+    allowed_closure_categories = {"none", "seasonal", "temporary", "construction"}
+    assert all(
+        row["access_condition"] in allowed_access_conditions for row in facility_rows
+    )
+    assert all(
+        row["closure_category"] in allowed_closure_categories for row in facility_rows
+    )
+    assert all(
+        row["access_condition"] == "fare_paid"
+        for row in facility_rows
+        if row["source"] == "ttc"
+    )
     write_csv(output_dir / "facilities.csv", facility_rows)
     write_csv(output_dir / "facility-states.csv", facility_state_rows)
     write_csv(output_dir / "nearby-cross-source-pairs.csv", nearby_pairs)
@@ -770,13 +807,19 @@ def build(snapshot_date: date) -> Path:
                 "generated_at": datetime.now().astimezone().isoformat(),
                 "snapshot_date": snapshot_date.isoformat(),
                 "walking_cutoff_metres": WALKING_CUTOFF_METRES,
-                "transit_window_minutes": TRANSIT_WINDOW_SECONDS // 60,
+                "transit_window_minutes": TRANSIT_WINDOW_MINUTES,
                 "facility_count_inside": len(facilities),
                 "underlying_source_records": sum(
                     facility.record_count for facility in facilities
                 ),
                 "facility_count_outside": len(outside),
                 "outside_facilities": [asdict(facility) for facility in outside],
+                "access_condition_counts": dict(
+                    sorted(Counter(f.access_condition for f in facilities).items())
+                ),
+                "closure_category_counts": dict(
+                    sorted(Counter(f.closure_category for f in facilities).items())
+                ),
                 "network_nodes": graph.number_of_nodes(),
                 "network_edges": graph.number_of_edges(),
                 "facility_snap_max_m": max(snap_distances),
@@ -804,6 +847,7 @@ def build(snapshot_date: date) -> Path:
 
 
 def main() -> None:
+    global RAW_DIR
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--snapshot-date",
@@ -811,7 +855,14 @@ def main() -> None:
         default=date(2026, 7, 21),
         help="Tuesday service date in YYYY-MM-DD format",
     )
+    parser.add_argument(
+        "--raw-dir",
+        type=Path,
+        default=RAW_DIR,
+        help="directory containing the dated FG03 raw source snapshot",
+    )
     arguments = parser.parse_args()
+    RAW_DIR = arguments.raw_dir
     build(arguments.snapshot_date)
 
 

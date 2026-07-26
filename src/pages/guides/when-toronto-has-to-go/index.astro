@@ -1,0 +1,1160 @@
+---
+import { readdirSync, readFileSync } from 'node:fs';
+import Base from '../../../layouts/Base.astro';
+import '../../../styles/fg03.css';
+
+type SnapshotId = '1200' | '2030' | '2200' | '0030';
+type ActionId = 'open' | 'extend' | 'new' | 'verify' | 'retrofit';
+
+interface Phase1Headline {
+  activeTransitPointCount: number;
+  farePaidOpenAccessPointCount: number;
+  farePaidOpenFacilityRecordCount: number;
+  unit: 'grouped transit points';
+  unrestrictedCoveredTransitPointCount: number;
+  unrestrictedOpenAccessPointCount: number;
+  unrestrictedOpenFacilityRecordCount: number;
+}
+
+interface Phase2Headline {
+  activeStopCount: number;
+  unit: 'GTFS stops and platforms';
+  unrestrictedCoveredStopCount: number;
+}
+
+interface Manifest {
+  defaultState: {
+    access: 'public' | 'rider_conditional';
+    action: ActionId;
+    time: SnapshotId;
+    walk: number;
+  };
+  files: {
+    facilities: string;
+    interventions: string;
+  };
+  gate: {
+    auditedOpportunityCount: number;
+    passed: boolean;
+    reason: string;
+  };
+  headlines: {
+    bySnapshot: Record<
+      SnapshotId,
+      {
+        phase1Grouped: Phase1Headline;
+        phase2GtfsStops: Phase2Headline;
+      }
+    >;
+    facilities: number;
+    interventions: number;
+  };
+  limitations: string[];
+  snapshotDate: string;
+}
+
+interface QueryCell {
+  access: 'public' | 'rider_conditional';
+  active: boolean;
+  activeStops: number;
+  events: number;
+  time: SnapshotId;
+  uniqueRoutes: number;
+  uniqueTrips: number;
+  walk: number;
+}
+
+interface InterventionProperties {
+  accessCondition: 'unrestricted' | 'fare_paid' | 'unknown';
+  accessibility: 'accessible' | 'not_accessible' | 'unknown';
+  action: Exclude<ActionId, 'open' | 'retrofit'>;
+  actionClass: string;
+  auditStatus: 'valid';
+  closureCategory: string;
+  facilityId: string;
+  hours?: string;
+  id: string;
+  materialGain: boolean;
+  name: string;
+  primaryRank: number;
+  queryCells: QueryCell[];
+  reachAvailable: boolean;
+  sourceUrl?: string;
+  stability: 'robust' | 'sensitive' | 'unstable';
+  verificationSubtype?: 'hours' | 'accessibility';
+}
+
+interface FeatureCollection<Properties> {
+  features: Array<{
+    geometry: {
+      coordinates: [number, number];
+      type: 'Point';
+    };
+    properties: Properties;
+    type: 'Feature';
+  }>;
+  type: 'FeatureCollection';
+}
+
+interface FacilityProperties {
+  id: string;
+  name: string;
+}
+
+const publicDataRoot = new URL('./public/data/fg03/', `file://${process.cwd()}/`);
+const snapshotDirectory = readdirSync(publicDataRoot, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory() && /^\d{4}-\d{2}-\d{2}$/.test(entry.name))
+  .map((entry) => entry.name)
+  .sort()
+  .at(-1);
+
+if (!snapshotDirectory) {
+  throw new Error('FG03 cannot build without a dated public data snapshot.');
+}
+
+const readJson = <Value,>(url: URL): Value =>
+  JSON.parse(readFileSync(url, 'utf8')) as Value;
+const manifest = readJson<Manifest>(
+  new URL(`./public/data/fg03/${snapshotDirectory}/manifest.json`, `file://${process.cwd()}/`),
+);
+const publicFileUrl = (path: string) =>
+  new URL(`./public/${path.replace(/^\/+/, '')}`, `file://${process.cwd()}/`);
+const facilities = readJson<FeatureCollection<FacilityProperties>>(
+  publicFileUrl(manifest.files.facilities),
+);
+const interventions = readJson<FeatureCollection<InterventionProperties>>(
+  publicFileUrl(manifest.files.interventions),
+);
+
+if (facilities.type !== 'FeatureCollection' || interventions.type !== 'FeatureCollection') {
+  throw new Error('FG03 public datasets must be GeoJSON FeatureCollections.');
+}
+
+const base = import.meta.env.BASE_URL.replace(/\/+$/, '');
+const number = new Intl.NumberFormat('en-CA');
+const snapshotDate = new Intl.DateTimeFormat('en-CA', {
+  day: 'numeric',
+  month: 'long',
+  timeZone: 'UTC',
+  year: 'numeric',
+}).format(new Date(`${manifest.snapshotDate}T12:00:00Z`));
+const snapshotLabels: Record<SnapshotId, string> = {
+  '1200': 'Noon',
+  '2030': '8:30 p.m.',
+  '2200': '10 p.m.',
+  '0030': '12:30 a.m.',
+};
+const snapshotOrder: SnapshotId[] = ['1200', '2030', '2200', '0030'];
+const snapshots = snapshotOrder.map((id) => ({
+  id,
+  label: snapshotLabels[id],
+  phase1: manifest.headlines.bySnapshot[id].phase1Grouped,
+  phase2: manifest.headlines.bySnapshot[id].phase2GtfsStops,
+}));
+
+const defaultTime = manifest.defaultState.time;
+const defaultWalk = manifest.defaultState.walk;
+const defaultAction = manifest.defaultState.action;
+const defaultAccess = manifest.defaultState.access;
+const gatePassed = manifest.gate.passed === true;
+const defaultUrlAccess = defaultAccess === 'rider_conditional' ? 'rider' : 'public';
+const defaultSnapshotLabel = snapshotLabels[defaultTime];
+const defaultPhase1 = manifest.headlines.bySnapshot[defaultTime].phase1Grouped;
+const actionLabels: Record<ActionId, string> = {
+  open: 'Current open facility records',
+  extend: 'Extend hours',
+  new: 'New facility zone',
+  verify: 'Verify published information',
+  retrofit: 'Accessibility retrofit',
+};
+const actionStatusLabels: Record<ActionId, string> = {
+  open: 'current open facility records',
+  extend: 'audited extend-hours opportunities',
+  new: 'audited new-facility zones',
+  verify: 'audited information checks',
+  retrofit: 'audited accessibility retrofits',
+};
+const sourceLabels: Record<string, string> = {
+  automated: 'Automated Public Washrooms',
+  crem: 'CREM Portfolio Washrooms',
+  library: 'Library Branch General Information',
+  museum: 'Museums and Cultural Centres',
+  parks: 'Park Washroom Facilities',
+  ttc: 'TTC station washrooms',
+};
+const safePublishedHref = (value?: string): string | null => {
+  if (!value) return null;
+  if (
+    /^\/data\/[A-Za-z0-9._~!$&'()*+,;=:@%/?#-]+$/.test(value) &&
+    !value.includes('..') &&
+    !value.includes('\\') &&
+    !value.startsWith('//')
+  ) {
+    return value;
+  }
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && !url.username && !url.password
+      ? url.href
+      : null;
+  } catch {
+    return null;
+  }
+};
+const sourceLabelFor = (properties: InterventionProperties): string => {
+  const [source] = properties.facilityId.split(':', 1);
+  return sourceLabels[source] ?? 'Official facility source';
+};
+const accessLabelFor = (access: InterventionProperties['accessCondition']): string =>
+  access === 'fare_paid'
+    ? 'Fare-paid area, valid fare required'
+    : access === 'unrestricted'
+      ? 'No fare required'
+      : 'Access condition unknown';
+const closureLabelFor = (category: string): string =>
+  category === 'none'
+    ? 'No temporary or construction closure recorded'
+    : category.replaceAll('_', ' ');
+const guideDescription = gatePassed
+  ? `At ${defaultSnapshotLabel}, Toronto has ${number.format(
+      defaultPhase1.activeTransitPointCount,
+    )} grouped transit points with scheduled activity but only ${number.format(
+      defaultPhase1.unrestrictedOpenAccessPointCount,
+    )} documented unrestricted washroom access points. This guide maps the gap and publishes ${number.format(
+      manifest.gate.auditedOpportunityCount,
+    )} audited opportunities.`
+  : `At ${defaultSnapshotLabel}, Toronto has ${number.format(
+      defaultPhase1.activeTransitPointCount,
+    )} grouped transit points with scheduled activity but only ${number.format(
+      defaultPhase1.unrestrictedOpenAccessPointCount,
+    )} documented unrestricted washroom access points. The dated proof remains published, but rankings are withheld because the recommendation gate failed.`;
+
+const defaultResults = gatePassed
+  ? interventions.features
+      .filter(
+        ({ properties }) =>
+          properties.action === defaultAction &&
+          properties.auditStatus === 'valid' &&
+          properties.materialGain,
+      )
+      .map((feature) => ({
+        feature,
+        cell: feature.properties.queryCells.find(
+          (candidate) =>
+            candidate.time === defaultTime &&
+            candidate.access === defaultAccess &&
+            candidate.walk === defaultWalk,
+        ),
+      }))
+      .filter(
+        (
+          result,
+        ): result is {
+          feature: (typeof interventions.features)[number];
+          cell: QueryCell;
+        } =>
+          Boolean(
+            result.cell?.active &&
+              (result.cell.activeStops > 0 ||
+                result.cell.events > 0 ||
+                result.cell.uniqueTrips > 0),
+          ),
+      )
+      .sort((a, b) => a.feature.properties.primaryRank - b.feature.properties.primaryRank)
+  : [];
+
+const riderConditionalCount =
+  manifest.headlines.bySnapshot[defaultTime].phase1Grouped.farePaidOpenFacilityRecordCount;
+const config = JSON.stringify({
+  defaultState: {
+    ...manifest.defaultState,
+    access: manifest.defaultState.access === 'rider_conditional' ? 'rider' : 'public',
+  },
+  files: manifest.files,
+  gate: manifest.gate,
+  manifestUrl: `/data/fg03/${snapshotDirectory}/manifest.json`,
+  snapshotDate: manifest.snapshotDate,
+}).replaceAll('<', '\\u003c');
+---
+
+<Base
+  title="When Toronto Has to Go"
+  description={guideDescription}
+  ogImage="/social/og-when-toronto-has-to-go.jpg"
+  articlePublished="2026-07-25"
+  articleUpdated="2026-07-25"
+  articleAuthor="Jonathan Westberry"
+>
+  <article
+    class="fg03"
+    data-fg03-root
+    data-fg03-runtime="progressive"
+    data-fg03-snapshot-date={manifest.snapshotDate}
+    data-fg03-gate-status={gatePassed ? 'passed' : 'failed'}
+  >
+    <header class="fg03-hero">
+      <div class="fg03-container">
+        <nav class="fg03-breadcrumb" aria-label="Breadcrumb">
+          <ol>
+            <li><a href={`${base}/`}>Atlas</a></li>
+            <li><a href={`${base}/#field-guides`}>Field guides</a></li>
+            <li aria-current="page">When Toronto Has to Go</li>
+          </ol>
+        </nav>
+
+        <div class="fg03-hero-grid">
+          <div>
+            <p class="fg03-kicker">Guide 03 of 03</p>
+            <h1>When Toronto Has to Go</h1>
+          </div>
+          <p class="fg03-hero-deck">
+            Toronto’s documented public washroom network does not fade gradually after
+            work. It falls off a cliff while scheduled transit keeps moving.
+          </p>
+        </div>
+
+        <div class="fg03-finding" data-fg03-central-finding="phase1Grouped">
+          <p class="fg03-finding-label">The {defaultSnapshotLabel} finding</p>
+          <p class="fg03-finding-statement">
+            <strong>{number.format(defaultPhase1.unrestrictedOpenAccessPointCount)}</strong>{' '}
+            unrestricted washroom access points remain documented open for{' '}
+            <strong>{number.format(defaultPhase1.activeTransitPointCount)}</strong>{' '}
+            grouped transit points with scheduled activity. Only{' '}
+            <strong>{number.format(defaultPhase1.unrestrictedCoveredTransitPointCount)}</strong>{' '}
+            of those transit points are within a {number.format(defaultWalk)} m
+            pedestrian-network walk.
+          </p>
+          <p class="fg03-finding-note">
+            These are Phase 1 grouped transit point counts, not raw stop-platform
+            records, ridership, or passenger demand.
+          </p>
+        </div>
+      </div>
+    </header>
+
+    <section class="fg03-proof fg03-container" aria-labelledby="fg03-proof-title">
+      <div class="fg03-section-lead">
+        <p class="fg03-eyebrow">Four snapshots, one weekday</p>
+        <h2 id="fg03-proof-title">Access collapses on a clock</h2>
+        <p>
+          Each snapshot asks the same question: which unrestricted washrooms are
+          documented open, which grouped transit points still have scheduled activity,
+          and which of those points fall within a 400 m network walk?
+        </p>
+      </div>
+
+      <ol class="fg03-snapshot-strip" aria-label="Phase 1 grouped snapshot evidence">
+        {
+          snapshots.map(({ id, label, phase1 }) => (
+            <li data-fg03-snapshot={id}>
+              <p class="fg03-snapshot-time">{label}</p>
+              <div class="fg03-snapshot-measure">
+                <strong>{number.format(phase1.unrestrictedOpenAccessPointCount)}</strong>
+                <span>unrestricted open access points</span>
+              </div>
+              <div class="fg03-snapshot-measure">
+                <strong>{number.format(phase1.activeTransitPointCount)}</strong>
+                <span>active grouped transit points</span>
+              </div>
+              <div class="fg03-snapshot-measure">
+                <strong>{number.format(phase1.unrestrictedCoveredTransitPointCount)}</strong>
+                <span>grouped transit points covered within 400 m</span>
+              </div>
+              <p class="fg03-unit">Unit: {phase1.unit}</p>
+            </li>
+          ))
+        }
+      </ol>
+
+      <div class="fg03-access-caveat" data-fg03-rider-conditional-count={riderConditionalCount}>
+        <p class="fg03-access-caveat-number">{riderConditionalCount}</p>
+        <div>
+          <h3>Fare-gate washrooms are a separate network</h3>
+          <p>
+            The TTC reports{' '}
+            <strong>{number.format(riderConditionalCount)}</strong>{' '}
+            fare-gate facility records open at every snapshot. They require paid-area
+            access, so they never seed the public coverage finding. Turn on “TTC rider
+            access” in the explorer to test that different assumption.
+          </p>
+        </div>
+      </div>
+
+      <div class="fg03-grain-note" aria-labelledby="fg03-grain-title">
+        <div>
+          <p class="fg03-eyebrow">Do not combine these denominators</p>
+          <h3 id="fg03-grain-title">Two phases, two counting grains</h3>
+          <p>
+            Phase 1 groups related stop records into transit points for the public
+            finding above. Phase 2 retains individual GTFS stops and platforms for
+            the intervention audit below. The explorer’s Current open count uses
+            facility records, while the proof groups co-located unrestricted records
+            into access points.
+          </p>
+        </div>
+        <table>
+          <caption>Late-night counts by analysis grain</caption>
+          <thead>
+            <tr>
+              <th scope="col">Snapshot</th>
+              <th scope="col">Phase 1 grouped transit points</th>
+              <th scope="col">Phase 2 GTFS stops and platforms</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              snapshots
+                .filter(({ id }) => id === '2200' || id === '0030')
+                .map(({ label, phase1, phase2 }) => (
+                  <tr>
+                    <th scope="row">{label}</th>
+                    <td>
+                      {number.format(phase1.unrestrictedCoveredTransitPointCount)} of{' '}
+                      {number.format(phase1.activeTransitPointCount)} covered
+                    </td>
+                    <td>
+                      {number.format(phase2.unrestrictedCoveredStopCount)} of{' '}
+                      {number.format(phase2.activeStopCount)} covered
+                    </td>
+                  </tr>
+                ))
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    {
+      gatePassed ? (
+        <section
+          class="fg03-explorer fg03-container"
+          aria-labelledby="fg03-explorer-title"
+          data-fg03-gate="passed"
+        >
+          <div class="fg03-section-lead fg03-section-lead--explorer">
+            <p class="fg03-eyebrow">Audited opportunities</p>
+            <h2 id="fg03-explorer-title">What would close the gap?</h2>
+            <p>
+              The recommendation gate passed {number.format(manifest.gate.auditedOpportunityCount)}{' '}
+              manually audited opportunities. Change one assumption at a time, then
+              compare the ranked places that gain scheduled transit service within the
+              selected walk.
+            </p>
+          </div>
+
+          <form
+            class="fg03-controls"
+            data-fg03-controls
+            aria-describedby="fg03-controls-help"
+            aria-disabled="true"
+            inert
+          >
+            <p id="fg03-controls-help" class="fg03-controls-help">
+              Results update after each choice. The URL stores time, access, walk,
+              action, selected place, and map view for sharing.
+            </p>
+
+            <div class="fg03-control-grid">
+              <fieldset data-fg03-filter="time">
+                <legend>Time</legend>
+                <div class="fg03-choice-row">
+                  <label>
+                    <input type="radio" name="time" value="1200" checked={defaultTime === '1200'} />
+                    <span>Noon</span>
+                  </label>
+                  <label>
+                    <input type="radio" name="time" value="2030" checked={defaultTime === '2030'} />
+                    <span>8:30 p.m.</span>
+                  </label>
+                  <label>
+                    <input type="radio" name="time" value="2200" checked={defaultTime === '2200'} />
+                    <span>10 p.m.</span>
+                  </label>
+                  <label>
+                    <input type="radio" name="time" value="0030" checked={defaultTime === '0030'} />
+                    <span>12:30 a.m.</span>
+                  </label>
+                </div>
+              </fieldset>
+
+              <fieldset data-fg03-filter="access">
+                <legend>Access assumption</legend>
+                <div class="fg03-choice-row">
+                  <label>
+                    <input
+                      type="radio"
+                      name="access"
+                      value="public"
+                      checked={defaultUrlAccess === 'public'}
+                    />
+                    <span>Public, no fare required</span>
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="access"
+                      value="rider"
+                      checked={defaultUrlAccess === 'rider'}
+                    />
+                    <span>TTC rider, fare gate allowed</span>
+                  </label>
+                </div>
+              </fieldset>
+
+              <fieldset data-fg03-filter="walk">
+                <legend>Network walk</legend>
+                <div class="fg03-choice-row">
+                  <label>
+                    <input type="radio" name="walk" value="300" checked={defaultWalk === 300} />
+                    <span>300 m</span>
+                  </label>
+                  <label>
+                    <input type="radio" name="walk" value="400" checked={defaultWalk === 400} />
+                    <span>400 m</span>
+                  </label>
+                  <label>
+                    <input type="radio" name="walk" value="500" checked={defaultWalk === 500} />
+                    <span>500 m</span>
+                  </label>
+                </div>
+              </fieldset>
+
+              <fieldset data-fg03-filter="action">
+                <legend>Action</legend>
+                <div class="fg03-choice-row fg03-choice-row--actions">
+                  <label>
+                    <input
+                      type="radio"
+                      name="action"
+                      value="open"
+                      checked={defaultAction === 'open'}
+                    />
+                    <span>Current open washrooms</span>
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="action"
+                      value="extend"
+                      checked={defaultAction === 'extend'}
+                    />
+                    <span>Extend hours</span>
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="action"
+                      value="new"
+                      checked={defaultAction === 'new'}
+                    />
+                    <span>New facility zones</span>
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="action"
+                      value="verify"
+                      checked={defaultAction === 'verify'}
+                    />
+                    <span>Verify published information</span>
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="action"
+                      value="retrofit"
+                      checked={defaultAction === 'retrofit'}
+                    />
+                    <span>Retrofit accessibility</span>
+                  </label>
+                </div>
+              </fieldset>
+            </div>
+
+            <div class="fg03-control-tools">
+              <div class="fg03-search">
+                <label for="fg03-search">Search places</label>
+                <div>
+                  <input
+                    id="fg03-search"
+                    type="search"
+                    name="search"
+                    autocomplete="off"
+                    placeholder="Name, address, source, or action"
+                    data-fg03-search
+                  />
+                  <button type="button" data-fg03-clear-search disabled>Clear search</button>
+                </div>
+              </div>
+              <div class="fg03-control-actions">
+                <button type="button" data-fg03-reset>Reset explorer</button>
+                <button type="button" class="fg03-button--primary" data-fg03-share>
+                  Share this view
+                </button>
+              </div>
+            </div>
+          </form>
+
+          <p
+            class="fg03-status"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            data-fg03-status
+          >
+            Showing {number.format(defaultResults.length)}{' '}
+            {actionStatusLabels[defaultAction]} for {defaultSnapshotLabel},{' '}
+            {defaultUrlAccess === 'public' ? 'public access' : 'TTC rider access'}, and a{' '}
+            {number.format(defaultWalk)} m walk.
+          </p>
+          <div class="fg03-alert" role="alert" data-fg03-alert hidden>
+            <p data-fg03-alert-message>
+              Part of the explorer could not load. The proof and server-rendered
+              results remain available.
+            </p>
+            <button type="button" data-fg03-retry>Retry unavailable data</button>
+          </div>
+
+          <div class="fg03-state-stack" aria-live="polite">
+            <div class="fg03-state" data-fg03-state="loading" hidden>
+              Loading the map and current data snapshot.
+            </div>
+            <div class="fg03-state" data-fg03-state="partial" hidden>
+              Some layers are unavailable. Available evidence and results are still shown.
+            </div>
+            <div class="fg03-state" data-fg03-state="error" hidden>
+              The requested data could not be loaded. Retry or use the downloads below.
+            </div>
+            <div class="fg03-state" data-fg03-state="offline" hidden>
+              You appear to be offline. The built-in proof and default ranking remain readable.
+            </div>
+            <div class="fg03-state" data-fg03-state="stale" hidden>
+              A newer data snapshot may exist. These results remain dated and attributable.
+            </div>
+            <div class="fg03-state" data-fg03-state="empty" hidden>
+              No audited opportunities exist for this action.
+            </div>
+            <div class="fg03-state" data-fg03-state="no-results" hidden>
+              No places match this search and filter combination. Clear search or reset.
+            </div>
+            <div class="fg03-state" data-fg03-state="failed" hidden>
+              The recommendation audit gate did not pass, so recommendations are withheld.
+            </div>
+          </div>
+
+          <div class="fg03-explorer-grid">
+            <figure class="fg03-map-figure" data-fg03-map-shell>
+              <div class="fg03-map-frame">
+                <div
+                  class="fg03-map"
+                  data-fg03-map
+                  role="region"
+                  tabindex="-1"
+                  aria-disabled="true"
+                  aria-label="Interactive map of Toronto public washroom access and audited interventions"
+                  aria-describedby="fg03-map-instructions"
+                  inert
+                >
+                  <svg
+                    class="fg03-map-paper"
+                    viewBox="0 0 720 540"
+                    role="img"
+                    aria-label="Quiet outline of Toronto before the interactive map loads"
+                    preserveAspectRatio="xMidYMid slice"
+                  >
+                    <path
+                      class="fg03-map-shore"
+                      d="M42 75L146 46L298 59L420 34L628 74L680 160L647 278L584 326L523 386L410 423L274 466L146 438L70 339L33 205Z"
+                    />
+                    <path class="fg03-map-water" d="M0 407L125 382L279 422L442 385L594 329L720 301V540H0Z" />
+                    <path class="fg03-map-line" d="M125 86L211 168L314 222L430 300L592 358" />
+                    <path class="fg03-map-line" d="M84 286L208 260L356 245L503 210L639 142" />
+                    <path class="fg03-map-line fg03-map-line--secondary" d="M251 66L269 177L303 290L355 418" />
+                    <path class="fg03-map-line fg03-map-line--secondary" d="M454 63L433 168L450 280L501 379" />
+                    <circle class="fg03-map-mark fg03-map-mark--open" cx="359" cy="325" r="7" />
+                    <rect class="fg03-map-mark fg03-map-mark--extend" x="250" y="234" width="14" height="14" />
+                    <path class="fg03-map-mark fg03-map-mark--new" d="M519 171L528 188H510Z" />
+                    <path class="fg03-map-mark fg03-map-mark--verify" d="M165 297L175 307L165 317L155 307Z" />
+                  </svg>
+                  <p class="fg03-map-loading-label" aria-hidden="true">
+                    Dated Toronto evidence is ready. The interactive layers load near this map.
+                  </p>
+                </div>
+
+                <p id="fg03-map-instructions" class="fg03-map-instructions">
+                  Focus the map and use arrow keys to pan. Use plus and minus to zoom.
+                  Press Enter to inspect the place at the map centre. Every mapped result
+                  is also available in the ranked list.
+                </p>
+
+                <div class="fg03-legend" data-fg03-legend aria-label="Map legend">
+                  <h3>Legend</h3>
+                  <p><b>Transit and selection</b></p>
+                  <ul>
+                    <li>
+                      <span
+                        class="fg03-symbol fg03-symbol--circle"
+                        aria-hidden="true"
+                        style="border-color: var(--fg03-mauve);"
+                      />
+                      <span><b class="fg03-shape-name">Ring</b> Covered transit stop</span>
+                    </li>
+                    <li>
+                      <span
+                        class="fg03-symbol fg03-symbol--circle"
+                        aria-hidden="true"
+                        style="background: var(--fg03-ink-muted); border-color: var(--fg03-ink-muted); opacity: 0.55;"
+                      />
+                      <span><b class="fg03-shape-name">Dot</b> Uncovered transit stop</span>
+                    </li>
+                    <li>
+                      <span
+                        class="fg03-symbol fg03-symbol--circle"
+                        aria-hidden="true"
+                        style="border-color: #d09020;"
+                      />
+                      <span><b class="fg03-shape-name">Amber ring</b> Unknown or missing coverage</span>
+                    </li>
+                    <li>
+                      <span
+                        aria-hidden="true"
+                        style="border-top: 2px dashed var(--fg03-mauve); display: block; width: 1rem;"
+                      />
+                      <span><b class="fg03-shape-name">Dashed line</b> Selected walking reach</span>
+                    </li>
+                    <li>
+                      <span
+                        class="fg03-symbol fg03-symbol--circle"
+                        aria-hidden="true"
+                        style="border-color: #d09020; box-shadow: 0 0 0 2px var(--fg03-paper-raised);"
+                      />
+                      <span><b class="fg03-shape-name">Amber halo</b> Selected place halo</span>
+                    </li>
+                  </ul>
+                  <p><b>Facilities and actions</b></p>
+                  <ul>
+                    <li>
+                      <span class="fg03-symbol fg03-symbol--circle" aria-hidden="true" />
+                      <span><b class="fg03-shape-name">Circle</b> Current open facility record</span>
+                    </li>
+                    <li>
+                      <span
+                        class="fg03-symbol fg03-symbol--diamond"
+                        aria-hidden="true"
+                        style="background: var(--fg03-ink); border-color: var(--fg03-paper-raised);"
+                      />
+                      <span><b class="fg03-shape-name">Filled diamond</b> Fare-paid facility</span>
+                    </li>
+                    <li>
+                      <span class="fg03-symbol fg03-symbol--square" aria-hidden="true" />
+                      <span><b class="fg03-shape-name">Square</b> Extend hours</span>
+                    </li>
+                    <li>
+                      <span class="fg03-symbol fg03-symbol--triangle" aria-hidden="true" />
+                      <span><b class="fg03-shape-name">Triangle</b> New facility zone</span>
+                    </li>
+                    <li>
+                      <span class="fg03-symbol fg03-symbol--diamond" aria-hidden="true" />
+                      <span><b class="fg03-shape-name">Outline diamond</b> Verify information</span>
+                    </li>
+                    <li>
+                      <span
+                        class="fg03-symbol fg03-symbol--cross"
+                        aria-hidden="true"
+                        style="border-color: #d09020; color: #d09020;"
+                      >×</span>
+                      <span><b class="fg03-shape-name">Amber cross</b> Unknown or missing facility data</span>
+                    </li>
+                    <li>
+                      <span class="fg03-symbol fg03-symbol--cross" aria-hidden="true">+</span>
+                      <span><b class="fg03-shape-name">Cross</b> Accessibility retrofit</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <figcaption>
+                  <span>Snapshot: {snapshotDate}</span>
+                  <span>
+                    Map data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>.
+                    City data under the{' '}
+                    <a href="https://open.toronto.ca/open-data-license/">
+                      Open Government Licence - Toronto
+                    </a>.
+                  </span>
+                </figcaption>
+              </div>
+            </figure>
+
+            <div class="fg03-results" data-fg03-results>
+              <header class="fg03-results-header">
+                <div>
+                  <p class="fg03-eyebrow">Default ranking</p>
+                  <h3>{actionLabels[defaultAction]} at {defaultSnapshotLabel}</h3>
+                </div>
+                <p data-fg03-results-count={defaultResults.length}>
+                  {defaultResults.length} places
+                </p>
+              </header>
+
+              <section data-fg03-results-group="standard" aria-labelledby="fg03-standard-results">
+                <h4 id="fg03-standard-results" class="visually-hidden">
+                  Ranked intervention results
+                </h4>
+                <ol class="fg03-result-list" data-fg03-result-list>
+                  {defaultResults.map(({ feature, cell }) => {
+                    const { properties } = feature;
+                    const sourceUrl = safePublishedHref(properties.sourceUrl);
+                    const sourceLabel = sourceLabelFor(properties);
+                    return (
+                      <li
+                        data-fg03-result-item
+                        data-fg03-result-id={properties.id}
+                        data-rank={properties.primaryRank}
+                      >
+                        <div class="fg03-result-summary">
+                          <p class="fg03-result-rank">Rank {properties.primaryRank}</p>
+                          <h4>{properties.name}</h4>
+                          <p>
+                            {actionLabels[properties.action]} ·{' '}
+                            {accessLabelFor(properties.accessCondition)}
+                          </p>
+                          <dl>
+                            <div>
+                              <dt>GTFS stops and platforms</dt>
+                              <dd>{number.format(cell.activeStops)}</dd>
+                            </div>
+                            <div>
+                              <dt>Scheduled trips</dt>
+                              <dd>{number.format(cell.uniqueTrips)}</dd>
+                            </div>
+                            <div>
+                              <dt>Routes</dt>
+                              <dd>{number.format(cell.uniqueRoutes)}</dd>
+                            </div>
+                          </dl>
+                          <button
+                            type="button"
+                            class="fg03-result-map-button"
+                            data-fg03-select-place={properties.id}
+                            aria-label={`Map loading before ${properties.name} can be shown`}
+                            aria-disabled="true"
+                            disabled
+                          >
+                            Map loading
+                          </button>
+                        </div>
+                        <details data-fg03-result-evidence>
+                          <summary>Read the evidence</summary>
+                          <div>
+                            <p>
+                              Extending this location’s published hours through the
+                              selected snapshot would put {number.format(cell.activeStops)}{' '}
+                              GTFS stops and platforms within a {number.format(cell.walk)} m
+                              pedestrian-network walk.
+                            </p>
+                            {properties.hours && (
+                              <p>
+                                <strong>Published hours:</strong> {properties.hours}
+                              </p>
+                            )}
+                            <p>
+                              <strong>Action:</strong> {actionLabels[properties.action]}
+                            </p>
+                            <p>
+                              <strong>Access condition:</strong>{' '}
+                              {accessLabelFor(properties.accessCondition)}
+                            </p>
+                            <p>
+                              <strong>Closure evidence:</strong>{' '}
+                              {closureLabelFor(properties.closureCategory)}
+                            </p>
+                            <p>
+                              <strong>Accessibility:</strong> {properties.accessibility}
+                            </p>
+                            <p>
+                              <strong>Stability:</strong> {properties.stability}
+                            </p>
+                            <p>
+                              <strong>Audit status:</strong> {properties.auditStatus}
+                            </p>
+                            {sourceUrl && (
+                              <p>
+                                <strong>Official source:</strong>{' '}
+                                <a href={sourceUrl}>{sourceLabel}</a>
+                              </p>
+                            )}
+                          </div>
+                        </details>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </section>
+
+              <section
+                class="fg03-verify-group"
+                data-fg03-verify-group="hours"
+                aria-labelledby="fg03-verify-hours-title"
+                hidden
+              >
+                <h4 id="fg03-verify-hours-title">Hours unknown or ambiguous</h4>
+                <p>
+                  These places need authoritative daily-hour confirmation before they
+                  can be counted open or closed.
+                </p>
+                <ol data-fg03-verify-list="hours" />
+              </section>
+
+              <section
+                class="fg03-verify-group"
+                data-fg03-verify-group="accessibility"
+                aria-labelledby="fg03-verify-accessibility-title"
+                hidden
+              >
+                <h4 id="fg03-verify-accessibility-title">Accessibility unknown</h4>
+                <p>
+                  These places need washroom-level accessibility confirmation before a
+                  retrofit recommendation can be made.
+                </p>
+                <ol data-fg03-verify-list="accessibility" />
+              </section>
+
+              <aside
+                class="fg03-detail"
+                data-fg03-detail
+                tabindex="-1"
+                aria-live="polite"
+                aria-labelledby="fg03-detail-title"
+              >
+                <p class="fg03-eyebrow">Map-linked detail</p>
+                <h4 id="fg03-detail-title" tabindex="-1">Choose a ranked place</h4>
+                <div data-fg03-detail-body>
+                  <p>
+                    Select “Show on map” to connect one recommendation to its location
+                    and walking reach. The evidence disclosure in each row works without
+                    the map.
+                  </p>
+                </div>
+                <button type="button" data-fg03-close-detail disabled>
+                  Clear selected place
+                </button>
+              </aside>
+            </div>
+          </div>
+
+          <noscript>
+            <div class="fg03-no-js" data-fg03-no-js>
+              <h3>The proof does not require JavaScript</h3>
+              <p>
+                The four snapshot findings and the complete default extend-hours
+                ranking are already in this page. Interactive filters and the map need
+                JavaScript. Use each “Read the evidence” disclosure or download the
+                full GeoJSON and CSV files below.
+              </p>
+            </div>
+          </noscript>
+        </section>
+      ) : (
+        <section class="fg03-gate-failed fg03-container" data-fg03-gate="failed">
+          <p class="fg03-eyebrow">Recommendation gate</p>
+          <h2>Proof published, recommendations withheld</h2>
+          <p>
+            The four-snapshot evidence above remains valid and attributable. The
+            intervention audit did not pass every product-gate condition, so this
+            edition does not publish rankings or recommendation map layers.
+          </p>
+          <p>Gate reason: {manifest.gate.reason}</p>
+        </section>
+      )
+    }
+
+    <template data-fg03-gate-failed-template>
+      <section class="fg03-gate-failed" data-fg03-gate="failed">
+        <p class="fg03-eyebrow">Recommendation gate</p>
+        <h2>Proof published, recommendations withheld</h2>
+        <p>
+          The dated proof remains readable. Rankings and recommendation map layers
+          stay unavailable until every product-gate condition passes.
+        </p>
+      </section>
+    </template>
+
+    <section class="fg03-notes fg03-container" aria-label="Guide documentation">
+      <div class="fg03-notes-index">
+        <p class="fg03-eyebrow">Read the record</p>
+        <nav aria-label="Guide documentation">
+          <a href="#method">Method</a>
+          <a href="#definitions">Definitions</a>
+          <a href="#limitations">Limitations</a>
+          <a href="#sources">Sources</a>
+          <a href="#downloads">Downloads</a>
+          <a href="#credits">Credits</a>
+        </nav>
+      </div>
+
+      <div class="fg03-note-grid">
+        <section id="method">
+          <p class="fg03-eyebrow">Method</p>
+          <h2>What the analysis actually measures</h2>
+          <ol>
+            <li>
+              Consolidate {number.format(facilities.features.length)} in-boundary
+              facility locations from Parks, libraries, civic buildings, museums,
+              automated washrooms, and TTC stations.
+            </li>
+            <li>
+              Normalize published hours while preserving unknown hours, live closures,
+              partial service, and fare-paid access as distinct states.
+            </li>
+            <li>
+              Read scheduled TTC activity in four 30-minute windows on Tuesday,
+              {snapshotDate}. Scheduled activity measures service supply, not use.
+            </li>
+            <li>
+              Snap facilities and transit stops to Toronto’s pedestrian network, then
+              include each snap offset in the 300 m, 400 m, and 500 m shortest-path
+              tests.
+            </li>
+            <li>
+              Publish an intervention only after the candidate geometry and material
+              coverage gain pass manual audit.
+            </li>
+          </ol>
+        </section>
+
+        <section id="definitions">
+          <p class="fg03-eyebrow">Definitions</p>
+          <h2>Terms that change the result</h2>
+          <dl>
+            <div>
+              <dt>Unrestricted access</dt>
+              <dd>No transit fare or controlled-area entry is required.</dd>
+            </div>
+            <div>
+              <dt>Rider-conditional access</dt>
+              <dd>A TTC washroom is available after entering the fare-paid area.</dd>
+            </div>
+            <div>
+              <dt>Documented open</dt>
+              <dd>Published hours and live closure data support an open state at the snapshot.</dd>
+            </div>
+            <div>
+              <dt>Unknown hours</dt>
+              <dd>The source confirms a facility but does not support an open or closed conclusion.</dd>
+            </div>
+            <div>
+              <dt>Covered</dt>
+              <dd>The complete pedestrian-network distance, including snap offsets, is within the selected walk.</dd>
+            </div>
+            <div>
+              <dt>Active transit point</dt>
+              <dd>A grouped Phase 1 transit location with scheduled activity in the observation window.</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section id="limitations">
+          <p class="fg03-eyebrow">Limitations</p>
+          <h2>What this map cannot promise</h2>
+          <ul>
+            {manifest.limitations.map((limitation) => <li>{limitation}</li>)}
+            <li>
+              Published hours and closures can lag real conditions. Treat every
+              location as documented evidence, not a guarantee of entry.
+            </li>
+            <li>
+              A route within the distance threshold may still include slope, surface,
+              curb, construction, or personal-safety barriers not represented here.
+            </li>
+          </ul>
+        </section>
+
+        <section id="sources">
+          <p class="fg03-eyebrow">Sources</p>
+          <h2>Public records behind the guide</h2>
+          <ul>
+            <li><a href="https://open.toronto.ca/dataset/washroom-facilities/">Toronto Park Washroom Facilities</a></li>
+            <li><a href="https://open.toronto.ca/dataset/library-branch-general-information/">Toronto Public Library Branch General Information</a></li>
+            <li><a href="https://open.toronto.ca/dataset/corporate-real-estate-management-portfolio-washrooms/">Corporate Real Estate Management Portfolio Washrooms</a></li>
+            <li><a href="https://open.toronto.ca/dataset/museums-and-cultural-centres/">Toronto Museums and Cultural Centres</a></li>
+            <li><a href="https://open.toronto.ca/dataset/street-furniture-public-washroom/">Automated Public Washrooms</a></li>
+            <li><a href="https://www.ttc.ca/riding-the-ttc/Washrooms-at-TTC-subway-stations">TTC station washrooms</a></li>
+            <li><a href="https://open.toronto.ca/dataset/pedestrian-network/">Toronto Pedestrian Network</a></li>
+            <li><a href="https://www.ttc.ca/transparency-and-accountability/open-data">TTC scheduled transit data</a></li>
+          </ul>
+        </section>
+
+        <section id="downloads">
+          <p class="fg03-eyebrow">Downloads</p>
+          <h2>Inspect the evidence yourself</h2>
+          <ul class="fg03-downloads">
+            <li><a href={manifest.files.facilities} download>Download facilities (GeoJSON)</a></li>
+            <li><a href={manifest.files.interventions} download>Download interventions (GeoJSON)</a></li>
+            <li><a href={`/data/fg03/${snapshotDirectory}/manifest.json`} download>Download dataset manifest (JSON)</a></li>
+            <li>
+              <a href={`https://raw.githubusercontent.com/jonathanwestberry/toronto-micro-atlas/main/data/proof/fg03/${snapshotDirectory}/snapshot-summary.csv`}>
+                Download snapshot summary (CSV)
+              </a>
+            </li>
+            <li>
+              <a href={`https://github.com/jonathanwestberry/toronto-micro-atlas/tree/main/data/proof/fg03/${snapshotDirectory}`}>
+                Open the dated proof package
+              </a>
+            </li>
+          </ul>
+        </section>
+
+        <section id="credits">
+          <p class="fg03-eyebrow">Credits</p>
+          <h2>Publication record</h2>
+          <p>
+            Research, analysis, cartography, design, and writing by Jonathan Westberry.
+            Built with Astro and MapLibre GL JS. Facility, pedestrian, and boundary
+            records are from the City of Toronto. Scheduled service and station
+            washroom records are from the TTC. Street context is from OpenStreetMap
+            contributors.
+          </p>
+          <p>Analysis snapshot: {snapshotDate}. Page updated July 25, 2026.</p>
+        </section>
+      </div>
+    </section>
+
+    <nav class="fg03-series fg03-container" id="series" aria-label="Field guide series">
+      <p class="fg03-eyebrow">Toronto Micro-Atlas field guides</p>
+      <h2>Continue the series</h2>
+      <ol>
+        <li>
+          <a href={`${base}/guides/hidden-landscapes/`}>
+            <span>Guide 01</span>
+            <strong>Hidden Landscapes</strong>
+          </a>
+        </li>
+        <li>
+          <a href={`${base}/guides/sidewalk-forest/`}>
+            <span>Guide 02</span>
+            <strong>Sidewalk Forest</strong>
+          </a>
+        </li>
+        <li>
+          <a href={`${base}/#field-guides`}>
+            <span>Index</span>
+            <strong>All field guides</strong>
+          </a>
+        </li>
+      </ol>
+    </nav>
+
+    <script
+      is:inline
+      id="fg03-config"
+      type="application/json"
+      data-fg03-config
+      set:html={config}
+    />
+    <script>
+      import { registerWhenTorontoHasToGoLifecycle } from '../../../scripts/fg03-map';
+
+      registerWhenTorontoHasToGoLifecycle();
+    </script>
+  </article>
+</Base>

@@ -246,6 +246,14 @@ pipeline retrieves the City's facility JSON and converts its daily opening and
 closing values into the same weekly schedule model. Published status values are
 applied as open, partially open, or temporarily closed.
 
+The source feed contains presentation placeholders rather than schedules on
+some days. `Location` paired with `Closed` is normalized to closed.
+`Permits` paired with `Only` is also closed for unrestricted general-public
+access, while other explicit days on the same facility remain usable. The one
+split Tuesday interval ending with `and` is joined to its second interval
+before parsing. These rules moved 24 records from unknown to explicit schedule
+states without changing the 10 p.m. or 12:30 a.m. open-facility counts.
+
 The museums file does not provide coordinates. The pipeline resolves the ten
 published civic addresses against the City Address Points datastore. The four
 automated washrooms remain `hours unknown` because the source publishes their
@@ -268,7 +276,7 @@ fidelity and has documented completeness and classification limits. Facility
 and TTC stop snap distances count toward the 400 m cutoff. No in-boundary
 facility in this proof snapped more than 200 m from the network.
 
-### Consolidation and outputs
+### Phase 1 consolidation and headline proof
 
 - CREM washroom rows collapse to public-access buildings. Passenger-only VIA
   facilities are excluded.
@@ -283,17 +291,119 @@ facility in this proof snapped more than 200 m from the network.
 - Phase 1 does not rank priority areas or claim passenger demand. Distance
   sensitivity at 300 m and 500 m belongs to the Phase 2 analytical prototype.
 
+The corrected Phase 1 headline counts are:
+
+| Snapshot | Unrestricted open access points | Fare-paid TTC facilities | Active grouped transit points | Covered by unrestricted access |
+|---|---:|---:|---:|---:|
+| Noon | 324 | 13 | 8,142 | 987 |
+| 8:30 p.m. | 242 | 13 | 8,007 | 623 |
+| 10 p.m. | 6 | 13 | 7,994 | 18 |
+| 12:30 a.m. | 1 | 13 | 7,885 | 8 |
+
+Phase 2 also retains raw GTFS platform, event, and unique-trip metrics for
+intervention analysis. Those values are separately named in the browser
+manifest and must not replace the grouped Phase 1 headline denominator.
+
+### Phase 2 network and intervention analysis
+
+`scripts/22_build_washroom_analysis.py` builds the projected pedestrian graph
+in EPSG:2952 from every source vertex, inserts stable facility and stop snaps,
+and retains each perpendicular snap offset in the walking cost. It performs one
+baseline multi-source search per scenario and caches one bounded candidate
+search per source node. Distances of 300, 400, and 500 metres are thresholds of
+the same network result, not separate Euclidean buffers.
+
+The reviewed real-network invariants are 87,105 source features, 72,590 source
+vertices, 72,592 base nodes, 95,046 base edges, and four components. Two
+at-grade crossings that the source geometry leaves microscopically
+disconnected are explicitly joined, and the published length anomalies for
+source objects 55,757 and 60,345 use reviewed projected-geometry overrides.
+The exact decisions and coordinates are in
+`fg03/network-topology-exceptions.csv`. Grade-separated crossings are not
+automatically planarized.
+
+The primary opportunity universe uses Tuesday at 10 p.m. and 12:30 a.m.,
+unrestricted access, observed closures, unknown information treated as
+unavailable, and 400 metre walking distance. It evaluates four intervention
+classes:
+
+- extend scheduled hours;
+- investigate a new-facility zone;
+- verify missing hours or accessibility information;
+- retrofit a confirmed inaccessible open facility.
+
+Material gain requires at least 10 unique scheduled trips across the two late
+snapshots and at least three active stops at 400 metres. Verification gains are
+always labeled as potential. Ranking is repeated under 300 and 500 metre
+distance, rider-conditional access, normal operations, optimistic information,
+and Saturday sensitivities. New-zone candidates with at least 80 percent
+effect overlap against an earlier kept candidate are removed from the frozen
+candidate universe.
+
+The manual audit inspects the top robust candidates in each available ranking
+group. Decisions are valid only for the exact generated analysis hash and
+record source evidence, coordinates, network context, duplication, and the
+generated audit map. Four proposed new-facility zones are excluded from the
+published evidence:
+
+- Mount Dennis, because the nearby library makes it a scheduled-hours problem;
+- Kennedy, Scarborough Centre, and Main Square, because severe straight-line
+  versus modeled-network discrepancies make the geographic-gap claim
+  unreliable without more station-area topology or entrance data.
+
+Nine otherwise source-valid verification candidates are also excluded because
+their measured primary gain fails the published trip or active-stop
+materiality threshold. They remain in the proof tables with their ranks and
+metrics, but they are not published as audited opportunities.
+
+The release gate counts only audit-valid robust material opportunities. It
+also requires at least five counted opportunities, at least two hours-extension
+opportunities, and no source, duplication, or access-condition integrity flag.
+The dated release passes with 25 counted opportunities: 10 hours extensions,
+6 new-facility investigation zones, and 9 information-verification actions.
+No accessibility-retrofit candidate met the audited robust material threshold.
+
+### Phase 2 outputs and privacy
+
+The dated analytical package is `proof/fg03/2026-07-21/phase2/`. It contains
+candidate tables, sensitivity ranks, stop-gap evidence, audit evidence and
+maps, a build report, and a proof-only intervention GeoJSON.
+
+The browser contract is `public/data/fg03/2026-07-21/`:
+
+- `manifest.json` freezes schema version 1, defaults, allowed URL values,
+  sources, limitations, headline counts, gate result, and dated file URLs;
+- `facilities.geojson` includes unrestricted and fare-paid point evidence;
+- four `stops-*.geojson` files contain the active snapshot and the complete
+  public versus rider-conditional, 300/400/500 metre coverage matrix;
+- `interventions.geojson` contains only audit-valid robust opportunities with
+  the complete query matrix;
+- `reach-facilities.geojson` and `reach-promoted.geojson` contain clipped real
+  pedestrian-network `MultiLineString` reaches.
+
+Raw GTFS trip IDs are forbidden from every public key and string value.
+Fare-paid geometry is published because the rider view needs it, but fare-paid
+facilities and interventions are inactive for unrestricted public coverage.
+Every individual public file must remain below 1.5 MB after gzip compression.
+The build writes into temporary directories and replaces the dated proof and
+public directories only after topology, schema, privacy, geometry, cross-file,
+and size checks pass.
+
 ---
 
 ## Processing environment
 
-- mapshaper 0.7.34 via `npx` (no global install), Node.js v25, Python 3 (stdlib only).
+- mapshaper 0.7.34 via `npx` (no global install), Node.js v25, and Python 3.
+- FG03 dependencies are frozen in `scripts/requirements-fg03.txt` and include
+  GeoPandas, NetworkX, Shapely, PyProj, Matplotlib, and the Phase 1 rendering
+  dependencies. The focused synthetic tests do not require the ignored raw
+  snapshot.
 - Coordinate precision in outputs: 5 decimal places (~1.1 m), adequate for zoom 15.
 - Simplification method: mapshaper default (weighted Visvalingam) with
   `keep-shapes` on polygon layers; percentages were tuned empirically against
   a <3 MB per-file budget. Beware: a bare number passed to `-simplify` is the
   *proportion of removable vertices retained*, not a tolerance.
-- Raw downloads are kept in `raw/` (largest is ~36 MB; nothing exceeded the
-  100 MB threshold that would have required deletion after processing).
+- Raw downloads are kept in ignored `raw/` directories. The FG03 TTC GTFS
+  archive is approximately 77 MB; it is reproducible and is not committed.
 - Geofabrik Ontario extract was **not** needed; all OSM layers succeeded via
   Overpass with single-bbox queries.

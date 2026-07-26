@@ -7,13 +7,20 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "maps": "node scripts/build-contextual-maps.mjs"
+    "maps": "node scripts/build-contextual-maps.mjs",
+    "check": "astro check",
+    "test:web": "node --test tests/atlas-events.test.mjs tests/fg03-state.test.mjs tests/fg03-results.test.mjs tests/fg03-map.test.mjs",
+    "test:web:contract": "node --test tests/fg03-contract.test.mjs",
+    "test": "npm run test:web && npm run check && npm run build && npm run test:web:contract"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.3",
     "@fontsource-variable/archivo": "^5.2.8",
     "@fontsource-variable/source-serif-4": "^5.2.9",
-    "astro": "^5.10.0",
+    "astro": "7.1.3",
     "maplibre-gl": "^5.6.0"
   },
   "devDependencies": {

@@ -4,6 +4,7 @@ import sitemap from '@astrojs/sitemap';
 
 export default defineConfig({
   output: 'static',
+  compressHTML: true,
 
   // Hosted at the root of a Cloudflare Pages project. The code strips any
   // trailing slash from BASE_URL, so this also works unchanged if it later

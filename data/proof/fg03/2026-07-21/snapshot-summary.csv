@@ -1,5 +1,5 @@
-slug,label,open_access_points,open_facility_records,scheduled_closed,temporarily_closed,unknown_hours,confirmed_accessible_open,active_transit_stops,covered_transit_stops,transit_coverage_pct
-1200,Noon,314,321,37,37,80,120,8142,985,12.097764676983543
-2030,8:30 p.m.,244,249,109,37,80,112,8007,666,8.317721993255901
-2200,10 p.m.,19,19,339,37,80,15,7994,98,1.2259194395796849
-0030,12:30 a.m. next day,14,14,344,37,80,14,7885,90,1.14140773620799
+slug,label,open_access_points,open_facility_records,fare_paid_open_access_points,fare_paid_open_facility_records,scheduled_closed,temporarily_closed,unknown_hours,confirmed_accessible_open,active_transit_stops,covered_transit_stops,transit_coverage_pct
+1200,Noon,324,332,13,13,37,37,56,107,8142,987,12.122328666175386
+2030,8:30 p.m.,242,247,13,13,122,37,56,99,8007,623,7.780691894592231
+2200,10 p.m.,6,6,13,13,363,37,56,2,7994,18,0.22516887665749313
+0030,12:30 a.m. next day,1,1,13,13,368,37,56,1,7885,8,0.10145846544071022

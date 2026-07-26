@@ -20,14 +20,46 @@ const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
       </div>
     </section>
 
-    <!-- Sidewalk Forest feature block (newest first) -->
-    <section class="feature-block feature-block--fg2" id="field-guides" aria-labelledby="feature-title-fg2">
+    <!-- When Toronto Has to Go feature block (newest first) -->
+    <section class="feature-block feature-block--fg3" id="field-guides" aria-labelledby="feature-title-fg3">
+      <div class="feature-inner">
+
+        <div class="feature-text">
+          <span class="feature-kicker feature-kicker--fg3" data-reveal style="--reveal-delay: 0ms">Guide 03 · New</span>
+          <h1 class="feature-title feature-title--fg3" id="feature-title-fg3" data-reveal style="--reveal-delay: 40ms">When Toronto Has to Go</h1>
+          <p class="feature-blurb feature-blurb--fg3" data-reveal style="--reveal-delay: 80ms">At 10 p.m., scheduled transit still reaches 7,994 grouped points while only six unrestricted washroom access points are documented open. The guide publishes the dated proof and, only when its evidence gate passes, lets you test audited ways to close the gap.</p>
+          <a
+            href={`${base}/guides/when-toronto-has-to-go/`}
+            class="feature-cta feature-cta--fg3 hover-raise"
+            data-astro-reload
+            data-reveal
+            style="--reveal-delay: 120ms"
+          >Open the Guide</a>
+        </div>
+
+        <figure class="feature-plate feature-plate--fg3" data-reveal style="--reveal-delay: 160ms">
+          <img
+            src={`${base}/social/og-when-toronto-has-to-go.jpg`}
+            alt="Toronto washroom access proof map with the finding: 6 open access points for 7,994 active transit points at 10 p.m."
+            loading="eager"
+            decoding="async"
+            width="1200"
+            height="630"
+          />
+          <figcaption class="feature-plate-caption feature-plate-caption--fg3">July 21, 2026 snapshot · pedestrian-network analysis</figcaption>
+        </figure>
+
+      </div>
+    </section>
+
+    <!-- Sidewalk Forest feature block -->
+    <section class="feature-block feature-block--fg2" aria-labelledby="feature-title-fg2">
       <div class="feature-inner">
 
         <!-- Left column: text -->
         <div class="feature-text">
-          <span class="feature-kicker feature-kicker--fg2" data-reveal style="--reveal-delay: 0ms">Guide · New</span>
-          <h1 class="feature-title" id="feature-title-fg2" data-reveal style="--reveal-delay: 40ms">Sidewalk Forest</h1>
+          <span class="feature-kicker feature-kicker--fg2" data-reveal style="--reveal-delay: 0ms">Guide 02</span>
+          <h2 class="feature-title" id="feature-title-fg2" data-reveal style="--reveal-delay: 40ms">Sidewalk Forest</h2>
           <p class="feature-blurb" data-reveal style="--reveal-delay: 80ms">Toronto keeps a ledger of every street tree it tends: 688,335 of them, each with a species, a trunk measurement, and an address. Sidewalk Forest draws the whole ledger at once, one glowing dot per tree, then hands you the map. Tap any dot and the city tells you the name of the tree outside your door.</p>
           <a
             href={`${base}/guides/sidewalk-forest/`}
@@ -171,6 +203,50 @@ const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
     background-color: var(--landscape);
     padding-block: var(--space-16);
     padding-inline: var(--gutter);
+  }
+
+  .feature-block--fg3 {
+    background-color: #f3eddd;
+    border-bottom: 1px solid #1a1f2a;
+  }
+
+  .feature-kicker.feature-kicker--fg3 {
+    color: #8a4a70;
+  }
+
+  .feature-title.feature-title--fg3 {
+    color: #1a1f2a;
+  }
+
+  .feature-blurb.feature-blurb--fg3 {
+    color: #343944;
+  }
+
+  .feature-cta.feature-cta--fg3 {
+    background-color: #1a1f2a;
+    color: #f3eddd;
+    border-color: #1a1f2a;
+  }
+
+  @media (hover: hover) {
+    .feature-cta.feature-cta--fg3:hover {
+      background-color: #8a4a70;
+      color: #fffaf0;
+      border-color: #8a4a70;
+    }
+  }
+
+  .feature-cta.feature-cta--fg3:focus-visible {
+    outline-color: #8a4a70;
+  }
+
+  .feature-plate.feature-plate--fg3 {
+    border-color: #1a1f2a;
+    background-color: #fffaf0;
+  }
+
+  .feature-plate-caption.feature-plate-caption--fg3 {
+    color: #5f5860;
   }
 
   /* FG02 carries its own nocturne palette into the shell */

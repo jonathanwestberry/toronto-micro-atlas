@@ -1,0 +1,5 @@
+record_type,objectid_a,objectid_b,x_2952,y_2952,coordinate_role,action,override_length_m,review_status,evidence_note
+intersection,5263,8263,314374.552192,4837809.647613,intersection,connect_at_intersection,,valid,"Both records are Trail/13. The intersection is 0.2459 m from the 8263 endpoint; retaining disconnection creates a 1618.1198 m detour between vertices only 8.5049 m apart."
+intersection,24859,48995,306961.081424,4833372.909226,intersection,connect_at_source_vertex,,valid,"Both records are Collector/7 with sidewalks on both sides and contain this exact interior source coordinate. Source-vertex splitting must connect them."
+length,55757,,313938.818751,4836435.378521,geometry_midpoint,use_geometry,12.439601113,valid,"Published LENGTH 37.31669649 m is 2.999830634 times projected geometry. Adjacent crosswalk records match projected geometry; retain published value only as audit evidence."
+length,60345,,321179.738518,4838824.075931,geometry_midpoint,use_geometry,18.542923131,valid,"Published LENGTH 37.08547751 m is 1.999980114 times projected geometry. Other PX 354 crosswalk records match projected geometry; retain published value only as audit evidence."

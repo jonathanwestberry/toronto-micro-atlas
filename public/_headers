@@ -1,5 +1,36 @@
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), geolocation=(), microphone=()
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; child-src 'self' blob:; connect-src 'self'; font-src 'self'; form-action 'self'; frame-ancestors 'none'; img-src 'self' data: blob:; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:
+
 https://toronto-micro-atlas.pages.dev/*
   X-Robots-Tag: noindex, nofollow
 
-# The pages.dev subdomain stays out of search indexes so it never competes
-# with the production domain (torontomicroatlas.com), which is indexable.
+https://:version.toronto-micro-atlas.pages.dev/*
+  X-Robots-Tag: noindex, nofollow
+
+/
+  Cache-Control: public, no-cache, must-revalidate
+
+/index.html
+  Cache-Control: public, no-cache, must-revalidate
+
+/about/*
+  Cache-Control: public, no-cache, must-revalidate
+
+/guides/*
+  Cache-Control: public, no-cache, must-revalidate
+
+/404.html
+  Cache-Control: public, no-cache, must-revalidate
+
+/data/fg03/2026-07-21/manifest.json
+  Cache-Control: public, no-cache, must-revalidate
+
+/data/fg03/2026-07-21/*.geojson
+  Cache-Control: public, max-age=31536000, immutable
+
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
