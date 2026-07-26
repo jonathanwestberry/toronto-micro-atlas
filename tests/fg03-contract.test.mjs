@@ -112,6 +112,16 @@ test('native controls expose the complete shareable state contract before the ma
     html.indexOf('data-fg03-controls') < html.indexOf('data-fg03-map'),
     'Controls must precede the map in DOM order',
   );
+  assert.match(
+    html,
+    /<form(?=[^>]*data-fg03-controls)(?=[^>]*\binert(?:\s|>|=""))[^>]*>/,
+    'Controls must be inert until the progressive enhancement mounts',
+  );
+  assert.match(
+    html,
+    /<div(?=[^>]*data-fg03-map)(?=[^>]*\binert(?:\s|>|=""))(?=[^>]*tabindex="-1")[^>]*>/,
+    'The map must be inert and unfocusable until MapLibre mounts',
+  );
 });
 
 test('map shell explains keyboard use, symbol shapes, date, and attribution', () => {
@@ -123,6 +133,8 @@ test('map shell explains keyboard use, symbol shapes, date, and attribution', ()
   assert.match(html, /square[\s\S]*Extend hours/);
   assert.match(html, /triangle[\s\S]*New facility zone/);
   assert.match(html, /diamond[\s\S]*Verify information/);
+  assert.match(html, /diamond[\s\S]*Fare-paid facility/);
+  assert.match(html, /cross[\s\S]*Accessibility retrofit/);
   assert.match(html, /Snapshot: July 21, 2026/);
   assert.match(html, /OpenStreetMap contributors/);
   assert.match(html, /Open Government Licence - Toronto/);
@@ -155,8 +167,45 @@ test('default recommendation list is complete, ranked, and useful without JavaSc
   assert.match(html, /data-fg03-gate="passed"/);
   assert.match(html, /data-fg03-results-count="10"/);
   assert.match(html, /data-fg03-detail/);
+  assert.match(html, /id="fg03-detail-title"[^>]*tabindex="-1"/);
   assert.match(html, /data-fg03-verify-group="hours"/);
   assert.match(html, /data-fg03-verify-group="accessibility"/);
+
+  for (const evidence of [
+    'Action',
+    'Access condition',
+    'Published hours',
+    'Closure evidence',
+    'Stability',
+    'Audit status',
+    'Official source',
+    'GTFS stops and platforms',
+    'Scheduled trips',
+    'Routes',
+  ]) {
+    assert.match(html, new RegExp(evidence), `Expected SSR result evidence: ${evidence}`);
+  }
+});
+
+test('manifest defaults drive checked controls, status, description, and lifecycle wiring', () => {
+  const html = normalize(readRoute());
+  const checkedInput = (name, value) => new RegExp(
+    `<input(?=[^>]*name="${name}")(?=[^>]*value="${value}")(?=[^>]*checked)[^>]*>`,
+  );
+
+  assert.match(html, checkedInput('time', '2200'));
+  assert.match(html, checkedInput('access', 'public'));
+  assert.match(html, checkedInput('walk', '400'));
+  assert.match(html, checkedInput('action', 'extend'));
+  assert.match(
+    html,
+    /Showing 10 audited extend-hours opportunities for 10 p\.m\., public access, and a 400 m walk\./,
+  );
+  assert.match(
+    html,
+    /name="description" content="At 10 p\.m\., Toronto has 7,994 grouped transit points with scheduled activity but only 6 documented unrestricted washroom access points\./,
+  );
+  assert.match(html, /data-fg03-runtime/);
 });
 
 test('shell includes explicit recovery and edge-state surfaces', () => {

@@ -63,9 +63,13 @@ interface QueryCell {
 }
 
 interface InterventionProperties {
+  accessCondition: 'unrestricted' | 'fare_paid' | 'unknown';
+  accessibility: 'accessible' | 'not_accessible' | 'unknown';
   action: Exclude<ActionId, 'open' | 'retrofit'>;
   actionClass: string;
   auditStatus: 'valid';
+  closureCategory: string;
+  facilityId: string;
   hours?: string;
   id: string;
   materialGain: boolean;
@@ -74,6 +78,7 @@ interface InterventionProperties {
   queryCells: QueryCell[];
   reachAvailable: boolean;
   sourceUrl?: string;
+  stability: 'robust' | 'sensitive' | 'unstable';
   verificationSubtype?: 'hours' | 'accessibility';
 }
 
@@ -150,6 +155,77 @@ const defaultWalk = manifest.defaultState.walk;
 const defaultAction = manifest.defaultState.action;
 const defaultAccess = manifest.defaultState.access;
 const gatePassed = manifest.gate.passed === true;
+const defaultUrlAccess = defaultAccess === 'rider_conditional' ? 'rider' : 'public';
+const defaultSnapshotLabel = snapshotLabels[defaultTime];
+const defaultPhase1 = manifest.headlines.bySnapshot[defaultTime].phase1Grouped;
+const actionLabels: Record<ActionId, string> = {
+  open: 'Current open washrooms',
+  extend: 'Extend hours',
+  new: 'New facility zone',
+  verify: 'Verify published information',
+  retrofit: 'Accessibility retrofit',
+};
+const actionStatusLabels: Record<ActionId, string> = {
+  open: 'current open washrooms',
+  extend: 'audited extend-hours opportunities',
+  new: 'audited new-facility zones',
+  verify: 'audited information checks',
+  retrofit: 'audited accessibility retrofits',
+};
+const sourceLabels: Record<string, string> = {
+  automated: 'Automated Public Washrooms',
+  crem: 'CREM Portfolio Washrooms',
+  library: 'Library Branch General Information',
+  museum: 'Museums and Cultural Centres',
+  parks: 'Park Washroom Facilities',
+  ttc: 'TTC station washrooms',
+};
+const safePublishedHref = (value?: string): string | null => {
+  if (!value) return null;
+  if (
+    /^\/data\/[A-Za-z0-9._~!$&'()*+,;=:@%/?#-]+$/.test(value) &&
+    !value.includes('..') &&
+    !value.includes('\\') &&
+    !value.startsWith('//')
+  ) {
+    return value;
+  }
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && !url.username && !url.password
+      ? url.href
+      : null;
+  } catch {
+    return null;
+  }
+};
+const sourceLabelFor = (properties: InterventionProperties): string => {
+  const [source] = properties.facilityId.split(':', 1);
+  return sourceLabels[source] ?? 'Official facility source';
+};
+const accessLabelFor = (access: InterventionProperties['accessCondition']): string =>
+  access === 'fare_paid'
+    ? 'Fare-paid area, valid fare required'
+    : access === 'unrestricted'
+      ? 'No fare required'
+      : 'Access condition unknown';
+const closureLabelFor = (category: string): string =>
+  category === 'none'
+    ? 'No temporary or construction closure recorded'
+    : category.replaceAll('_', ' ');
+const guideDescription = gatePassed
+  ? `At ${defaultSnapshotLabel}, Toronto has ${number.format(
+      defaultPhase1.activeTransitPointCount,
+    )} grouped transit points with scheduled activity but only ${number.format(
+      defaultPhase1.unrestrictedOpenAccessPointCount,
+    )} documented unrestricted washroom access points. This guide maps the gap and publishes ${number.format(
+      manifest.gate.auditedOpportunityCount,
+    )} audited opportunities.`
+  : `At ${defaultSnapshotLabel}, Toronto has ${number.format(
+      defaultPhase1.activeTransitPointCount,
+    )} grouped transit points with scheduled activity but only ${number.format(
+      defaultPhase1.unrestrictedOpenAccessPointCount,
+    )} documented unrestricted washroom access points. The dated proof remains published, but rankings are withheld because the recommendation gate failed.`;
 
 const defaultResults = gatePassed
   ? interventions.features
@@ -194,18 +270,20 @@ const config = JSON.stringify({
   },
   files: manifest.files,
   gate: manifest.gate,
+  manifestUrl: `/data/fg03/${snapshotDirectory}/manifest.json`,
   snapshotDate: manifest.snapshotDate,
 }).replaceAll('<', '\\u003c');
 ---
 
 <Base
   title="When Toronto Has to Go"
-  description="At 10 p.m., Toronto has 7,994 grouped transit points with scheduled activity but only six documented unrestricted washroom access points. This guide maps the gap and publishes audited interventions."
+  description={guideDescription}
   ogImage="/social/og-when-toronto-has-to-go.jpg"
 >
   <article
     class="fg03"
     data-fg03-root
+    data-fg03-runtime="progressive"
     data-fg03-snapshot-date={manifest.snapshotDate}
     data-fg03-gate-status={gatePassed ? 'passed' : 'failed'}
   >
@@ -231,12 +309,15 @@ const config = JSON.stringify({
         </div>
 
         <div class="fg03-finding" data-fg03-central-finding="phase1Grouped">
-          <p class="fg03-finding-label">The 10 p.m. finding</p>
+          <p class="fg03-finding-label">The {defaultSnapshotLabel} finding</p>
           <p class="fg03-finding-statement">
-            <strong>6</strong> unrestricted washroom access points remain documented
-            open for <strong>7,994</strong> grouped transit points with scheduled
-            activity. Only <strong>18</strong> of those transit points are within a
-            400 m pedestrian-network walk.
+            <strong>{number.format(defaultPhase1.unrestrictedOpenAccessPointCount)}</strong>{' '}
+            unrestricted washroom access points remain documented open for{' '}
+            <strong>{number.format(defaultPhase1.activeTransitPointCount)}</strong>{' '}
+            grouped transit points with scheduled activity. Only{' '}
+            <strong>{number.format(defaultPhase1.unrestrictedCoveredTransitPointCount)}</strong>{' '}
+            of those transit points are within a {number.format(defaultWalk)} m
+            pedestrian-network walk.
           </p>
           <p class="fg03-finding-note">
             These are Phase 1 grouped transit point counts, not raw stop-platform
@@ -353,7 +434,13 @@ const config = JSON.stringify({
             </p>
           </div>
 
-          <form class="fg03-controls" data-fg03-controls aria-describedby="fg03-controls-help">
+          <form
+            class="fg03-controls"
+            data-fg03-controls
+            aria-describedby="fg03-controls-help"
+            aria-disabled="true"
+            inert
+          >
             <p id="fg03-controls-help" class="fg03-controls-help">
               Results update after each choice. The URL stores time, access, walk,
               action, selected place, and map view for sharing.
@@ -364,19 +451,19 @@ const config = JSON.stringify({
                 <legend>Time</legend>
                 <div class="fg03-choice-row">
                   <label>
-                    <input type="radio" name="time" value="1200" />
+                    <input type="radio" name="time" value="1200" checked={defaultTime === '1200'} />
                     <span>Noon</span>
                   </label>
                   <label>
-                    <input type="radio" name="time" value="2030" />
+                    <input type="radio" name="time" value="2030" checked={defaultTime === '2030'} />
                     <span>8:30 p.m.</span>
                   </label>
                   <label>
-                    <input type="radio" name="time" value="2200" checked />
+                    <input type="radio" name="time" value="2200" checked={defaultTime === '2200'} />
                     <span>10 p.m.</span>
                   </label>
                   <label>
-                    <input type="radio" name="time" value="0030" />
+                    <input type="radio" name="time" value="0030" checked={defaultTime === '0030'} />
                     <span>12:30 a.m.</span>
                   </label>
                 </div>
@@ -386,11 +473,21 @@ const config = JSON.stringify({
                 <legend>Access assumption</legend>
                 <div class="fg03-choice-row">
                   <label>
-                    <input type="radio" name="access" value="public" checked />
+                    <input
+                      type="radio"
+                      name="access"
+                      value="public"
+                      checked={defaultUrlAccess === 'public'}
+                    />
                     <span>Public, no fare required</span>
                   </label>
                   <label>
-                    <input type="radio" name="access" value="rider" />
+                    <input
+                      type="radio"
+                      name="access"
+                      value="rider"
+                      checked={defaultUrlAccess === 'rider'}
+                    />
                     <span>TTC rider, fare gate allowed</span>
                   </label>
                 </div>
@@ -400,15 +497,15 @@ const config = JSON.stringify({
                 <legend>Network walk</legend>
                 <div class="fg03-choice-row">
                   <label>
-                    <input type="radio" name="walk" value="300" />
+                    <input type="radio" name="walk" value="300" checked={defaultWalk === 300} />
                     <span>300 m</span>
                   </label>
                   <label>
-                    <input type="radio" name="walk" value="400" checked />
+                    <input type="radio" name="walk" value="400" checked={defaultWalk === 400} />
                     <span>400 m</span>
                   </label>
                   <label>
-                    <input type="radio" name="walk" value="500" />
+                    <input type="radio" name="walk" value="500" checked={defaultWalk === 500} />
                     <span>500 m</span>
                   </label>
                 </div>
@@ -418,23 +515,48 @@ const config = JSON.stringify({
                 <legend>Action</legend>
                 <div class="fg03-choice-row fg03-choice-row--actions">
                   <label>
-                    <input type="radio" name="action" value="open" />
+                    <input
+                      type="radio"
+                      name="action"
+                      value="open"
+                      checked={defaultAction === 'open'}
+                    />
                     <span>Current open washrooms</span>
                   </label>
                   <label>
-                    <input type="radio" name="action" value="extend" checked />
+                    <input
+                      type="radio"
+                      name="action"
+                      value="extend"
+                      checked={defaultAction === 'extend'}
+                    />
                     <span>Extend hours</span>
                   </label>
                   <label>
-                    <input type="radio" name="action" value="new" />
+                    <input
+                      type="radio"
+                      name="action"
+                      value="new"
+                      checked={defaultAction === 'new'}
+                    />
                     <span>New facility zones</span>
                   </label>
                   <label>
-                    <input type="radio" name="action" value="verify" />
+                    <input
+                      type="radio"
+                      name="action"
+                      value="verify"
+                      checked={defaultAction === 'verify'}
+                    />
                     <span>Verify published information</span>
                   </label>
                   <label>
-                    <input type="radio" name="action" value="retrofit" />
+                    <input
+                      type="radio"
+                      name="action"
+                      value="retrofit"
+                      checked={defaultAction === 'retrofit'}
+                    />
                     <span>Retrofit accessibility</span>
                   </label>
                 </div>
@@ -472,8 +594,10 @@ const config = JSON.stringify({
             aria-atomic="true"
             data-fg03-status
           >
-            Showing {defaultResults.length} audited extend-hours opportunities for
-            10 p.m., public access, and a 400 m walk.
+            Showing {number.format(defaultResults.length)}{' '}
+            {actionStatusLabels[defaultAction]} for {defaultSnapshotLabel},{' '}
+            {defaultUrlAccess === 'public' ? 'public access' : 'TTC rider access'}, and a{' '}
+            {number.format(defaultWalk)} m walk.
           </p>
           <div class="fg03-alert" role="alert" data-fg03-alert hidden>
             <p data-fg03-alert-message>
@@ -517,9 +641,11 @@ const config = JSON.stringify({
                   class="fg03-map"
                   data-fg03-map
                   role="region"
-                  tabindex="0"
+                  tabindex="-1"
+                  aria-disabled="true"
                   aria-label="Interactive map of Toronto public washroom access and audited interventions"
                   aria-describedby="fg03-map-instructions"
+                  inert
                 >
                   <svg
                     class="fg03-map-paper"
@@ -572,6 +698,14 @@ const config = JSON.stringify({
                       <span class="fg03-symbol fg03-symbol--diamond" aria-hidden="true" />
                       <span><b class="fg03-shape-name">Diamond</b> Verify information</span>
                     </li>
+                    <li>
+                      <span class="fg03-symbol fg03-symbol--diamond" aria-hidden="true" />
+                      <span><b class="fg03-shape-name">Diamond</b> Fare-paid facility</span>
+                    </li>
+                    <li>
+                      <span class="fg03-symbol fg03-symbol--cross" aria-hidden="true">+</span>
+                      <span><b class="fg03-shape-name">Cross</b> Accessibility retrofit</span>
+                    </li>
                   </ul>
                 </div>
 
@@ -592,7 +726,7 @@ const config = JSON.stringify({
               <header class="fg03-results-header">
                 <div>
                   <p class="fg03-eyebrow">Default ranking</p>
-                  <h3>Extend hours at 10 p.m.</h3>
+                  <h3>{actionLabels[defaultAction]} at {defaultSnapshotLabel}</h3>
                 </div>
                 <p data-fg03-results-count={defaultResults.length}>
                   {defaultResults.length} places
@@ -606,6 +740,8 @@ const config = JSON.stringify({
                 <ol class="fg03-result-list" data-fg03-result-list>
                   {defaultResults.map(({ feature, cell }) => {
                     const { properties } = feature;
+                    const sourceUrl = safePublishedHref(properties.sourceUrl);
+                    const sourceLabel = sourceLabelFor(properties);
                     return (
                       <li
                         data-fg03-result-item
@@ -615,6 +751,10 @@ const config = JSON.stringify({
                         <div class="fg03-result-summary">
                           <p class="fg03-result-rank">Rank {properties.primaryRank}</p>
                           <h4>{properties.name}</h4>
+                          <p>
+                            {actionLabels[properties.action]} ·{' '}
+                            {accessLabelFor(properties.accessCondition)}
+                          </p>
                           <dl>
                             <div>
                               <dt>GTFS stops and platforms</dt>
@@ -652,9 +792,30 @@ const config = JSON.stringify({
                                 <strong>Published hours:</strong> {properties.hours}
                               </p>
                             )}
-                            {properties.sourceUrl && (
+                            <p>
+                              <strong>Action:</strong> {actionLabels[properties.action]}
+                            </p>
+                            <p>
+                              <strong>Access condition:</strong>{' '}
+                              {accessLabelFor(properties.accessCondition)}
+                            </p>
+                            <p>
+                              <strong>Closure evidence:</strong>{' '}
+                              {closureLabelFor(properties.closureCategory)}
+                            </p>
+                            <p>
+                              <strong>Accessibility:</strong> {properties.accessibility}
+                            </p>
+                            <p>
+                              <strong>Stability:</strong> {properties.stability}
+                            </p>
+                            <p>
+                              <strong>Audit status:</strong> {properties.auditStatus}
+                            </p>
+                            {sourceUrl && (
                               <p>
-                                <a href={properties.sourceUrl}>Open the official facility source</a>
+                                <strong>Official source:</strong>{' '}
+                                <a href={sourceUrl}>{sourceLabel}</a>
                               </p>
                             )}
                           </div>
@@ -701,12 +862,14 @@ const config = JSON.stringify({
                 aria-labelledby="fg03-detail-title"
               >
                 <p class="fg03-eyebrow">Map-linked detail</p>
-                <h4 id="fg03-detail-title">Choose a ranked place</h4>
-                <p>
-                  Select “Show on map” to connect one recommendation to its location
-                  and walking reach. The evidence disclosure in each row works without
-                  the map.
-                </p>
+                <h4 id="fg03-detail-title" tabindex="-1">Choose a ranked place</h4>
+                <div data-fg03-detail-body>
+                  <p>
+                    Select “Show on map” to connect one recommendation to its location
+                    and walking reach. The evidence disclosure in each row works without
+                    the map.
+                  </p>
+                </div>
                 <button type="button" data-fg03-close-detail disabled>
                   Clear selected place
                 </button>
@@ -923,5 +1086,10 @@ const config = JSON.stringify({
       data-fg03-config
       set:html={config}
     />
+    <script>
+      import { registerWhenTorontoHasToGoLifecycle } from '../../../scripts/fg03-map';
+
+      registerWhenTorontoHasToGoLifecycle();
+    </script>
   </article>
 </Base>
