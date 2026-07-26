@@ -187,6 +187,11 @@ test('map shell explains keyboard use, symbol shapes, date, and attribution', ()
     styles,
     /maplibregl[\s\S]*?min-height:\s*2\.75rem[\s\S]*?min-width:\s*2\.75rem/,
   );
+  assert.match(
+    styles,
+    /\.fg03-legend > p,\s*\.fg03-legend > ul\s*\{[^}]*grid-column:\s*2;/,
+    'Desktop legend groups must stay out of the narrow heading column',
+  );
 });
 
 test('access-point proof and facility-record explorer use explicit counting grains', () => {
