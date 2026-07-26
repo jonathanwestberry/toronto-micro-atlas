@@ -1,0 +1,181 @@
+/*
+ * Site header: masthead, nav, and the Guides dropdown.
+ * Moved out of Base.astro with Header.astro so the shell's chrome is a
+ * component with its own stylesheet rather than 180 lines inside a layout.
+ */
+
+/* ============================================================
+   Site header
+   ============================================================ */
+
+.site-header {
+  padding: var(--space-6) var(--space-6) 0;
+  border-bottom: 1px solid var(--ink);
+}
+
+.site-header-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-4) var(--space-8);
+  padding-bottom: var(--space-4);
+}
+
+.site-masthead {
+  font-family: var(--font-heading);
+  font-weight: 900;
+  font-size: var(--text-sm);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--ink);
+  flex-shrink: 0;
+}
+
+.site-masthead:hover {
+  color: var(--threshold);
+}
+
+.site-masthead:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.site-nav {
+  display: flex;
+  gap: var(--space-6);
+  align-items: baseline;
+  list-style: none;
+  flex-wrap: wrap;
+}
+
+.site-nav a {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-decoration: none;
+  color: var(--ink-2);
+  letter-spacing: 0.02em;
+  padding-bottom: 2px;
+}
+
+.site-nav a[aria-current='page'],
+.site-nav a[aria-current='true'] {
+  color: var(--ink);
+  font-weight: 700;
+  box-shadow: inset 0 -2px 0 var(--threshold);
+}
+
+.site-nav a:hover {
+  color: var(--threshold);
+}
+
+.site-nav a:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* Field Guides dropdown. <details> so it works with no JS; a small script
+   closes it on outside-click / Escape as an enhancement. */
+.site-nav-dd {
+  position: relative;
+}
+
+.nav-dd-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--ink-2);
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  padding-bottom: 2px;
+  list-style: none;
+  user-select: none;
+}
+
+.nav-dd-summary::-webkit-details-marker {
+  display: none;
+}
+
+.nav-dd-summary::after {
+  content: '';
+  width: 0;
+  height: 0;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  border-top: 4px solid currentColor;
+  transition: transform var(--dur-1) var(--ease-out);
+}
+
+.nav-dd[open] .nav-dd-summary::after {
+  transform: rotate(180deg);
+}
+
+.nav-dd-summary:hover {
+  color: var(--threshold);
+}
+
+.nav-dd-summary:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.nav-dd-summary.is-current {
+  color: var(--ink);
+  font-weight: 700;
+  box-shadow: inset 0 -2px 0 var(--threshold);
+}
+
+.nav-dd[open] .nav-dd-summary {
+  color: var(--ink);
+}
+
+.nav-dd-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  z-index: 50;
+  list-style: none;
+  min-width: 232px;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+  padding: var(--space-2);
+}
+
+.nav-dd-menu a {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.nav-dd-menu a:hover,
+.nav-dd-menu a:focus-visible {
+  background: var(--card);
+  color: var(--threshold);
+  outline: none;
+}
+
+.nav-dd-all {
+  margin-top: var(--space-1);
+  border-top: 1px solid var(--rule, var(--card));
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-dd-summary::after {
+    transition: none;
+  }
+}

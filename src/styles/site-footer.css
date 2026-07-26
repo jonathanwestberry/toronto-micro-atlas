@@ -1,0 +1,115 @@
+/*
+ * Site footer: the publication colophon.
+ * Moved out of Base.astro with Footer.astro.
+ */
+
+/* ============================================================
+   Site footer: publication colophon
+   ============================================================ */
+
+.site-footer {
+  margin-top: auto;
+  border-top: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.site-footer-inner {
+  max-width: var(--container-wide);
+  margin: 0 auto;
+  padding: var(--space-12) var(--gutter) var(--space-8);
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: var(--space-8) var(--space-12);
+}
+
+@media (max-width: 767px) {
+  .site-footer-inner {
+    grid-template-columns: 1fr;
+    padding-top: var(--space-8);
+  }
+}
+
+.site-footer-mark {
+  font-family: var(--font-heading);
+  font-weight: 900;
+  font-size: var(--text-sm);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.site-footer-tagline {
+  margin-top: var(--space-2);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+  max-width: 34ch;
+}
+
+.site-footer-signature {
+  margin-top: var(--space-6);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.site-footer-signature a {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.site-footer-signature a:hover {
+  color: var(--threshold);
+}
+
+.site-footer-heading {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: var(--space-3);
+}
+
+.site-footer-links {
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.site-footer-links a {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.site-footer-links a:hover {
+  color: var(--threshold);
+}
+
+.site-footer-links a:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.site-footer-meta {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+  line-height: 1.7;
+}
+
+/* Dark footer: flip text tokens to read on ink */
+.site-footer-mark { color: var(--paper); }
+.site-footer-tagline,
+.site-footer-signature { color: rgba(250, 246, 236, 0.7); }
+.site-footer-meta { color: rgba(250, 246, 236, 0.55); }
+.site-footer-heading { color: rgba(250, 246, 236, 0.55); }
+.site-footer-signature a { color: var(--paper); }
+.site-footer-links a { color: rgba(250, 246, 236, 0.82); }
+.site-footer-links a:hover,
+.site-footer-signature a:hover { color: #F7A25E; }
