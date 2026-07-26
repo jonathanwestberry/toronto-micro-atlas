@@ -129,6 +129,111 @@ class InterventionSimulationTests(unittest.TestCase):
         )
         self.assertEqual(candidates, ())
 
+    def test_hours_extensions_populate_sensitivities_and_ignore_optimistic_information(self):
+        # Protected break: primary-only assembly can never produce a robust opportunity.
+        sensitivities = (
+            self._inputs("distance-300", walking_distance=300),
+            self._inputs("distance-500", walking_distance=500),
+            self._inputs("rider", access_mode="rider_conditional"),
+            self._inputs("normal", closure_mode="normal_operations"),
+            self._inputs("optimistic", information_mode="optimistic_information"),
+            self._inputs("saturday", service_date=date(2026, 7, 25)),
+        )
+        sensitivity_footprints = {
+            inputs.scenario.scenario_id: {"library:1": self.footprint}
+            for inputs in sensitivities
+        }
+
+        candidate = simulate_hours_extensions(
+            self.inputs,
+            sensitivity_inputs=sensitivities,
+            facilities=(self.facility,),
+            snapshots=(
+                FacilitySnapshot("library:1", "2200", "closed", "scheduled_closed"),
+                FacilitySnapshot("library:1", "0030", "closed", "scheduled_closed"),
+            ),
+            footprints={"library:1": self.footprint},
+            sensitivity_footprints=sensitivity_footprints,
+        )[0]
+
+        self.assertEqual(
+            [metrics.scenario_id for metrics in candidate.sensitivity_metrics],
+            ["distance-300", "distance-500", "rider", "normal", "saturday"],
+        )
+        self.assertEqual(
+            [
+                (rank.scenario_id, rank.applicable, rank.published_rank)
+                for rank in candidate.sensitivity_ranks
+            ],
+            [
+                ("distance-300", True, 1),
+                ("distance-500", True, 1),
+                ("rider", True, 1),
+                ("normal", True, 1),
+                ("optimistic", False, "not applicable"),
+                ("saturday", True, 1),
+            ],
+        )
+        self.assertEqual(candidate.stability, "robust")
+
+    def test_retrofit_sensitivities_apply_normal_and_optimistic_effective_states(self):
+        # Protected break: ignoring scenario modes leaves temporary and unknown-hour snapshots inert.
+        inaccessible = FacilityEvidence(
+            facility_id="barrier:modes",
+            name="Barrier modes",
+            source="Library",
+            address="6 Main Street",
+            lon=-79.4,
+            lat=43.7,
+            hours="Mixed",
+            access_condition="unrestricted",
+            closure_category="none",
+            accessibility="inaccessible",
+            partial_service=False,
+            source_url="https://example.test/barrier-modes",
+            notes="stairs only",
+        )
+        normal = self._inputs("normal", closure_mode="normal_operations")
+        optimistic = self._inputs(
+            "optimistic", information_mode="optimistic_information"
+        )
+        snapshots = (
+            FacilitySnapshot("barrier:modes", "2200", "open", "open"),
+            FacilitySnapshot("barrier:modes", "0030", "open", "temporary_closed"),
+        )
+        candidate = simulate_accessibility_retrofits(
+            self.inputs,
+            sensitivity_inputs=(normal,),
+            facilities=(inaccessible,),
+            snapshots=snapshots,
+            footprints={"barrier:modes": self.footprint},
+            sensitivity_footprints={"normal": {"barrier:modes": self.footprint}},
+        )[0]
+        self.assertEqual(candidate.primary_metrics.combined_incremental.unique_trips, 2)
+        self.assertEqual(
+            candidate.sensitivity_metrics[0].combined_incremental.unique_trips,
+            3,
+        )
+
+        optimistic_candidate = simulate_accessibility_retrofits(
+            self.inputs,
+            sensitivity_inputs=(optimistic,),
+            facilities=(inaccessible,),
+            snapshots=(
+                FacilitySnapshot("barrier:modes", "2200", "open", "open"),
+                FacilitySnapshot("barrier:modes", "0030", "unknown", "unknown_hours"),
+            ),
+            footprints={"barrier:modes": self.footprint},
+            sensitivity_footprints={
+                "optimistic": {"barrier:modes": self.footprint}
+            },
+        )[0]
+        self.assertTrue(optimistic_candidate.sensitivity_ranks[0].applicable)
+        self.assertEqual(
+            optimistic_candidate.sensitivity_metrics[0].combined_incremental.unique_trips,
+            3,
+        )
+
     def test_new_zones_collapse_shared_nodes_and_apply_pairwise_eighty_percent_overlap(self):
         # Protected break: merging against the union or the wrong denominator changes the candidate universe.
         seeds = (
@@ -141,6 +246,145 @@ class InterventionSimulationTests(unittest.TestCase):
         candidates = simulate_new_facility_zones(self.inputs, seeds=seeds)
 
         self.assertEqual([item.candidate_id for item in candidates], ["new-facility-zone:stop-a", "new-facility-zone:stop-d"])
+
+    def test_new_zone_universe_requires_primary_policy_scenario(self):
+        # Protected break: deduplicating under a distance sensitivity changes the published universe.
+        seed = NewFacilitySeed(
+            "stop-a",
+            "A",
+            -79.4,
+            43.7,
+            "node-a",
+            self.footprint,
+        )
+        with self.assertRaisesRegex(ValueError, "primary"):
+            simulate_new_facility_zones(
+                self._inputs("distance-300", walking_distance=300),
+                seeds=(seed,),
+            )
+        with self.assertRaisesRegex(ValueError, "primary"):
+            simulate_new_facility_zones(
+                self._inputs("other-tuesday", service_date=date(2026, 7, 28)),
+                seeds=(seed,),
+            )
+
+    def test_new_zone_sensitivities_rerun_only_frozen_primary_ids(self):
+        # Protected break: rededuplicating a sensitivity can add a primary-rejected zone.
+        primary_seeds = (
+            NewFacilitySeed(
+                "stop-a",
+                "A",
+                -79.4,
+                43.7,
+                "node-a",
+                self._footprint("stop-a", {"a", "b", "c"}, {"a", "d"}),
+            ),
+            NewFacilitySeed(
+                "stop-b",
+                "B",
+                -79.4,
+                43.7,
+                "node-b",
+                self._footprint("stop-b", {"a", "b", "c"}, {"a", "d"}),
+            ),
+        )
+        sensitivity = self._inputs("distance-300", walking_distance=300)
+        sensitivity_seeds = {
+            "distance-300": (
+                NewFacilitySeed(
+                    "stop-a",
+                    "A",
+                    -79.4,
+                    43.7,
+                    "node-a",
+                    self._footprint("stop-a", {"a", "b"}, {"a"}),
+                ),
+                NewFacilitySeed(
+                    "stop-b",
+                    "B",
+                    -79.4,
+                    43.7,
+                    "node-b",
+                    self._footprint("stop-b", {"a", "b", "c"}, {"a", "d"}),
+                ),
+            )
+        }
+
+        candidates = simulate_new_facility_zones(
+            self.inputs,
+            sensitivity_inputs=(sensitivity,),
+            seeds=primary_seeds,
+            sensitivity_seeds=sensitivity_seeds,
+        )
+
+        self.assertEqual(
+            [candidate.candidate_id for candidate in candidates],
+            ["new-facility-zone:stop-a"],
+        )
+        self.assertEqual(
+            candidates[0].sensitivity_metrics[0].combined_incremental.unique_trips,
+            1,
+        )
+
+    def test_new_zone_keeps_79_99_percent_and_rejects_80_percent_overlap(self):
+        # Protected break: rounding the overlap ratio changes the threshold boundary.
+        all_events = tuple(
+            self._event(f"stop-{index}", f"trip-{index}", "route")
+            for index in range(14_001)
+        )
+        inputs = ScenarioInputs(
+            scenario=self.scenario,
+            snapshot_events=(
+                SnapshotEvents("2200", all_events),
+                SnapshotEvents("0030", ()),
+            ),
+            baseline_covered=(
+                SnapshotStops("2200", frozenset()),
+                SnapshotStops("0030", frozenset()),
+            ),
+        )
+        kept_effect = {f"stop-{index}" for index in range(10_000)}
+        overlap_79_99 = {
+            *(f"stop-{index}" for index in range(7_999)),
+            *(f"stop-{index}" for index in range(10_000, 12_001)),
+        }
+        overlap_80 = {
+            *(f"stop-{index}" for index in range(8_000)),
+            *(f"stop-{index}" for index in range(12_001, 14_001)),
+        }
+        seeds = (
+            NewFacilitySeed(
+                "stop-a",
+                "A",
+                -79.4,
+                43.7,
+                "node-a",
+                self._footprint("stop-a", kept_effect, set()),
+            ),
+            NewFacilitySeed(
+                "stop-b",
+                "B",
+                -79.4,
+                43.7,
+                "node-b",
+                self._footprint("stop-b", overlap_79_99, set()),
+            ),
+            NewFacilitySeed(
+                "stop-c",
+                "C",
+                -79.4,
+                43.7,
+                "node-c",
+                self._footprint("stop-c", overlap_80, set()),
+            ),
+        )
+
+        candidates = simulate_new_facility_zones(inputs, seeds=seeds)
+
+        self.assertEqual(
+            [candidate.candidate_id for candidate in candidates],
+            ["new-facility-zone:stop-a", "new-facility-zone:stop-b"],
+        )
 
     def test_information_verification_returns_separate_potential_actions(self):
         # Protected break: combining unknown hours and unknown accessibility turns assumptions into confirmed gain.
@@ -194,6 +438,52 @@ class InterventionSimulationTests(unittest.TestCase):
             ],
         )
 
+    def test_information_verification_marks_optimistic_sensitivity_not_applicable(self):
+        # Protected break: ranking an optimistic verification scenario assumes the fact being verified.
+        unknown_hours = FacilityEvidence(
+            facility_id="unknown-hours:2",
+            name="Hours unknown",
+            source="Library",
+            address="7 Main Street",
+            lon=-79.4,
+            lat=43.7,
+            hours="",
+            access_condition="unrestricted",
+            closure_category="none",
+            accessibility="accessible",
+            partial_service=False,
+            source_url="https://example.test/hours-2",
+            notes="",
+        )
+        normal = self._inputs("normal", closure_mode="normal_operations")
+        optimistic = self._inputs(
+            "optimistic", information_mode="optimistic_information"
+        )
+        candidate = simulate_information_verification(
+            self.inputs,
+            sensitivity_inputs=(normal, optimistic),
+            facilities=(unknown_hours,),
+            snapshots=(
+                FacilitySnapshot(
+                    "unknown-hours:2", "2200", "unknown", "unknown_hours"
+                ),
+            ),
+            footprints={"unknown-hours:2": self.footprint},
+            sensitivity_footprints={
+                "normal": {"unknown-hours:2": self.footprint},
+                "optimistic": {"unknown-hours:2": self.footprint},
+            },
+        )[0]
+
+        self.assertEqual(
+            [(rank.scenario_id, rank.applicable) for rank in candidate.sensitivity_ranks],
+            [("normal", True), ("optimistic", False)],
+        )
+        self.assertEqual(
+            [metrics.scenario_id for metrics in candidate.sensitivity_metrics],
+            ["normal"],
+        )
+
     def test_retrofit_requires_known_barrier_and_does_not_open_closed_facility(self):
         # Protected break: treating unknown or closed facilities as retrofit candidates invents accessible service.
         inaccessible = FacilityEvidence(
@@ -229,6 +519,30 @@ class InterventionSimulationTests(unittest.TestCase):
 
     def _footprint(self, source_id, at_2200, at_0030):
         return CoverageFootprint(source_id, f"node-{source_id}", {"2200": frozenset(at_2200), "0030": frozenset(at_0030)})
+
+    def _inputs(
+        self,
+        scenario_id,
+        *,
+        service_date=date(2026, 7, 21),
+        access_mode="public",
+        walking_distance=400,
+        closure_mode="observed",
+        information_mode="unknown_unavailable",
+    ):
+        return ScenarioInputs(
+            scenario=Scenario(
+                scenario_id=scenario_id,
+                service_date=service_date,
+                snapshot_ids=("2200", "0030"),
+                access_mode=access_mode,
+                walking_distance=walking_distance,
+                closure_mode=closure_mode,
+                information_mode=information_mode,
+            ),
+            snapshot_events=self.events,
+            baseline_covered=self.inputs.baseline_covered,
+        )
 
     @staticmethod
     def _event(stop_id, trip_id, route_id):

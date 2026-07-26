@@ -83,6 +83,20 @@ class FacilitySnapshot:
             raise ValueError(f"Unsupported observed state: {self.observed_state}")
 
 
+def effective_facility_state(snapshot: FacilitySnapshot, scenario: Scenario) -> str:
+    """Resolve a persisted observed and scheduled state under one scenario."""
+    state = snapshot.observed_state
+    if scenario.closure_mode == "normal_operations" and state == "temporary_closed":
+        state = {
+            "open": "open",
+            "closed": "scheduled_closed",
+            "unknown": "unknown_hours",
+        }[snapshot.scheduled_state]
+    if scenario.information_mode == "optimistic_information" and state == "unknown_hours":
+        return "potential_open"
+    return state
+
+
 @dataclass(frozen=True, slots=True)
 class NearestFacility:
     facility_id: str
@@ -198,8 +212,22 @@ class CandidateGain:
             raise ValueError(f"Unsupported candidate class: {self.candidate_class}")
         if self.verification_kind not in {None, "hours", "accessibility"}:
             raise ValueError(f"Unsupported verification kind: {self.verification_kind}")
+        if self.candidate_class == "verify_information":
+            if self.verification_kind is None:
+                raise ValueError("Verification candidates require a verification kind")
+        elif self.verification_kind is not None:
+            raise ValueError(
+                f"Candidate class {self.candidate_class} cannot have a verification kind"
+            )
         if self.gain_label not in {"incremental", "potential_if_verified"}:
             raise ValueError(f"Unsupported gain label: {self.gain_label}")
+        if self.stability not in {
+            "robust",
+            "mostly robust",
+            "sensitive",
+            "not prioritized",
+        }:
+            raise ValueError(f"Unsupported stability: {self.stability}")
         if self.audit_status not in {"valid", "merge review", "source review", "exclude"}:
             raise ValueError(f"Unsupported audit status: {self.audit_status}")
 
@@ -230,7 +258,12 @@ def classify_gap(
     if unexpected:
         raise ValueError(f"Unknown nearest-evidence keys: {sorted(unexpected)}")
     values = {
-        name: item if item is not None and item.network_distance <= scenario.walking_distance else None
+        name: (
+            item
+            if item is not None
+            and item.network_distance <= scenario.walking_distance
+            else None
+        )
         for name, item in ((name, nearest.get(name)) for name in _PRESENCE_NAMES)
     }
     present = {name: values[name] is not None for name in _PRESENCE_NAMES}
@@ -323,9 +356,7 @@ def rank_candidates(
 def stability_category(ranks: Iterable[ScenarioRank]) -> str:
     """Classify a candidate from its primary rank and applicable sensitivities."""
     values = tuple(ranks)
-    primary = next((rank for rank in values if rank.scenario_id == "primary"), None)
-    if primary is None:
-        primary = values[0] if values else None
+    primary = values[0] if values else None
     if primary is None or not primary.applicable or primary.rank is None or primary.rank > 20:
         return "not prioritized"
     top_twenty = sum(
@@ -372,3 +403,82 @@ def evaluate_product_gate(candidates: Iterable[CandidateGain]) -> ProductGateRes
     ):
         return ProductGateResult(False, "a robust valid candidate has an integrity flag", ids)
     return ProductGateResult(True, "all product-gate conditions passed", ids)
+
+
+def _activity_public(metrics: ActivityMetrics) -> dict[str, int]:
+    return {
+        "unique_trips": metrics.unique_trips,
+        "unique_routes": metrics.unique_routes,
+        "active_stops": metrics.active_stops,
+        "stop_time_events": metrics.stop_time_events,
+    }
+
+
+def _scenario_metrics_public(metrics: ScenarioMetrics) -> dict[str, object]:
+    return {
+        "scenario_id": metrics.scenario_id,
+        "snapshot_gains": [
+            {
+                "snapshot_id": gain.snapshot_id,
+                "incremental": _activity_public(gain.incremental),
+                "total_catchment": _activity_public(gain.total_catchment),
+            }
+            for gain in metrics.snapshot_gains
+        ],
+        "combined_incremental": _activity_public(metrics.combined_incremental),
+        "combined_total": _activity_public(metrics.combined_total),
+        "positive_late_snapshots": metrics.positive_late_snapshots,
+    }
+
+
+def candidate_public_projection(candidate: CandidateGain) -> dict[str, object]:
+    """Return the complete candidate contract without internal trip identities."""
+    facility = None
+    if candidate.facility is not None:
+        facility = {
+            "facility_id": candidate.facility.facility_id,
+            "name": candidate.facility.name,
+            "source": candidate.facility.source,
+            "address": candidate.facility.address,
+            "lon": candidate.facility.lon,
+            "lat": candidate.facility.lat,
+            "hours": candidate.facility.hours,
+            "access_condition": candidate.facility.access_condition,
+            "closure_category": candidate.facility.closure_category,
+            "accessibility": candidate.facility.accessibility,
+            "partial_service": candidate.facility.partial_service,
+            "source_url": candidate.facility.source_url,
+            "notes": candidate.facility.notes,
+        }
+    return {
+        "candidate_id": candidate.candidate_id,
+        "candidate_class": candidate.candidate_class,
+        "verification_kind": candidate.verification_kind,
+        "name": candidate.name,
+        "lon": candidate.lon,
+        "lat": candidate.lat,
+        "source_stop_id": candidate.source_stop_id,
+        "facility_id": candidate.facility_id,
+        "facility": facility,
+        "gain_label": candidate.gain_label,
+        "primary_metrics": _scenario_metrics_public(candidate.primary_metrics),
+        "sensitivity_metrics": [
+            _scenario_metrics_public(metrics) for metrics in candidate.sensitivity_metrics
+        ],
+        "primary_rank": candidate.primary_rank,
+        "sensitivity_ranks": [
+            {
+                "scenario_id": rank.scenario_id,
+                "applicable": rank.applicable,
+                "rank": rank.published_rank,
+            }
+            for rank in candidate.sensitivity_ranks
+        ],
+        "stability": candidate.stability,
+        "material_gain": candidate.material_gain,
+        "audit_status": candidate.audit_status,
+        "source_error": candidate.source_error,
+        "duplicate_candidate": candidate.duplicate_candidate,
+        "misclassified_access": candidate.misclassified_access,
+        "review_flags": list(candidate.review_flags),
+    }

@@ -1,6 +1,7 @@
 """Pure candidate-footprint arithmetic for Field Guide 03 interventions."""
 
 from dataclasses import dataclass, replace
+from datetime import date
 from typing import Iterable, Mapping
 
 from fg03_analysis import (
@@ -8,9 +9,11 @@ from fg03_analysis import (
     CandidateGain,
     FacilityEvidence,
     FacilitySnapshot,
+    Scenario,
     ScenarioMetrics,
     ScenarioRank,
     SnapshotGain,
+    effective_facility_state,
     eligible_facilities,
     has_material_gain,
     rank_candidates,
@@ -136,6 +139,7 @@ def _base_candidate(
     gain_label: str,
     metrics: ScenarioMetrics,
     walking_distance: int,
+    sensitivity_metrics: tuple[ScenarioMetrics, ...] = (),
 ) -> CandidateGain:
     return CandidateGain(
         candidate_id=candidate_id,
@@ -149,7 +153,7 @@ def _base_candidate(
         facility=facility,
         gain_label=gain_label,
         primary_metrics=metrics,
-        sensitivity_metrics=(),
+        sensitivity_metrics=sensitivity_metrics,
         primary_rank=None,
         sensitivity_ranks=(),
         stability="not prioritized",
@@ -162,19 +166,92 @@ def _base_candidate(
     )
 
 
-def _finish_primary(candidates: Iterable[CandidateGain]) -> tuple[CandidateGain, ...]:
+def _scenario_is_applicable(candidate_class: str, scenario: Scenario) -> bool:
+    return not (
+        scenario.information_mode == "optimistic_information"
+        and candidate_class in {"extend_hours", "verify_information"}
+    )
+
+
+def _finish_runs(
+    candidates: Iterable[CandidateGain],
+    sensitivity_inputs: tuple[ScenarioInputs, ...],
+) -> tuple[CandidateGain, ...]:
     items = tuple(candidates)
     if not items:
         return ()
-    scenario_id = items[0].primary_metrics.scenario_id
-    ranked = rank_candidates(items, scenario_id=scenario_id)
-    return tuple(
+    primary_scenario_id = items[0].primary_metrics.scenario_id
+    rank_scenarios = tuple(inputs.scenario for inputs in sensitivity_inputs)
+    ranked = tuple(
         replace(
             item,
-            stability=stability_category((ScenarioRank(scenario_id, True, item.primary_rank),)),
+            sensitivity_ranks=tuple(
+                ScenarioRank(
+                    scenario.scenario_id,
+                    _scenario_is_applicable(item.candidate_class, scenario),
+                    None,
+                )
+                for scenario in rank_scenarios
+            ),
+        )
+        for item in items
+    )
+    ranked = rank_candidates(ranked, scenario_id=primary_scenario_id)
+    for scenario in rank_scenarios:
+        if not _scenario_is_applicable(ranked[0].candidate_class, scenario):
+            continue
+        ranked = rank_candidates(ranked, scenario_id=scenario.scenario_id)
+    finished = tuple(
+        replace(
+            item,
+            stability=stability_category(
+                (
+                    ScenarioRank(primary_scenario_id, True, item.primary_rank),
+                    *item.sensitivity_ranks,
+                )
+            ),
         )
         for item in ranked
     )
+    return tuple(
+        sorted(
+            finished,
+            key=lambda item: (
+                item.primary_rank if item.primary_rank is not None else float("inf"),
+                item.candidate_id,
+            ),
+        )
+    )
+
+
+def _validated_sensitivities(
+    primary_inputs: ScenarioInputs,
+    sensitivity_inputs: Iterable[ScenarioInputs],
+) -> tuple[ScenarioInputs, ...]:
+    items = tuple(sensitivity_inputs)
+    scenario_ids = [
+        primary_inputs.scenario.scenario_id,
+        *(item.scenario.scenario_id for item in items),
+    ]
+    if len(scenario_ids) != len(set(scenario_ids)):
+        raise ValueError("Scenario IDs must be unique across primary and sensitivities")
+    return items
+
+
+def _sensitivity_footprint(
+    source_id: str,
+    inputs: ScenarioInputs,
+    sensitivity_footprints: Mapping[str, Mapping[str, CoverageFootprint]],
+) -> CoverageFootprint:
+    scenario_id = inputs.scenario.scenario_id
+    if scenario_id not in sensitivity_footprints:
+        raise ValueError(f"Missing footprint set for sensitivity {scenario_id}")
+    footprints = sensitivity_footprints[scenario_id]
+    if source_id not in footprints:
+        raise ValueError(
+            f"Missing footprint for {source_id} in sensitivity {scenario_id}"
+        )
+    return footprints[source_id]
 
 
 def _snapshots_by_facility(
@@ -186,26 +263,72 @@ def _snapshots_by_facility(
     return {key: tuple(value) for key, value in grouped.items()}
 
 
+def _active_snapshot_ids(
+    states: Iterable[FacilitySnapshot],
+    scenario: Scenario,
+    *,
+    accepted_states: frozenset[str],
+) -> frozenset[str]:
+    state_by_snapshot = {state.snapshot_id: state for state in states}
+    return frozenset(
+        snapshot_id
+        for snapshot_id in scenario.snapshot_ids
+        if snapshot_id in state_by_snapshot
+        and effective_facility_state(state_by_snapshot[snapshot_id], scenario)
+        in accepted_states
+    )
+
+
 def simulate_hours_extensions(
     inputs: ScenarioInputs,
     *,
+    sensitivity_inputs: Iterable[ScenarioInputs] = (),
     facilities: Iterable[FacilityEvidence],
     snapshots: Iterable[FacilitySnapshot],
     footprints: Mapping[str, CoverageFootprint],
+    sensitivity_footprints: Mapping[
+        str, Mapping[str, CoverageFootprint]
+    ] | None = None,
 ) -> tuple[CandidateGain, ...]:
     """Model only facilities unavailable solely through their weekly schedule."""
+    sensitivities = _validated_sensitivities(inputs, sensitivity_inputs)
+    sensitivity_footprints = sensitivity_footprints or {}
     candidates = []
     states_by_facility = _snapshots_by_facility(snapshots)
     for facility in eligible_facilities(facilities, access_mode=inputs.scenario.access_mode):
         states = states_by_facility.get(facility.facility_id, ())
-        if not states or any(state.observed_state not in {"open", "scheduled_closed"} for state in states):
-            continue
-        active = frozenset(
-            state.snapshot_id for state in states if state.observed_state == "scheduled_closed"
+        active = _active_snapshot_ids(
+            states,
+            inputs.scenario,
+            accepted_states=frozenset({"scheduled_closed"}),
         )
         if not active or facility.facility_id not in footprints:
             continue
-        metrics = _scenario_metrics(inputs, footprints[facility.facility_id], active_snapshot_ids=active)
+        metrics = _scenario_metrics(
+            inputs,
+            footprints[facility.facility_id],
+            active_snapshot_ids=active,
+        )
+        sensitivity_metrics = []
+        for sensitivity in sensitivities:
+            if not _scenario_is_applicable("extend_hours", sensitivity.scenario):
+                continue
+            sensitivity_active = _active_snapshot_ids(
+                states,
+                sensitivity.scenario,
+                accepted_states=frozenset({"scheduled_closed"}),
+            )
+            sensitivity_metrics.append(
+                _scenario_metrics(
+                    sensitivity,
+                    _sensitivity_footprint(
+                        facility.facility_id,
+                        sensitivity,
+                        sensitivity_footprints,
+                    ),
+                    active_snapshot_ids=sensitivity_active,
+                )
+            )
         candidates.append(
             _base_candidate(
                 candidate_id=f"extend-hours:{facility.facility_id}",
@@ -219,15 +342,39 @@ def simulate_hours_extensions(
                 gain_label="incremental",
                 metrics=metrics,
                 walking_distance=inputs.scenario.walking_distance,
+                sensitivity_metrics=tuple(sensitivity_metrics),
             )
         )
-    return _finish_primary(candidates)
+    return _finish_runs(candidates, sensitivities)
+
+
+def _validate_new_zone_primary(scenario: Scenario) -> None:
+    is_primary = (
+        scenario.service_date == date(2026, 7, 21)
+        and scenario.access_mode == "public"
+        and scenario.walking_distance == 400
+        and scenario.closure_mode == "observed"
+        and scenario.information_mode == "unknown_unavailable"
+        and len(scenario.snapshot_ids) == 2
+    )
+    if not is_primary:
+        raise ValueError(
+            "New-zone universe requires the primary Tuesday public observed "
+            "400 metre two-snapshot scenario"
+        )
 
 
 def simulate_new_facility_zones(
-    inputs: ScenarioInputs, *, seeds: Iterable[NewFacilitySeed]
+    inputs: ScenarioInputs,
+    *,
+    sensitivity_inputs: Iterable[ScenarioInputs] = (),
+    seeds: Iterable[NewFacilitySeed],
+    sensitivity_seeds: Mapping[str, Iterable[NewFacilitySeed]] | None = None,
 ) -> tuple[CandidateGain, ...]:
     """Create deterministic, effect-deduplicated investigation-zone candidates."""
+    _validate_new_zone_primary(inputs.scenario)
+    sensitivities = _validated_sensitivities(inputs, sensitivity_inputs)
+    sensitivity_seeds = sensitivity_seeds or {}
     collapsed: dict[str, NewFacilitySeed] = {}
     for seed in seeds:
         prior = collapsed.get(seed.node_id)
@@ -266,20 +413,66 @@ def simulate_new_facility_zones(
     kept: list[CandidateGain] = []
     for candidate in ordered:
         later = candidate.primary_metrics._effect_trip_keys
-        if any(len(later.intersection(item.primary_metrics._effect_trip_keys)) / len(later) >= 0.8 for item in kept):
+        if any(
+            len(later.intersection(item.primary_metrics._effect_trip_keys))
+            / len(later)
+            >= 0.8
+            for item in kept
+        ):
             continue
         kept.append(candidate)
-    return _finish_primary(kept)
+    sensitivity_seeds_by_scenario: dict[str, dict[str, NewFacilitySeed]] = {}
+    for sensitivity in sensitivities:
+        scenario_id = sensitivity.scenario.scenario_id
+        if scenario_id not in sensitivity_seeds:
+            raise ValueError(f"Missing new-zone seeds for sensitivity {scenario_id}")
+        seeds_by_id: dict[str, NewFacilitySeed] = {}
+        for seed in sensitivity_seeds[scenario_id]:
+            if seed.representative_stop_id in seeds_by_id:
+                raise ValueError(
+                    f"Duplicate new-zone seed {seed.representative_stop_id} "
+                    f"for sensitivity {scenario_id}"
+                )
+            seeds_by_id[seed.representative_stop_id] = seed
+        sensitivity_seeds_by_scenario[scenario_id] = seeds_by_id
+    enriched = []
+    for candidate in kept:
+        sensitivity_metrics = []
+        for sensitivity in sensitivities:
+            scenario_id = sensitivity.scenario.scenario_id
+            seeds_by_id = sensitivity_seeds_by_scenario[scenario_id]
+            representative_stop_id = candidate.source_stop_id
+            if representative_stop_id not in seeds_by_id:
+                raise ValueError(
+                    f"Missing frozen new-zone seed {representative_stop_id} "
+                    f"for sensitivity {scenario_id}"
+                )
+            sensitivity_metrics.append(
+                _scenario_metrics(
+                    sensitivity,
+                    seeds_by_id[representative_stop_id].footprint,
+                )
+            )
+        enriched.append(
+            replace(candidate, sensitivity_metrics=tuple(sensitivity_metrics))
+        )
+    return _finish_runs(enriched, sensitivities)
 
 
 def simulate_information_verification(
     inputs: ScenarioInputs,
     *,
+    sensitivity_inputs: Iterable[ScenarioInputs] = (),
     facilities: Iterable[FacilityEvidence],
     snapshots: Iterable[FacilitySnapshot],
     footprints: Mapping[str, CoverageFootprint],
+    sensitivity_footprints: Mapping[
+        str, Mapping[str, CoverageFootprint]
+    ] | None = None,
 ) -> tuple[CandidateGain, ...]:
     """Model potential gains from independently verifying hours or accessibility."""
+    sensitivities = _validated_sensitivities(inputs, sensitivity_inputs)
+    sensitivity_footprints = sensitivity_footprints or {}
     states_by_facility = _snapshots_by_facility(snapshots)
     hours_candidates: list[CandidateGain] = []
     accessibility_candidates: list[CandidateGain] = []
@@ -287,10 +480,33 @@ def simulate_information_verification(
         if facility.facility_id not in footprints:
             continue
         states = states_by_facility.get(facility.facility_id, ())
-        unknown_hours = frozenset(
-            state.snapshot_id for state in states if state.observed_state == "unknown_hours"
+        unknown_hours = _active_snapshot_ids(
+            states,
+            inputs.scenario,
+            accepted_states=frozenset({"unknown_hours"}),
         )
         if unknown_hours:
+            sensitivity_metrics = []
+            for sensitivity in sensitivities:
+                if not _scenario_is_applicable(
+                    "verify_information", sensitivity.scenario
+                ):
+                    continue
+                sensitivity_metrics.append(
+                    _scenario_metrics(
+                        sensitivity,
+                        _sensitivity_footprint(
+                            facility.facility_id,
+                            sensitivity,
+                            sensitivity_footprints,
+                        ),
+                        active_snapshot_ids=_active_snapshot_ids(
+                            states,
+                            sensitivity.scenario,
+                            accepted_states=frozenset({"unknown_hours"}),
+                        ),
+                    )
+                )
             hours_candidates.append(
                 _base_candidate(
                     candidate_id=f"verify-hours:{facility.facility_id}",
@@ -302,14 +518,42 @@ def simulate_information_verification(
                     source_stop_id=None,
                     facility=facility,
                     gain_label="potential_if_verified",
-                    metrics=_scenario_metrics(inputs, footprints[facility.facility_id], active_snapshot_ids=unknown_hours),
+                    metrics=_scenario_metrics(
+                        inputs,
+                        footprints[facility.facility_id],
+                        active_snapshot_ids=unknown_hours,
+                    ),
                     walking_distance=inputs.scenario.walking_distance,
+                    sensitivity_metrics=tuple(sensitivity_metrics),
                 )
             )
-        open_unknown_access = frozenset(
-            state.snapshot_id for state in states if state.observed_state == "open"
+        open_unknown_access = _active_snapshot_ids(
+            states,
+            inputs.scenario,
+            accepted_states=frozenset({"open"}),
         )
         if facility.accessibility == "unknown" and open_unknown_access:
+            sensitivity_metrics = []
+            for sensitivity in sensitivities:
+                if not _scenario_is_applicable(
+                    "verify_information", sensitivity.scenario
+                ):
+                    continue
+                sensitivity_metrics.append(
+                    _scenario_metrics(
+                        sensitivity,
+                        _sensitivity_footprint(
+                            facility.facility_id,
+                            sensitivity,
+                            sensitivity_footprints,
+                        ),
+                        active_snapshot_ids=_active_snapshot_ids(
+                            states,
+                            sensitivity.scenario,
+                            accepted_states=frozenset({"open"}),
+                        ),
+                    )
+                )
             accessibility_candidates.append(
                 _base_candidate(
                     candidate_id=f"verify-accessibility:{facility.facility_id}",
@@ -321,32 +565,68 @@ def simulate_information_verification(
                     source_stop_id=None,
                     facility=facility,
                     gain_label="potential_if_verified",
-                    metrics=_scenario_metrics(inputs, footprints[facility.facility_id], active_snapshot_ids=open_unknown_access),
+                    metrics=_scenario_metrics(
+                        inputs,
+                        footprints[facility.facility_id],
+                        active_snapshot_ids=open_unknown_access,
+                    ),
                     walking_distance=inputs.scenario.walking_distance,
+                    sensitivity_metrics=tuple(sensitivity_metrics),
                 )
             )
-    return tuple(sorted(_finish_primary(hours_candidates) + _finish_primary(accessibility_candidates), key=lambda item: item.candidate_id))
+    return tuple(
+        sorted(
+            _finish_runs(hours_candidates, sensitivities)
+            + _finish_runs(accessibility_candidates, sensitivities),
+            key=lambda item: item.candidate_id,
+        )
+    )
 
 
 def simulate_accessibility_retrofits(
     inputs: ScenarioInputs,
     *,
+    sensitivity_inputs: Iterable[ScenarioInputs] = (),
     facilities: Iterable[FacilityEvidence],
     snapshots: Iterable[FacilitySnapshot],
     footprints: Mapping[str, CoverageFootprint],
+    sensitivity_footprints: Mapping[
+        str, Mapping[str, CoverageFootprint]
+    ] | None = None,
 ) -> tuple[CandidateGain, ...]:
     """Model only confirmed physical barriers while facilities are already open."""
+    sensitivities = _validated_sensitivities(inputs, sensitivity_inputs)
+    sensitivity_footprints = sensitivity_footprints or {}
     states_by_facility = _snapshots_by_facility(snapshots)
     candidates = []
     for facility in eligible_facilities(facilities, access_mode=inputs.scenario.access_mode):
         if facility.accessibility != "inaccessible" or facility.facility_id not in footprints:
             continue
         states = states_by_facility.get(facility.facility_id, ())
-        open_snapshots = frozenset(
-            state.snapshot_id for state in states if state.observed_state == "open"
+        open_snapshots = _active_snapshot_ids(
+            states,
+            inputs.scenario,
+            accepted_states=frozenset({"open"}),
         )
         if not open_snapshots:
             continue
+        sensitivity_metrics = []
+        for sensitivity in sensitivities:
+            sensitivity_metrics.append(
+                _scenario_metrics(
+                    sensitivity,
+                    _sensitivity_footprint(
+                        facility.facility_id,
+                        sensitivity,
+                        sensitivity_footprints,
+                    ),
+                    active_snapshot_ids=_active_snapshot_ids(
+                        states,
+                        sensitivity.scenario,
+                        accepted_states=frozenset({"open", "potential_open"}),
+                    ),
+                )
+            )
         candidates.append(
             _base_candidate(
                 candidate_id=f"retrofit-accessibility:{facility.facility_id}",
@@ -358,8 +638,13 @@ def simulate_accessibility_retrofits(
                 source_stop_id=None,
                 facility=facility,
                 gain_label="incremental",
-                metrics=_scenario_metrics(inputs, footprints[facility.facility_id], active_snapshot_ids=open_snapshots),
+                metrics=_scenario_metrics(
+                    inputs,
+                    footprints[facility.facility_id],
+                    active_snapshot_ids=open_snapshots,
+                ),
                 walking_distance=inputs.scenario.walking_distance,
+                sensitivity_metrics=tuple(sensitivity_metrics),
             )
         )
-    return _finish_primary(candidates)
+    return _finish_runs(candidates, sensitivities)

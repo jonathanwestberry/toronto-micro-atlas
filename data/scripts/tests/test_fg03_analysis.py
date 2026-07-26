@@ -1,3 +1,4 @@
+import json
 import unittest
 from datetime import date
 
@@ -10,9 +11,11 @@ from fg03_analysis import (
     Scenario,
     ScenarioMetrics,
     ScenarioRank,
+    candidate_public_projection,
     classify_gap,
     eligible_facilities,
     evaluate_product_gate,
+    effective_facility_state,
     has_material_gain,
     rank_candidates,
     stability_category,
@@ -155,6 +158,78 @@ class AnalysisRulesTests(unittest.TestCase):
         self.assertFalse(observed.temporary_service_gap)
         self.assertFalse(normal.temporary_service_gap)
 
+    def test_normal_operations_uses_scheduled_state_only_for_temporary_overrides(self):
+        # Protected break: copying observed state makes the normal-operations sensitivity inert.
+        normal = Scenario(
+            scenario_id="normal",
+            service_date=date(2026, 7, 21),
+            snapshot_ids=("2200",),
+            access_mode="public",
+            walking_distance=400,
+            closure_mode="normal_operations",
+            information_mode="unknown_unavailable",
+        )
+        observed = self.scenario
+
+        self.assertEqual(
+            effective_facility_state(
+                FacilitySnapshot("park:temporary-open", "2200", "open", "temporary_closed"),
+                normal,
+            ),
+            "open",
+        )
+        self.assertEqual(
+            effective_facility_state(
+                FacilitySnapshot("park:temporary-closed", "2200", "closed", "temporary_closed"),
+                normal,
+            ),
+            "scheduled_closed",
+        )
+        self.assertEqual(
+            effective_facility_state(
+                FacilitySnapshot("park:temporary-unknown", "2200", "unknown", "temporary_closed"),
+                normal,
+            ),
+            "unknown_hours",
+        )
+        self.assertEqual(
+            effective_facility_state(
+                FacilitySnapshot("park:observed", "2200", "open", "temporary_closed"),
+                observed,
+            ),
+            "temporary_closed",
+        )
+        self.assertEqual(
+            effective_facility_state(
+                FacilitySnapshot("park:seasonal", "2200", "open", "seasonal_closed"),
+                normal,
+            ),
+            "seasonal_closed",
+        )
+        self.assertEqual(
+            effective_facility_state(
+                FacilitySnapshot("park:construction", "2200", "open", "construction_closed"),
+                normal,
+            ),
+            "construction_closed",
+        )
+
+    def test_optimistic_unknown_hours_remains_potential(self):
+        # Protected break: labelling optimistic information as open turns an assumption into confirmed service.
+        optimistic = Scenario(
+            scenario_id="optimistic",
+            service_date=date(2026, 7, 21),
+            snapshot_ids=("2200",),
+            access_mode="public",
+            walking_distance=400,
+            closure_mode="observed",
+            information_mode="optimistic_information",
+        )
+        snapshot = FacilitySnapshot("unknown:1", "2200", "unknown", "unknown_hours")
+
+        self.assertEqual(effective_facility_state(snapshot, self.scenario), "unknown_hours")
+        self.assertEqual(effective_facility_state(snapshot, optimistic), "potential_open")
+
     def test_rank_candidates_uses_all_lexicographic_keys_and_rejects_mixed_groups(self):
         # Protected break: omitting case-preserving or candidate-ID ties makes published ranks unstable.
         metrics = ScenarioMetrics(
@@ -177,6 +252,99 @@ class AnalysisRulesTests(unittest.TestCase):
                 candidates + (self._candidate("retrofit-accessibility:x", "Alpha", metrics, candidate_class="retrofit_accessibility"),),
                 scenario_id=self.scenario.scenario_id,
             )
+
+    def test_rank_candidates_protects_each_metric_and_stable_tie_key(self):
+        # Protected break: changing any tuple position changes the published intervention order.
+        cases = (
+            (
+                self._rank_metrics(1, 99, 99, 99),
+                self._rank_metrics(2, 1, 1, 1),
+                "Beta",
+                "Alpha",
+                "extend-hours:loser",
+                "extend-hours:winner",
+            ),
+            (
+                self._rank_metrics(2, 10, 99, 99),
+                self._rank_metrics(2, 11, 1, 1),
+                "Beta",
+                "Alpha",
+                "extend-hours:loser",
+                "extend-hours:winner",
+            ),
+            (
+                self._rank_metrics(2, 11, 3, 99),
+                self._rank_metrics(2, 11, 4, 1),
+                "Beta",
+                "Alpha",
+                "extend-hours:loser",
+                "extend-hours:winner",
+            ),
+            (
+                self._rank_metrics(2, 11, 4, 4),
+                self._rank_metrics(2, 11, 4, 5),
+                "Beta",
+                "Alpha",
+                "extend-hours:loser",
+                "extend-hours:winner",
+            ),
+            (
+                self._rank_metrics(2, 11, 4, 5),
+                self._rank_metrics(2, 11, 4, 5),
+                "beta",
+                "Alpha",
+                "extend-hours:loser",
+                "extend-hours:winner",
+            ),
+            (
+                self._rank_metrics(2, 11, 4, 5),
+                self._rank_metrics(2, 11, 4, 5),
+                "alpha",
+                "Alpha",
+                "extend-hours:loser",
+                "extend-hours:winner",
+            ),
+            (
+                self._rank_metrics(2, 11, 4, 5),
+                self._rank_metrics(2, 11, 4, 5),
+                "Alpha",
+                "Alpha",
+                "extend-hours:z",
+                "extend-hours:a",
+            ),
+        )
+        for loser_metrics, winner_metrics, loser_name, winner_name, loser_id, winner_id in cases:
+            with self.subTest(winner_id=winner_id, loser_id=loser_id):
+                ranked = rank_candidates(
+                    (
+                        self._candidate(loser_id, loser_name, loser_metrics),
+                        self._candidate(winner_id, winner_name, winner_metrics),
+                    ),
+                    scenario_id=self.scenario.scenario_id,
+                )
+                self.assertEqual(ranked[0].candidate_id, winner_id)
+
+        zone_metrics = self._rank_metrics(2, 11, 4, 5)
+        zones = (
+            self._candidate(
+                "new-facility-zone:z",
+                "A misleading label",
+                zone_metrics,
+                candidate_class="new_facility_zone",
+                source_stop_id="stop-z",
+            ),
+            self._candidate(
+                "new-facility-zone:a",
+                "Z misleading label",
+                zone_metrics,
+                candidate_class="new_facility_zone",
+                source_stop_id="stop-a",
+            ),
+        )
+        self.assertEqual(
+            rank_candidates(zones, scenario_id=self.scenario.scenario_id)[0].candidate_id,
+            "new-facility-zone:a",
+        )
 
     def test_stability_ignores_not_applicable_ranks_and_material_uses_400_metres(self):
         # Protected break: counting non-applicable scenarios as misses downgrades valid candidates.
@@ -210,6 +378,36 @@ class AnalysisRulesTests(unittest.TestCase):
         self.assertIsNone(pending.published_rank)
         self.assertEqual(not_applicable.published_rank, "not applicable")
 
+    def test_stability_categories_protect_every_boundary(self):
+        # Protected break: an off-by-one at three or five top-20 ranks changes audit scope.
+        def ranks(top_twenty_count, *, primary_rank=1):
+            return (
+                ScenarioRank("primary", True, primary_rank),
+                *tuple(
+                    ScenarioRank(f"sensitivity-{index}", True, 20 if index < top_twenty_count - 1 else 21)
+                    for index in range(6)
+                ),
+            )
+
+        self.assertEqual(stability_category(ranks(5)), "robust")
+        self.assertEqual(stability_category(ranks(4)), "mostly robust")
+        self.assertEqual(stability_category(ranks(3)), "mostly robust")
+        self.assertEqual(stability_category(ranks(2)), "sensitive")
+        self.assertEqual(stability_category(ranks(5, primary_rank=21)), "not prioritized")
+        self.assertEqual(stability_category(()), "not prioritized")
+
+    def test_stability_uses_first_rank_as_primary_without_magic_scenario_id(self):
+        # Protected break: matching a literal ID can treat a sensitivity as the primary rank.
+        ranks = (
+            ScenarioRank("tuesday-public-400", True, 21),
+            ScenarioRank("primary", True, 1),
+            ScenarioRank("distance-300", True, 1),
+            ScenarioRank("distance-500", True, 1),
+            ScenarioRank("rider", True, 1),
+        )
+
+        self.assertEqual(stability_category(ranks), "not prioritized")
+
     def test_product_gate_fails_for_each_required_condition_and_extra_nonmaterial_candidate(self):
         # Protected break: filtering nonmaterial robust valid rows before the gate permits cherry-picking.
         valid = tuple(
@@ -240,6 +438,88 @@ class AnalysisRulesTests(unittest.TestCase):
         self.assertFalse(evaluate_product_gate(valid + (self._candidate("new-facility-zone:extra", "Extra", self._material_metrics(), candidate_class="new_facility_zone", stability="robust", material_gain=False, audit_status="valid"),)).passed)
         self.assertFalse(evaluate_product_gate(valid + (self._candidate("new-facility-zone:flagged", "Flagged", self._material_metrics(), candidate_class="new_facility_zone", stability="robust", material_gain=True, audit_status="valid", source_error=True),)).passed)
 
+    def test_product_gate_two_hours_condition_is_independent_of_candidate_count(self):
+        # Protected break: fewer than two hours actions must fail even when five valid robust rows exist.
+        one_hours_candidate = (
+            self._candidate(
+                "extend-hours:only",
+                "Only hours action",
+                self._material_metrics(),
+                stability="robust",
+                material_gain=True,
+                audit_status="valid",
+            ),
+        )
+        four_other_candidates = tuple(
+            self._candidate(
+                f"new-facility-zone:{index}",
+                f"Zone {index}",
+                self._material_metrics(),
+                candidate_class="new_facility_zone",
+                source_stop_id=f"stop-{index}",
+                stability="robust",
+                material_gain=True,
+                audit_status="valid",
+            )
+            for index in range(4)
+        )
+
+        result = evaluate_product_gate(one_hours_candidate + four_other_candidates)
+
+        self.assertFalse(result.passed)
+        self.assertIn("two", result.reason)
+
+    def test_candidate_rejects_illegal_class_kind_and_stability_values(self):
+        # Protected break: malformed rank groups can otherwise enter sorting and product-gate logic.
+        with self.assertRaisesRegex(ValueError, "verification kind"):
+            self._candidate(
+                "extend-hours:bad",
+                "Bad hours",
+                self._material_metrics(),
+                verification_kind="hours",
+            )
+        with self.assertRaisesRegex(ValueError, "verification kind"):
+            self._candidate(
+                "verify-hours:missing",
+                "Missing kind",
+                self._material_metrics(),
+                candidate_class="verify_information",
+            )
+        with self.assertRaisesRegex(ValueError, "stability"):
+            self._candidate(
+                "extend-hours:unstable",
+                "Invalid stability",
+                self._material_metrics(),
+                stability="very robust",
+            )
+
+    def test_candidate_public_projection_recursively_strips_internal_trip_keys(self):
+        # Protected break: recursively serializing CandidateGain exposes raw scheduled trip IDs.
+        metrics = ScenarioMetrics(
+            scenario_id="primary",
+            snapshot_gains=(),
+            combined_incremental=ActivityMetrics(1, 1, 1, 1),
+            combined_total=ActivityMetrics(1, 1, 1, 1),
+            positive_late_snapshots=1,
+            _effect_trip_keys=frozenset({("2200", "trip-secret")}),
+        )
+        candidate = self._candidate(
+            "extend-hours:public",
+            "Public projection",
+            metrics,
+            stability="mostly robust",
+        )
+
+        projection = candidate_public_projection(candidate)
+        serialized = json.dumps(projection, sort_keys=True)
+
+        self.assertNotIn("trip-secret", serialized)
+        self.assertNotIn("_effect_trip_keys", serialized)
+        self.assertEqual(
+            projection["primary_metrics"]["combined_incremental"]["unique_trips"],
+            1,
+        )
+
     def _material_metrics(self):
         return ScenarioMetrics(
             scenario_id=self.scenario.scenario_id,
@@ -250,15 +530,38 @@ class AnalysisRulesTests(unittest.TestCase):
             _effect_trip_keys=frozenset({("2200", str(index)) for index in range(10)}),
         )
 
-    def _candidate(self, candidate_id, name, metrics, *, candidate_class="extend_hours", stability="sensitive", material_gain=False, audit_status="valid", source_error=False):
+    def _rank_metrics(self, snapshots, trips, routes, stops):
+        return ScenarioMetrics(
+            scenario_id=self.scenario.scenario_id,
+            snapshot_gains=(),
+            combined_incremental=ActivityMetrics(trips, routes, stops, trips),
+            combined_total=ActivityMetrics(trips, routes, stops, trips),
+            positive_late_snapshots=snapshots,
+            _effect_trip_keys=frozenset({("2200", "rank-fixture")}),
+        )
+
+    def _candidate(
+        self,
+        candidate_id,
+        name,
+        metrics,
+        *,
+        candidate_class="extend_hours",
+        verification_kind=None,
+        source_stop_id=None,
+        stability="sensitive",
+        material_gain=False,
+        audit_status="valid",
+        source_error=False,
+    ):
         return CandidateGain(
             candidate_id=candidate_id,
             candidate_class=candidate_class,
-            verification_kind=None,
+            verification_kind=verification_kind,
             name=name,
             lon=-79.4,
             lat=43.7,
-            source_stop_id=None,
+            source_stop_id=source_stop_id,
             facility_id=None,
             facility=None,
             gain_label="incremental",
