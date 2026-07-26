@@ -1,0 +1,132 @@
+---
+import Base from '../../layouts/Base.astro';
+import GuideCard from '../../components/GuideCard.astro';
+import { forthcoming } from '../../data/forthcoming';
+import { getCollection } from 'astro:content';
+
+const base = import.meta.env.BASE_URL.replace(/\/+$/, '');
+
+const guides = (await getCollection('guides')).sort(
+  (a, b) => (a.data.order ?? 99) - (b.data.order ?? 99)
+);
+
+// The most recently published guide wears the "New" chip.
+const newestTime = Math.max(...guides.map((g) => g.data.published.getTime()));
+---
+
+<Base
+  title="Field guides"
+  description="Every Toronto Micro-Atlas field guide: interactive maps that each take one specific way the city works."
+>
+  <section class="guides-index" aria-labelledby="guides-heading">
+    <div class="guides-index-inner">
+      <header class="guides-index-head">
+        <p class="guides-kicker">Toronto Micro-Atlas</p>
+        <h1 id="guides-heading" class="guides-title">Field guides</h1>
+        <p class="guides-lede">
+          Each field guide takes one specific way the city works, where it hides things, what it
+          shows someone paying attention, and builds it into an interactive map backed by careful
+          research. Pick one and start reading the city.
+        </p>
+      </header>
+
+      <ul class="guides-grid" role="list">
+        {
+          guides.map((g) => (
+            <li>
+              <GuideCard
+                title={g.data.title}
+                description={g.data.description}
+                href={`${base}/guides/${g.data.slug}/`}
+                tag={g.data.subjectTag}
+                theme={g.data.theme}
+                status={g.data.published.getTime() === newestTime ? 'new' : 'live'}
+                level={2}
+              />
+            </li>
+          ))
+        }
+      </ul>
+
+      <h2 class="guides-forthcoming-heading">Under research</h2>
+      <ul class="guides-grid" role="list">
+        {
+          forthcoming.map((f) => (
+            <li>
+              <GuideCard title={f.title} description={f.description} tag={f.tag} status="forthcoming" level={3} />
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .guides-index {
+    padding-block: var(--space-16) var(--space-24);
+    padding-inline: var(--gutter);
+  }
+
+  .guides-index-inner {
+    max-width: var(--container);
+    margin-inline: auto;
+  }
+
+  .guides-index-head {
+    max-width: var(--measure-lede);
+    margin-bottom: var(--space-12);
+  }
+
+  .guides-kicker {
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: var(--space-4);
+  }
+
+  .guides-title {
+    font-family: var(--font-heading);
+    font-weight: 900;
+    font-size: clamp(2.5rem, 7vw, 4rem);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin: 0 0 var(--space-6);
+  }
+
+  .guides-lede {
+    font-family: var(--font-body);
+    font-size: var(--text-lg);
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+
+  .guides-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+  }
+
+  @media (min-width: 640px) {
+    .guides-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (min-width: 1024px) {
+    .guides-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  .guides-forthcoming-heading {
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: var(--space-16) 0 var(--space-6);
+  }
+</style>
