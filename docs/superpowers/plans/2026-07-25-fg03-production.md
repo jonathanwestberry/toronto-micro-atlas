@@ -249,13 +249,19 @@ git commit -m "feat: model FG03 gaps and intervention gains"
 ### Task 4: Build, audit, and export the dated Phase 2 browser contract
 
 **Files:**
+- Create: `data/scripts/fg03_network.py`
 - Create: `data/scripts/22_build_washroom_analysis.py`
+- Create: `data/scripts/tests/test_fg03_network.py`
 - Create: `data/scripts/tests/test_fg03_analysis_build.py`
+- Create: `data/fg03/network-topology-exceptions.csv`
+- Create: `data/fg03/phase2-audit-decisions.csv`
 - Create: `data/proof/fg03/2026-07-21/phase2/README.md`
 - Generate: `data/proof/fg03/2026-07-21/phase2/*`
 - Generate: `public/data/fg03/2026-07-21/manifest.json`
 - Generate: `public/data/fg03/2026-07-21/facilities.geojson`
 - Generate: `public/data/fg03/2026-07-21/interventions.geojson`
+- Generate: `public/data/fg03/2026-07-21/reach-facilities.geojson`
+- Generate: `public/data/fg03/2026-07-21/reach-promoted.geojson`
 - Generate: `public/data/fg03/2026-07-21/stops-1200.geojson`
 - Generate: `public/data/fg03/2026-07-21/stops-2030.geojson`
 - Generate: `public/data/fg03/2026-07-21/stops-2200.geojson`
@@ -269,7 +275,9 @@ git commit -m "feat: model FG03 gaps and intervention gains"
 
 - [ ] **Step 1: Write failing build-contract tests**
 
-Use a temporary synthetic input fixture. Verify clear missing/mismatched input errors, required output filenames, unique IDs, allowed enum values, GeoJSON validity, query-facing property names, fare-paid exclusion in public coverage, and schema version `1`.
+Use a temporary synthetic input fixture. Verify clear missing/mismatched input errors, required output filenames, deterministic bytes with a fixed clock, unique IDs, allowed enum values, GeoJSON validity, query-facing property names, fare-paid exclusion in public coverage, no public trip IDs, gzip limits, cross-file counts, and schema version `1`.
+
+Add network tests for a T-junction through an interior source vertex, a long-edge midpoint snap, an unresolved at-grade crossing that fails, and a reviewed grade-separated crossing that remains disconnected.
 
 - [ ] **Step 2: Run the build test and observe the expected failure**
 
@@ -280,7 +288,13 @@ PYTHONPATH=data/scripts data/scripts/.venv/bin/python -m unittest \
 
 - [ ] **Step 3: Implement orchestration without duplicating analytical rules**
 
-The script validates inputs, loads the network once, snaps facilities and stops once, computes a 500 metre maximum search, evaluates 300/400/500 metre thresholds, runs primary and one-variable sensitivities, writes analytical tables and maps, and exports browser files with only UI-required fields.
+The script validates inputs, loads the network once, snaps facilities and stops once, computes a 500 metre maximum search, evaluates 300/400/500 metre thresholds, runs primary and sensitivity scenarios, writes analytical tables and maps, and exports browser files with only UI-required fields.
+
+Build the pedestrian graph from every source vertex, not only each line's first and last coordinate. Snap to the nearest source edge and batch-insert stable projected nodes while preserving perpendicular snap offsets. Detect non-endpoint intersections in EPSG:2952. Every crossing must become a source node or have a reviewed entry in `network-topology-exceptions.csv`; do not automatically planarize grade-separated crossings. Validate positive finite weights, geometry-length conservation, component counts, and incident links. Record explicit reviewed overrides for source `OBJECTID` 55757 and 60345 if their published `LENGTH` field remains inconsistent with projected geometry.
+
+Use one baseline multi-source search per scenario and one lazy bounded candidate search per unique source node. Derive 300, 400, and 500 metre coverage by thresholding the cached distance with both source and stop snap offsets. Do not rerun Dijkstra for each distance.
+
+The public intervention contract must carry a complete time by access by walk query matrix so the three independent controls never substitute a one-variable sensitivity for a combined state. Keep the primary audited materiality and stability facts distinct from query-cell activity metrics.
 
 - [ ] **Step 4: Generate the real dated analysis**
 
@@ -294,7 +308,9 @@ data/scripts/.venv/bin/python data/scripts/22_build_washroom_analysis.py \
 
 - [ ] **Step 5: Inspect and resolve the manual audit**
 
-Inspect the top robust candidates in all four classes against source rows, coordinates, nearest facilities, generated maps, access conditions, and duplicate flags. Record only `valid`, `merge review`, `source review`, or `exclude`, with a concise evidence note. Re-run the builder so the gate reads the resolved audit.
+Generate `phase2/manual-audit.csv` separately from curated `data/fg03/phase2-audit-decisions.csv`. Include an analysis hash, exact source references, all applicable ranks, public and rider metrics at 300/400/500 metres, nearest evidence, canonical network node, duplicate flag, and audit-map path.
+
+Inspect the top ten robust candidates in five ranking groups: extend, new, verify-hours, verify-accessibility, and retrofit. Check source rows, coordinates, nearest facilities, generated maps, access conditions, closure class, and duplicate flags. Record only `valid`, `merge review`, `source review`, or `exclude`, with reviewer, timestamp, and concise evidence note. Any unresolved status, missing decision, or stale analysis hash blocks the audited gate. Never edit rank or metric values manually. Re-run the builder so the gate reads the resolved audit.
 
 - [ ] **Step 6: Enforce the release gate in product copy**
 
@@ -302,14 +318,18 @@ If the gate passes, permit the hours-extension claim and publish the exact audit
 
 - [ ] **Step 7: Validate file size and integrity**
 
-Require valid Point geometries, unique stable IDs, no non-finite numbers, no fare-paid facility in public-open sets, and no individual public data file above 1.5 MB gzip without documented justification.
+Require valid geometry, unique stable IDs, no non-finite numbers, no fare-paid facility in public-open sets, no raw trip ID in any public key or string leaf, and no individual public data file above 1.5 MB gzip.
+
+Export real 300/400/500 metre clipped `MultiLineString` pedestrian-network reaches for public facilities and audit-valid robust interventions. Keep stops and unaudited candidates point-only. Never substitute a Euclidean circle for network reach.
+
+Write `phase2/build-report.json` with elapsed time, peak memory, topology metrics, snap distributions, activity counts, baseline and candidate search counts, cache hits, candidate counts before and after deduplication, audit totals, and raw and gzip output sizes. Build into temporary directories and publish only after every integrity check passes.
 
 - [ ] **Step 8: Run all data tests and commit**
 
 ```bash
 PYTHONPATH=data/scripts data/scripts/.venv/bin/python -m unittest discover \
   -s data/scripts/tests -p 'test_fg03*.py' -v
-git add data/scripts data/proof/fg03/2026-07-21/phase2 \
+git add data/scripts data/fg03 data/proof/fg03/2026-07-21/phase2 \
   public/data/fg03/2026-07-21 data/README.md data/provenance.md
 git commit -m "feat: publish audited FG03 intervention data"
 ```
