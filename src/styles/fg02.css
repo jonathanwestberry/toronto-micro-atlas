@@ -35,29 +35,18 @@
   color: var(--n-text);
 }
 
-/* Dark header treatment for this page only: the site header sits on the
-   nocturne ground, so its paper tokens flip. */
-body:has(.fg2) {
-  background-color: var(--fg2-ground, hsl(150, 44%, 7%));
-}
-body:has(.fg2) .site-header {
-  background-color: hsl(150, 44%, 7%);
-  border-bottom-color: hsl(150, 22%, 24%);
-}
-body:has(.fg2) .site-header .site-masthead {
-  color: hsl(48, 42%, 93%);
-}
-body:has(.fg2) .site-header .site-nav a {
-  color: hsl(150, 14%, 76%);
-}
-body:has(.fg2) .site-header .site-masthead:hover,
-body:has(.fg2) .site-header .site-nav a:hover {
-  color: hsl(72, 62%, 62%);
-}
-body:has(.fg2) .site-header .site-nav a[aria-current] {
-  color: hsl(48, 42%, 93%);
-  box-shadow: inset 0 -2px 0 hsl(72, 62%, 62%);
-}
+/*
+ * The hand-written dark-header patch that lived here is gone.
+ *
+ * It restyled .site-header, .site-masthead, and .site-nav a with literal
+ * nocturne HSLs, and it is the reason the "Guides" underline stayed shell
+ * Tomato on this page: the patch never listed .nav-dd-summary, so the dropdown
+ * kept the shell's colour while its neighbours went dark.
+ *
+ * <body data-guide-theme="fg02"> now sets the --atlas-* contract for the whole
+ * document, and the header reads that contract, so every part of it themes at
+ * once and nothing can be left off a list.
+ */
 
 /* ============================================================
    Scrolly frame: the map is a sticky full-viewport stage; the

@@ -24,6 +24,12 @@ interface Props {
    * `--header-h: 67px`; the header can be any height and the map still fits.
    */
   fullHeight?: boolean;
+  /**
+   * Which guide theme the whole document wears. Set on <body>, so the shared
+   * header and footer sit inside the theme instead of outside it, which is
+   * what kept the nav's current-page underline shell-Tomato on a Cobalt page.
+   */
+  guideTheme?: 'fg01' | 'fg02' | 'fg03';
 }
 
 const {
@@ -35,6 +41,7 @@ const {
   articleUpdated,
   articleAuthor = 'Jonathan Westberry',
   fullHeight = false,
+  guideTheme,
 } = Astro.props;
 
 const siteTitle = 'Toronto Micro-Atlas';
@@ -156,6 +163,13 @@ const onAbout = path.includes('/about');
 
       main {
         flex: 1;
+      }
+
+      /* A themed page paints its own ground, so the area beyond the guide's
+         own boxes (and the overscroll gutter) matches the guide rather than
+         flashing the shell's cream. */
+      body[data-guide-theme] {
+        background-color: var(--atlas-ground);
       }
 
       /* ============================================================
@@ -335,7 +349,7 @@ const onAbout = path.includes('/about');
       }
     </style>
   </head>
-  <body data-full-height={fullHeight ? 'true' : undefined}>
+  <body data-full-height={fullHeight ? 'true' : undefined} data-guide-theme={guideTheme}>
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
     <Header base={base} onGuides={onGuides} onAbout={onAbout} />

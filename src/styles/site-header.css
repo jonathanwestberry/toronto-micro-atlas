@@ -28,9 +28,9 @@
   top: 0;
   z-index: 200;
   padding: var(--space-6) var(--space-6) 0;
-  border-bottom: 1px solid var(--ink);
+  border-bottom: 1px solid var(--atlas-rule-header);
   /* Opaque: content scrolls underneath now. */
-  background-color: var(--paper);
+  background-color: var(--atlas-ground);
 }
 
 /* On the expanded map routes the page cannot scroll, so sticky has nothing to
@@ -56,12 +56,12 @@ body[data-full-height] .site-header {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   text-decoration: none;
-  color: var(--ink);
+  color: var(--atlas-ink);
   flex-shrink: 0;
 }
 
 .site-masthead:hover {
-  color: var(--threshold);
+  color: var(--atlas-accent);
 }
 
 .site-masthead:focus-visible {
@@ -82,20 +82,20 @@ body[data-full-height] .site-header {
   font-size: var(--text-sm);
   font-weight: 500;
   text-decoration: none;
-  color: var(--ink-2);
+  color: var(--atlas-ink-muted);
   letter-spacing: 0.02em;
   padding-bottom: 2px;
 }
 
 .site-nav a[aria-current='page'],
 .site-nav a[aria-current='true'] {
-  color: var(--ink);
+  color: var(--atlas-ink);
   font-weight: 700;
-  box-shadow: inset 0 -2px 0 var(--threshold);
+  box-shadow: inset 0 -2px 0 var(--atlas-accent);
 }
 
 .site-nav a:hover {
-  color: var(--threshold);
+  color: var(--atlas-accent);
 }
 
 .site-nav a:focus-visible {
@@ -116,7 +116,7 @@ body[data-full-height] .site-header {
   font-family: var(--font-ui);
   font-size: var(--text-sm);
   font-weight: 500;
-  color: var(--ink-2);
+  color: var(--atlas-ink-muted);
   letter-spacing: 0.02em;
   cursor: pointer;
   padding-bottom: 2px;
@@ -143,7 +143,7 @@ body[data-full-height] .site-header {
 }
 
 .nav-dd-summary:hover {
-  color: var(--threshold);
+  color: var(--atlas-accent);
 }
 
 .nav-dd-summary:focus-visible {
@@ -152,13 +152,13 @@ body[data-full-height] .site-header {
 }
 
 .nav-dd-summary.is-current {
-  color: var(--ink);
+  color: var(--atlas-ink);
   font-weight: 700;
-  box-shadow: inset 0 -2px 0 var(--threshold);
+  box-shadow: inset 0 -2px 0 var(--atlas-accent);
 }
 
 .nav-dd[open] .nav-dd-summary {
-  color: var(--ink);
+  color: var(--atlas-ink);
 }
 
 .nav-dd-menu {
@@ -168,8 +168,8 @@ body[data-full-height] .site-header {
   z-index: 50;
   list-style: none;
   min-width: 232px;
-  background: var(--paper);
-  border: 1px solid var(--ink);
+  background: var(--atlas-ground);
+  border: 1px solid var(--atlas-ink);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
   padding: var(--space-2);
 }
@@ -179,25 +179,25 @@ body[data-full-height] .site-header {
   padding: var(--space-2) var(--space-3);
   font-family: var(--font-ui);
   font-size: var(--text-sm);
-  color: var(--ink-2);
+  color: var(--atlas-ink-muted);
   text-decoration: none;
   white-space: nowrap;
 }
 
 .nav-dd-menu a:hover,
 .nav-dd-menu a:focus-visible {
-  background: var(--card);
-  color: var(--threshold);
+  background: var(--atlas-surface);
+  color: var(--atlas-accent);
   outline: none;
 }
 
 .nav-dd-all {
   margin-top: var(--space-1);
-  border-top: 1px solid var(--rule, var(--card));
+  border-top: 1px solid var(--rule, var(--atlas-surface));
   font-size: var(--text-xs);
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--ink-3);
+  color: var(--atlas-ink-faint);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -5,6 +5,13 @@
 
 /* ============================================================
    Site footer: publication colophon
+
+   Deliberately NOT themed per guide. The footer is an inverted dark
+   band and the publication's anchor: it should read the same at the
+   bottom of every page. Wiring it to the --atlas-* contract would
+   invert it along with the theme, turning it into a white band under
+   Sidewalk Forest's near-black guide. The header themes; the footer
+   stays put.
    ============================================================ */
 
 .site-footer {
