@@ -103,6 +103,27 @@ body[data-full-height] .site-header {
   outline-offset: var(--focus-ring-offset);
 }
 
+/*
+ * Tap targets.
+ *
+ * The top-level nav links measured 22-23px tall, under WCAG 2.2 SC 2.5.8
+ * Target Size (Minimum) at 24x24. The hit area is grown with a pseudo-element
+ * rather than padding, because padding would push the current-page underline
+ * (an inset box-shadow on the link's own box) away from the text and change
+ * how the nav looks in order to fix how it is hit.
+ */
+.site-nav a,
+.nav-dd-summary {
+  position: relative;
+}
+
+.site-nav a::before,
+.nav-dd-summary::before {
+  content: '';
+  position: absolute;
+  inset: -6px -4px;
+}
+
 /* Field Guides dropdown. <details> so it works with no JS; a small script
    closes it on outside-click / Escape as an enhancement. */
 .site-nav-dd {
@@ -203,5 +224,59 @@ body[data-full-height] .site-header {
 @media (prefers-reduced-motion: reduce) {
   .nav-dd-summary::after {
     transition: none;
+  }
+}
+
+/* ============================================================
+   Narrow screens
+
+   Deliberately NOT a hamburger.
+
+   The plan called for a mobile disclosure. A disclosure earns its
+   place by hiding complexity, and this nav has two items: a Guides
+   dropdown and About. Hiding two links behind a tap makes navigation
+   slower and buys nothing. It also would not scale-proof anything,
+   because guides live inside the dropdown, so the top level stays at
+   two items however many guides get published.
+
+   The actual problem at 320px was that the header wrapped to a second
+   row and stood at 107px, and now that it is sticky that height is
+   gone from every scroll position, not just the top of the page. So
+   the header is made to fit one row instead: tighter padding, a
+   smaller gap, and the interface type one step down.
+   ============================================================ */
+
+@media (max-width: 540px) {
+  .site-header {
+    padding: var(--space-4) var(--space-4) 0;
+  }
+
+  .site-header-inner {
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding-bottom: var(--space-3);
+  }
+
+  .site-masthead {
+    font-size: var(--text-xs);
+    letter-spacing: 0.08em;
+  }
+
+  .site-nav {
+    gap: var(--space-4);
+    flex-wrap: nowrap;
+  }
+
+  .site-nav a,
+  .nav-dd-summary {
+    font-size: var(--text-xs);
+  }
+
+  /* Right-aligned so it cannot run off the viewport edge. */
+  .nav-dd-menu {
+    left: auto;
+    right: 0;
   }
 }
