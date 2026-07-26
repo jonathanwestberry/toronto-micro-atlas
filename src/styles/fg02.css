@@ -84,6 +84,32 @@ body:has(.fg2) .site-header .site-nav a[aria-current] {
   inset: 0;
 }
 
+/* #fg2-map is absolutely positioned, so it needs a sized containing block.
+   That used to be .fg2-stage directly; MapStage now sits between them, and an
+   auto-height frame around an absolute-only child collapses to 0, taking the
+   map with it. Both stage layers are stretched to fill instead. */
+.fg2-stage > .map-stage {
+  position: absolute;
+  inset: 0;
+  gap: 0;
+}
+
+.fg2-stage > .map-stage > .map-stage__frame {
+  position: absolute;
+  inset: 0;
+  border-radius: 0;
+}
+
+/* The sticky stage is a full 100svh but starts below the site header, so until
+   the reader has scrolled past the header its last 67px sit under the fold and
+   the expand control cannot be seen or reached. Insetting the chrome by the
+   header height keeps every control on screen at any scroll position.
+   Phase 5's header extraction should replace this with a sticky header and a
+   measured offset, which removes the overhang instead of dodging it. */
+.fg2-stage .map-stage__chrome {
+  bottom: var(--header-h);
+}
+
 /* Paper grain, kept from the atlas system but subtler on dark */
 .fg2-stage::after {
   content: '';
@@ -498,55 +524,16 @@ body:has(.fg2) .site-header .site-nav a[aria-current] {
    Explorer panel
    ============================================================ */
 
-/* The explorer is a full-screen takeover opened by a button, not a scroll
-   target: the section takes no layout space, so no blank screen sits between
-   the last chapter and the Methods section. Its UI mounts as a fixed overlay
-   above the map only while exploring. */
-.fg2-explorer {
-  position: relative;
-  height: 0;
-}
-
+/* The explorer is its own page now (/guides/sidewalk-forest/map), so its UI is
+   simply an overlay on that route's map rather than a hidden layer waiting on a
+   class toggle. The takeover rules that used to live here are gone with it:
+   .fg2.is-exploring, the fixed full-viewport stage lift, and the
+   html.fg2-scroll-lock body lock. Reading and manipulating wanted opposite
+   scroll behaviour, and two pages express that better than one page in two
+   modes. Positioning is set by the route. */
 .fg2-explorer-ui {
-  position: fixed;
-  inset: 0;
   z-index: 901;
   pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity var(--dur-3) var(--ease-out), visibility 0s linear var(--dur-3);
-}
-
-.fg2.is-exploring .fg2-explorer-ui {
-  opacity: 1;
-  visibility: visible;
-  transition: opacity var(--dur-3) var(--ease-out);
-}
-
-/* Explore takeover: the sticky map stage lifts to a fixed, full-viewport tool
-   above the page. Reading (scroll = progress) and manipulating (scroll = zoom)
-   want opposite scroll behaviour, so exploring gets its own mode: body scroll is
-   locked (.fg2-scroll-lock) and the live map never fights the Methods/footer. */
-.fg2.is-exploring .fg2-stage {
-  position: fixed;
-  inset: 0;
-  height: 100dvh;
-  z-index: 900;
-}
-
-html.fg2-scroll-lock,
-html.fg2-scroll-lock body {
-  overflow: hidden;
-  overscroll-behavior: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .fg2-explorer-ui {
-    transition: visibility 0s linear var(--dur-3);
-  }
-  .fg2.is-exploring .fg2-explorer-ui {
-    transition: none;
-  }
 }
 
 .fg2-panel {

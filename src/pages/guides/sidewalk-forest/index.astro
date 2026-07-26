@@ -1,6 +1,7 @@
 ---
 import { readFileSync } from 'node:fs';
 import Base from '../../../layouts/Base.astro';
+import MapStage from '../../../components/MapStage.astro';
 import '../../../styles/fg02.css';
 
 // Read at build time only; the same file is fetched by the map island at
@@ -31,11 +32,33 @@ const chips = categories.filter((c) => chipKeys.includes(c.key));
 
       <!-- Sticky map stage -->
       <div class="fg2-stage">
-        <div class="fg2-map" id="fg2-map" role="region" aria-label="Map of all 688,335 street trees in Toronto's inventory">
-          <div class="fg2-map-placeholder" aria-hidden="true">
-            <span class="fg2-map-placeholder-label">Map</span>
+        <MapStage
+          id="fg02-map-stage"
+          label="Map of every street tree in Toronto's inventory"
+          expandPath={`${base}/guides/sidewalk-forest/map`}
+          helpCorner="top-left"
+        >
+          <div class="fg2-map" id="fg2-map" data-map-canvas role="region" aria-label="Map of all 688,335 street trees in Toronto's inventory">
+            <div class="fg2-map-placeholder" aria-hidden="true">
+              <span class="fg2-map-placeholder-label">Map</span>
+            </div>
           </div>
-        </div>
+
+          <Fragment slot="howto">
+            <p>
+              One dot per tree, coloured by family. At this distance the dots merge into a canopy
+              and the shape you are reading is the whole inventory at once.
+            </p>
+            <p>
+              Scroll to move through the story; the map follows. To search a street or identify a
+              single tree, open the full map.
+            </p>
+          </Fragment>
+
+          <Fragment slot="status-fallback">
+            <a class="map-stage__btn" href="#fg2-sources-heading">Read the method instead</a>
+          </Fragment>
+        </MapStage>
         <!-- Keyboard aim: shown while the map has focus in explorer mode.
              Arrow keys pan, +/- zoom, Enter identifies the tree here. -->
         <div class="fg2-reticle" id="fg2-reticle" aria-hidden="true">
@@ -72,7 +95,7 @@ const chips = categories.filter((c) => chipKeys.includes(c.key));
             <p class="fg2-hero-cue">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="4" x2="12" y2="20"/><polyline points="6,14 12,20 18,14"/></svg>
               Scroll to read
-              <button type="button" class="fg2-card-btn" style="margin: 0 0 0 auto;" data-scroll-to-explorer>Skip to the map</button>
+              <a class="fg2-card-btn" style="margin: 0 0 0 auto;" href={`${base}/guides/sidewalk-forest/map`}>Skip to the map</a>
             </p>
           </div>
         </section>
@@ -213,56 +236,19 @@ const chips = categories.filter((c) => chipKeys.includes(c.key));
               yours: zoom in until the dots separate, tap one, and the city will
               tell you what it is.
             </p>
-            <button type="button" class="fg2-card-btn fg2-card-btn--solid" data-scroll-to-explorer>Explore the forest</button>
+            <a class="fg2-card-btn fg2-card-btn--solid" href={`${base}/guides/sidewalk-forest/map`}>Explore the forest</a>
           </div>
         </section>
 
       </div>
 
-      <!-- Explorer -->
-      <section class="fg2-explorer" id="fg2-explorer" aria-label="Tree explorer">
-        <div class="fg2-explorer-ui">
-          <aside class="fg2-panel" id="fg2-panel" aria-label="Explorer controls">
-            <h2 class="fg2-panel-title">
-              <button type="button" class="fg2-panel-toggle" id="fg2-panel-toggle" aria-expanded="true" aria-controls="fg2-panel-body">
-                The Sidewalk Forest
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><polyline points="6,15 12,9 18,15"/></svg>
-              </button>
-            </h2>
-            <div id="fg2-panel-body">
-            <p class="fg2-panel-hint">
-              Zoom in until dots separate, then tap a tree to identify it (or
-              focus the map and press Enter to read the tree at the crosshair).
-              Or find your street:
-            </p>
-            <div class="fg2-search">
-              <label class="visually-hidden" for="fg2-street-input">Search streets</label>
-              <input
-                type="search"
-                id="fg2-street-input"
-                placeholder="Search your street…"
-                autocomplete="off"
-                spellcheck="false"
-              />
-              <ul class="fg2-search-results" id="fg2-street-results"></ul>
-            </div>
-            <div class="fg2-legend" role="group" aria-label="Tree families. Select one to show only that family.">
-              <span class="fg2-legend-label">Families</span>
-              {categories.map((c, i) => (
-                <button type="button" data-genus={i} aria-pressed="false">
-                  <span class="fg2-legend-dot" style={`background-color: ${c.color}`} aria-hidden="true"></span>
-                  {c.label}
-                  <span class="fg2-legend-count">{c.count.toLocaleString('en-CA')}</span>
-                </button>
-              ))}
-              <button type="button" class="fg2-card-btn fg2-legend-reset" id="fg2-legend-reset">Show all families</button>
-              <button type="button" class="fg2-card-btn fg2-legend-reset" id="fg2-reset">Citywide view</button>
-            </div>
-            </div>
-          </aside>
-          <button type="button" class="fg2-back-to-story" id="fg2-back-to-story">Back to the story</button>
-        </div>
-      </section>
+      <!--
+        The explorer moved to /guides/sidewalk-forest/map.
+
+        It used to live here as a hidden overlay revealed by a class toggle,
+        which is why the most useful view in the guide had no URL. Its markup is
+        now src/components/Fg02Explorer.astro, rendered by that route.
+      -->
 
     </div>
 
