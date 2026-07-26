@@ -148,9 +148,24 @@ const guideHref = `${base}/guides/sidewalk-forest/`;
   }
 
   /* Clear the stage's "Back to the guide", which owns the top-left of every
-     expanded route. */
-  .fg2--map-route .fg2-panel {
-    top: calc(var(--space-6) + 2.5rem);
+     expanded route.
+     Desktop only: at 767px and below the panel is a bottom sheet
+     (top: auto; bottom: ...), and setting `top` there pinned it against both
+     edges and blew it up into a full-height empty box that swallowed the map
+     and the zoom control. */
+  @media (min-width: 768px) {
+    .fg2--map-route .fg2-panel {
+      top: calc(var(--space-6) + 2.5rem);
+    }
+  }
+
+  /* The panel becomes a bottom sheet here and sat on top of the attribution.
+     Attribution is a licence obligation, so it is lifted clear of the sheet's
+     collapsed height rather than left to be covered. */
+  @media (max-width: 767px) {
+    .fg2--map-route .maplibregl-ctrl-bottom-left {
+      bottom: calc(var(--space-3) + 4rem);
+    }
   }
 
   .fg2--map-route .map-stage--expanded,

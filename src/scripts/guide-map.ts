@@ -315,9 +315,11 @@ export class GuideMap {
     // Attribution, bottom-left. It used to share the bottom-right corner with
     // zoom; uncollapsed and on its own it reads as the credit it is, instead of
     // as the ⓘ help button readers kept mistaking it for.
+    // `compact` unset rather than false: forced-open attribution runs the full
+    // width of a phone and ends up underneath the expand control. MapLibre
+    // expands it where there is room and collapses it where there is not.
     this.map.addControl(
       new maplibregl.AttributionControl({
-        compact: false,
         customAttribution:
           'Map data © OpenStreetMap contributors, City of Toronto',
       }),
