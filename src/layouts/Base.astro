@@ -12,6 +12,16 @@ interface Props {
   articlePublished?: string;
   articleUpdated?: string;
   articleAuthor?: string;
+  /**
+   * Full-height pages (the expanded map routes): the footer is dropped and
+   * main fills whatever the header leaves, so the page itself never scrolls.
+   * The header stays, because an expanded map is a page of the publication,
+   * not a modal, and a reader who lands on a shared link needs a way out.
+   *
+   * Using flex to fill also means these routes never consult the hardcoded
+   * `--header-h: 67px`; the header can be any height and the map still fits.
+   */
+  fullHeight?: boolean;
 }
 
 const {
@@ -22,6 +32,7 @@ const {
   articlePublished,
   articleUpdated,
   articleAuthor = 'Jonathan Westberry',
+  fullHeight = false,
 } = Astro.props;
 
 const siteTitle = 'Toronto Micro-Atlas';
@@ -143,6 +154,30 @@ const onAbout = path.includes('/about');
 
       main {
         flex: 1;
+      }
+
+      /* ============================================================
+         Full-height pages (expanded map routes)
+         The map takes the viewport minus the header, measured by the
+         layout rather than by the --header-h constant, and the page is
+         pinned so scrolling belongs to the map alone.
+         ============================================================ */
+
+      body[data-full-height] {
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      body[data-full-height] main {
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      body[data-full-height] .site-footer[hidden] {
+        display: none;
       }
 
       img, svg {
@@ -574,7 +609,7 @@ const onAbout = path.includes('/about');
       }
     </style>
   </head>
-  <body>
+  <body data-full-height={fullHeight ? 'true' : undefined}>
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
     <header class="site-header">
@@ -603,7 +638,7 @@ const onAbout = path.includes('/about');
       <slot />
     </main>
 
-    <footer class="site-footer">
+    <footer class="site-footer" hidden={fullHeight}>
       <div class="site-footer-inner">
         <div class="site-footer-id">
           <p class="site-footer-mark">Toronto Micro-Atlas</p>

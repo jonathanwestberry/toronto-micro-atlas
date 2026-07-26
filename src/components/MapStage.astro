@@ -1,4 +1,6 @@
 ---
+import '../styles/map-stage.css';
+
 /**
  * MapStage — the shared frame every guide map sits in.
  *
@@ -24,6 +26,13 @@ interface Props {
   /** Unique id stem so several stages can coexist. */
   id?: string;
   class?: string;
+  /**
+   * Which top corner the help control takes. Top-left is the default because
+   * it reads first, but it is not free on every guide: fg01 floats its welcome
+   * panel there. Guides that own their top-left move help beside the zoom
+   * group instead, which keeps it a two-item toolbar rather than a stack.
+   */
+  helpCorner?: 'top-left' | 'top-right';
 }
 
 const {
@@ -33,6 +42,7 @@ const {
   expanded = false,
   id = 'map-stage',
   class: className = '',
+  helpCorner = 'top-left',
 } = Astro.props;
 
 const howtoId = `${id}-howto`;
@@ -45,6 +55,7 @@ const statusId = `${id}-status`;
   data-map-stage-mode={expanded ? 'expanded' : 'embedded'}
   data-map-state="loading"
   data-map-active="false"
+  data-map-help-corner={helpCorner}
   role="group"
   aria-label={label}
 >

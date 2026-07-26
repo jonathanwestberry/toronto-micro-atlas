@@ -66,6 +66,25 @@
   padding-inline-end: 44px;
 }
 
+/* Guides that own their own top-left (fg01's welcome panel) put help beside
+   the zoom group instead. Two controls side by side is a toolbar; two controls
+   on top of each other is the pile this redesign is removing. */
+[data-map-help-corner='top-right'] .map-stage__chrome-row--top {
+  justify-content: flex-end;
+}
+
+/* On the expanded route the top row carries Back as well. Back reads first, so
+   it keeps the left and help stays beside zoom on the right. */
+[data-map-stage-mode='expanded'] .map-stage__chrome-row--top {
+  flex-direction: row-reverse;
+  justify-content: space-between;
+}
+
+[data-map-help-corner='top-right'] .map-stage__howto {
+  left: auto;
+  right: calc(var(--space-3) + 44px);
+}
+
 /* Bottom-right holds expand; bottom-left is left empty for scale + attribution. */
 .map-stage__chrome-row--bottom {
   justify-content: flex-end;
@@ -300,6 +319,31 @@
 
 .map-stage__status[hidden] {
   display: none;
+}
+
+/*
+   `partial` does not cover. A map missing one context layer is still worth
+   looking at, so the notice sits along the bottom edge and leaves it visible.
+   It clears the bottom corners, which belong to scale, attribution, and expand.
+*/
+/* `:not([hidden])` is load-bearing, not decoration: this selector and
+   `.map-stage__status[hidden]` are both specificity (0,2,0), so without it the
+   later rule wins on source order and a hidden status renders anyway. */
+.map-stage__status[data-map-status-covering='false']:not([hidden]) {
+  inset: auto 0 0 0;
+  z-index: 4;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-6) calc(var(--space-3) + 2.75rem);
+  background: color-mix(in srgb, var(--atlas-ink) 88%, transparent);
+  backdrop-filter: none;
+}
+
+.map-stage__status[data-map-status-covering='false'] .map-stage__status-text {
+  color: var(--atlas-ground);
 }
 
 .map-stage__status-text {

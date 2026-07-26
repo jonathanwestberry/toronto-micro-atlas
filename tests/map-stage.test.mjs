@@ -208,6 +208,19 @@ test('a pointer down on the stage hands over every gesture', () => {
   assert.equal(f.root.dataset.mapActive, 'true');
 });
 
+test('using the chrome does not hand over the map', () => {
+  const f = setup();
+  const stage = build(f);
+  const chrome = new FakeEl();
+  chrome.closest = (sel) => (sel === '[data-map-chrome]' ? chrome : null);
+  f.root.dispatch('pointerdown', { target: chrome });
+  assert.equal(
+    stage.isActive(),
+    false,
+    'asking how to read the map is not asking to drive it',
+  );
+});
+
 test('Enter activates for keyboard readers', () => {
   const f = setup();
   const stage = build(f);
@@ -372,6 +385,35 @@ test('empty is a real state, not a blank rectangle', () => {
   assert.equal(f.status.hidden, false);
   assert.match(f.statusText.textContent, /Nothing to show/);
   assert.equal(f.retry.hidden, true);
+});
+
+test('partial reports the gap without taking the map away', () => {
+  const f = setup();
+  const stage = build(f);
+  stage.setState('partial');
+  assert.equal(f.status.hidden, false);
+  assert.equal(
+    f.status.dataset.mapStatusCovering,
+    'false',
+    'a map missing one context layer is still worth looking at',
+  );
+  assert.equal(f.status.getAttribute('role'), 'status', 'not worth interrupting for');
+  assert.equal(f.retry.hidden, false, 'the missing layers are still retryable');
+  assert.match(f.statusText.textContent, /What you can see is accurate/);
+});
+
+test('only the states with nothing underneath cover the canvas', () => {
+  const f = setup();
+  const stage = build(f);
+  for (const [state, covering] of [
+    ['loading', 'true'],
+    ['empty', 'true'],
+    ['error', 'true'],
+    ['partial', 'false'],
+  ]) {
+    stage.setState(state);
+    assert.equal(f.status.dataset.mapStatusCovering, covering, `state ${state}`);
+  }
 });
 
 test('a caller can override the message', () => {

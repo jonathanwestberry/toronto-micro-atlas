@@ -40,7 +40,17 @@ export interface StageMap {
   resize(): void;
 }
 
-export type MapStageState = 'loading' | 'ready' | 'empty' | 'error';
+/**
+ * `partial` is the state that stops this vocabulary lying. If one context layer
+ * of eight fails, the map is still worth looking at, so covering it with an
+ * error would be a bigger loss than the missing layer. `partial` reports the
+ * gap without taking the map away. `error` is reserved for a map that is
+ * genuinely dead. fg03 arrived at the same distinction independently.
+ */
+export type MapStageState = 'loading' | 'ready' | 'partial' | 'empty' | 'error';
+
+/** States that cover the canvas, because there is nothing under them to see. */
+const COVERING: ReadonlySet<MapStageState> = new Set<MapStageState>(['loading', 'empty', 'error']);
 
 export interface MapStageOptions {
   /** The `[data-map-stage]` root. */
@@ -202,12 +212,33 @@ export class MapStage {
     this.hintEl.dataset.mapHintState = this.active ? 'active' : 'idle';
   }
 
+  /**
+   * Chrome is not the map. Opening "How to read this map" or pressing Retry is
+   * the reader asking a question about the map, not asking to drive it, so
+   * those clicks must not hand over scroll-zoom.
+   */
+  private isChrome(target: EventTarget | null): boolean {
+    if (target === null || typeof target !== 'object') return false;
+    const el = target as Element;
+    if (typeof el.closest !== 'function') return false;
+    return Boolean(
+      el.closest('[data-map-chrome]')
+      || el.closest('[data-map-howto]')
+      || el.closest('[data-map-status]'),
+    );
+  }
+
   private bindActivation(): void {
-    // Activate on any real interaction with the stage. No scrim, so this same
+    // Activate on real interaction with the canvas. No scrim, so this same
     // click also reaches whatever marker is under it.
-    this.root.addEventListener('pointerdown', () => this.activate());
+    this.root.addEventListener('pointerdown', (event) => {
+      if (this.isChrome(event.target)) return;
+      this.activate();
+    });
     this.root.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' || event.key === ' ') this.activate();
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      if (this.isChrome(event.target)) return;
+      this.activate();
     });
 
     // Release when attention leaves, so a reader who scrolls on past the map
@@ -315,6 +346,7 @@ export class MapStage {
 
     this.statusEl.dataset.mapState = state;
     this.statusEl.hidden = state === 'ready';
+    this.statusEl.dataset.mapStatusCovering = COVERING.has(state) ? 'true' : 'false';
 
     // An error is the only state worth interrupting a screen reader for; the
     // rest are progress reports.
@@ -323,7 +355,7 @@ export class MapStage {
 
     const text = this.statusEl.querySelector<HTMLElement>('[data-map-status-text]');
     if (text) text.textContent = message ?? defaultMessage(state);
-    if (this.retryBtn) this.retryBtn.hidden = state !== 'error';
+    if (this.retryBtn) this.retryBtn.hidden = state !== 'error' && state !== 'partial';
   }
 
   getState(): MapStageState {
@@ -365,6 +397,8 @@ function defaultMessage(state: MapStageState): string {
   switch (state) {
     case 'loading':
       return 'Loading the map';
+    case 'partial':
+      return 'Some map layers did not load. What you can see is accurate; some context is missing.';
     case 'empty':
       return 'Nothing to show here yet. Widen the filters or reset the view.';
     case 'error':

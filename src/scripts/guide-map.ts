@@ -1,6 +1,8 @@
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import '../styles/guide-map.css';
+import { createMapStage } from './map-stage';
+import { parseCameraFromSearch } from './map-url.mjs';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -90,6 +92,22 @@ const FALLBACK_MIN_ZOOM = 8;
 
 /** Below this zoom the densest orientation labels are hidden. */
 const DENSE_LABEL_MIN_ZOOM = 10.5;
+
+/**
+ * Every GeoJSON source, id to filename, in fetch-priority order. One list so
+ * adding a layer and being able to retry it are the same edit; the stage's
+ * Retry replays exactly this set.
+ */
+const GEOJSON_SOURCE_FILES = new Map<string, string>([
+  ['lake', 'lake-ontario.geojson'],
+  ['rnfp', 'ravine-rnfp.geojson'],
+  ['esa', 'esa.geojson'],
+  ['waterways', 'watercourses.geojson'],
+  ['boundary', 'toronto-boundary.geojson'],
+  ['outside', 'outside-mask.geojson'],
+  ['streets-major', 'streets-major.geojson'],
+  ['streets-minor', 'streets-minor.geojson'],
+]);
 
 /** Horizontal pixel shift so a selected marker clears the floating desktop panel. */
 const DESKTOP_CENTER_OFFSET_X = 206;
@@ -234,6 +252,28 @@ export class GuideMap {
   private markerButtons = new Map<string, HTMLButtonElement>();
   private refs: PanelRefs | null = null;
   private selectedSlug: string | null = null;
+  /** Cache-busts each Retry so a failed fetch is not served from cache. */
+  private retryToken = 0;
+
+  /** The live map, so the page can hand it to the shared MapStage. */
+  get maplibreMap(): maplibregl.Map {
+    return this.map;
+  }
+
+  /**
+   * Force every GeoJSON source to refetch. This is what the stage's Retry
+   * calls: it keeps the reader's view and the layer order, where a page reload
+   * would throw both away.
+   */
+  refetchSources(): void {
+    this.retryToken += 1;
+    for (const id of GEOJSON_SOURCE_FILES.keys()) {
+      const source = this.map.getSource(id) as maplibregl.GeoJSONSource | undefined;
+      const file = GEOJSON_SOURCE_FILES.get(id);
+      if (!source || file === undefined) continue;
+      source.setData(`${this.baseUrl}data/${file}?retry=${this.retryToken}`);
+    }
+  }
 
   constructor(containerId: string, baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -253,7 +293,10 @@ export class GuideMap {
       },
       bounds: INITIAL_BOUNDS,
       fitBoundsOptions: { padding: this.fitPadding() },
-      cooperativeGestures: true,
+      // Cooperative gestures removed: an editorial embed should not defend its
+      // scroll with a modifier key nobody discovers. MapStage holds scroll-zoom
+      // back until the reader interacts, and hands over everything on the
+      // /map route. See src/scripts/map-stage.ts.
       // Loose fallback pan limit; the real per-screen limit (the viewport at the
       // citywide floor, so the city is dead-centre and unpannable at min zoom)
       // is computed on load and resize in applyZoomLimits.
@@ -269,14 +312,16 @@ export class GuideMap {
     // Disable pinch-rotation on touch devices
     this.map.touchZoomRotate.disableRotation();
 
-    // Attribution
+    // Attribution, bottom-left. It used to share the bottom-right corner with
+    // zoom; uncollapsed and on its own it reads as the credit it is, instead of
+    // as the ⓘ help button readers kept mistaking it for.
     this.map.addControl(
       new maplibregl.AttributionControl({
         compact: false,
         customAttribution:
           'Map data © OpenStreetMap contributors, City of Toronto',
       }),
-      'bottom-right',
+      'bottom-left',
     );
 
     // Navigation control (zoom only; rotation is disabled)
@@ -324,20 +369,13 @@ export class GuideMap {
       tolerance: 0.375,
     });
 
-    // Priority group: the figure/ground argument (lake + hidden landscape)
-    this.map.addSource('lake', src('lake-ontario.geojson'));
-    this.map.addSource('rnfp', src('ravine-rnfp.geojson'));
-    this.map.addSource('esa', src('esa.geojson'));
-
-    // Context group: streets, water (arrive as they load)
-    // Rail source intentionally omitted: buried watercourses are the only
-    // dashed device on the map; rail used the same dash and was removed to
-    // maintain single-symbol semantics.
-    this.map.addSource('waterways', src('watercourses.geojson'));
-    this.map.addSource('boundary', src('toronto-boundary.geojson'));
-    this.map.addSource('outside', src('outside-mask.geojson'));
-    this.map.addSource('streets-major', src('streets-major.geojson'));
-    this.map.addSource('streets-minor', src('streets-minor.geojson'));
+    // Declared in GEOJSON_SOURCE_FILES in priority order: the figure/ground
+    // argument (lake + hidden landscape) first so constrained connections queue
+    // it ahead of the street context. Rail is intentionally absent: buried
+    // watercourses are the only dashed device on the map.
+    for (const [id, filename] of GEOJSON_SOURCE_FILES) {
+      this.map.addSource(id, src(filename));
+    }
 
     // Layer order, bottom to top:
     // background (in base style), lake, lake-shore, streets-minor,
@@ -896,7 +934,14 @@ export class GuideMap {
 // Page entry point
 // ---------------------------------------------------------------------------
 
-export function initGuideMap(): void {
+export interface InitGuideMapOptions {
+  /** True on /guides/hidden-landscapes/map, where the map owns the viewport. */
+  expanded?: boolean;
+  /** Where the expanded route's "Back to the guide" link points. */
+  backHref?: string;
+}
+
+export function initGuideMap(options: InitGuideMapOptions = {}): void {
   const container = document.getElementById('guide-map');
   const dataEl = document.getElementById('guide-map-data');
   if (!container || !dataEl) return;
@@ -922,4 +967,56 @@ export function initGuideMap(): void {
 
   const guideMap = new GuideMap('guide-map', baseUrl);
   guideMap.init(locations);
+
+  const map = guideMap.maplibreMap;
+  const failedSources = new Set<string>();
+  const stage = createMapStage({
+    map,
+    expanded: options.expanded ?? false,
+    expandPath: options.expanded ? undefined : `${baseUrl}guides/hidden-landscapes/map`.replace(/\/{2,}/g, '/'),
+    onRetry: () => {
+      failedSources.clear();
+      guideMap.refetchSources();
+    },
+  });
+  if (!stage) return;
+
+  // Ready as soon as the map is interactive. The layers are deliberately
+  // streamed and painted as they arrive, so holding a covering "Loading" until
+  // the last 2.5 MB of minor streets lands would hide the progressive render
+  // this map was built around.
+  map.on('load', () => stage.setState('ready'));
+
+  map.on('error', (event: maplibregl.ErrorEvent & { sourceId?: string }) => {
+    const sourceId = event.sourceId;
+    if (sourceId === undefined) {
+      // No source means the style or the WebGL context failed: the map is dead,
+      // so the error is worth covering it with.
+      stage.setState('error', 'The map could not start. Retry, or read the entries listed below.');
+      return;
+    }
+    failedSources.add(sourceId);
+    stage.setState('partial');
+  });
+
+  // Restore a shared camera.
+  //
+  // This has to wait for 'load'. applyZoomLimits re-frames to the citywide
+  // floor on load, and it is registered in the constructor, so anything applied
+  // synchronously here is overwritten a moment later. Registering afterwards
+  // puts this last in the same event and the shared link wins.
+  //
+  // jumpTo, not flyTo: a shared link should open where it says it does, not
+  // animate there from somewhere else.
+  const camera = parseCameraFromSearch(window.location.search);
+  if (camera !== null) {
+    const [lng, lat, zoom] = camera;
+    map.once('load', () => map.jumpTo({ center: [lng, lat], zoom }));
+  }
+
+  if (options.expanded) {
+    // A keyboard reader who followed "Expand map" should arrive at the map,
+    // not at the top of a new document.
+    map.once('idle', () => stage.focusMap());
+  }
 }

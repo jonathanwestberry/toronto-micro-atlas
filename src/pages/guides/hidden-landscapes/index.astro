@@ -2,6 +2,7 @@
 import { getCollection } from 'astro:content';
 import Base from '../../../layouts/Base.astro';
 import ThresholdChip from '../../../components/ThresholdChip.astro';
+import MapStage from '../../../components/MapStage.astro';
 
 const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
 
@@ -33,16 +34,47 @@ const mapLocations = locations.map((loc) => ({
     <!-- Map + panel row -->
     <div class="guide-map-row" aria-label="Interactive map of threshold locations">
 
-      <!-- Map container -->
-      <div class="guide-map-container" id="guide-map" role="img" aria-label="Map of Hidden Landscapes threshold locations in Toronto">
-        <!-- MapLibre GL JS island mounts here -->
-        <div class="guide-map-placeholder" aria-hidden="true">
-          <span class="guide-map-placeholder-label">Map</span>
+      <!-- Map container, inside the shared stage -->
+      <MapStage
+        id="fg01-map-stage"
+        class="guide-map-stage"
+        label="Map of Hidden Landscapes threshold locations"
+        expandPath={`${base}/guides/hidden-landscapes/map`}
+        helpCorner="top-right"
+      >
+        <div
+          class="guide-map-container"
+          id="guide-map"
+          data-map-canvas
+          role="img"
+          aria-label="Map of Hidden Landscapes threshold locations in Toronto"
+        >
+          <!-- MapLibre GL JS island mounts here -->
+          <div class="guide-map-placeholder" aria-hidden="true">
+            <span class="guide-map-placeholder-label">Map</span>
+          </div>
+          <noscript>
+            <p class="guide-map-noscript">Enable JavaScript to load the interactive map. Location entries are listed below.</p>
+          </noscript>
         </div>
-        <noscript>
-          <p class="guide-map-noscript">Enable JavaScript to load the interactive map. Location entries are listed below.</p>
-        </noscript>
-      </div>
+
+        <Fragment slot="howto">
+          <p>
+            Symbols mark thresholds, the points where city fabric gives way to hidden landscape.
+            The shaded layer is the connected valley and ravine system. Select a symbol to preview
+            a location, then open the entry to read it in full.
+          </p>
+          <p>
+            Every symbol has its own shape as well as its own colour, so the map stays readable
+            without relying on colour alone. Tab moves between symbols; Enter opens the one you
+            are on.
+          </p>
+        </Fragment>
+
+        <Fragment slot="status-fallback">
+          <a class="map-stage__btn" href="#guide-location-list">Read the entries instead</a>
+        </Fragment>
+      </MapStage>
 
       <!-- Location data island for the map script -->
       <script is:inline type="application/json" id="guide-map-data" set:html={JSON.stringify(mapLocations)}></script>
@@ -66,11 +98,13 @@ const mapLocations = locations.map((loc) => ({
             Toronto's street grid gives a convincing impression of completeness. The city is built on top of something else: a second geography of valleys, ravines, escarpments, and buried watercourses that the grid cuts around, bridges over, and mostly ignores. The places where one gives way to the other are ordinary corners, stair landings, and bridge approaches. This guide documents eight of them.
           </p>
 
-          <div class="guide-panel-how-to">
-            <h2 class="guide-panel-how-to-label">How to read this map</h2>
-            <p class="guide-panel-how-to-text">Symbols mark thresholds, the points where city fabric gives way to hidden landscape. The shaded layer is the connected valley and ravine system. Select a symbol to preview a location. Open the entry to read it in full.</p>
-          </div>
-
+          <!--
+            "How to read this map" moved onto the map itself, where the reader
+            looks for it. Keeping a second copy here would put the same heading
+            on the page twice and leave the map's own help control redundant.
+            The legend stays: it is reference the reader wants open, not a
+            first-use explanation.
+          -->
           <div class="guide-panel-legend" aria-label="Map legend">
             <div class="legend-item">
               <span class="legend-swatch" style="background-color: var(--landscape);" aria-hidden="true"></span>
@@ -149,7 +183,7 @@ const mapLocations = locations.map((loc) => ({
     </div>
 
     <!-- Location card grid -->
-    <section class="guide-cards-section" aria-labelledby="guide-cards-heading">
+    <section class="guide-cards-section" id="guide-location-list" aria-labelledby="guide-cards-heading">
       <div class="guide-cards-header">
         <h2 class="guide-cards-heading" id="guide-cards-heading">
           <span class="guide-cards-heading-count">{locations.length}</span> Locations
