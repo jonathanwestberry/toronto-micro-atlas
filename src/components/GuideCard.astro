@@ -44,8 +44,14 @@ const statusLabel = status === 'new' ? 'New' : status === 'forthcoming' ? 'Forth
 </Wrapper>
 
 <style>
+  /* Two accent slots, not one. --card-accent is the FILL: the 3px plate rule
+     and the status chip, which only have to clear 3:1. --card-accent-text is
+     the same hue darkened until it clears 4.8:1 on the card surface, and it is
+     the only one allowed on the 11px tag and 13px CTA. Sharing one value made
+     Kelly 3.12:1 and Tomato 4.38:1 as type. */
   .guide-card {
     --card-accent: var(--threshold);
+    --card-accent-text: var(--atlas-accent-text);
     --plate-bg: var(--ink);
     display: flex;
     flex-direction: column;
@@ -57,9 +63,9 @@ const statusLabel = status === 'new' ? 'New' : status === 'forthcoming' ? 'Forth
     color: inherit;
     height: 100%;
   }
-  .guide-card--fg01 { --card-accent: #2A5BD0; --plate-bg: #dbe6f2; }
-  .guide-card--fg02 { --card-accent: #45A26A; --plate-bg: #12331f; }
-  .guide-card--fg03 { --card-accent: #1A2F66; --plate-bg: #ece4d0; }
+  .guide-card--fg01 { --card-accent: #2A5BD0; --card-accent-text: #2A5BD0; --plate-bg: #dbe6f2; }
+  .guide-card--fg02 { --card-accent: #45A26A; --card-accent-text: #347A50; --plate-bg: #12331f; }
+  .guide-card--fg03 { --card-accent: #1A2F66; --card-accent-text: #1A2F66; --plate-bg: #ece4d0; }
 
   .guide-card-media {
     position: relative;
@@ -122,7 +128,7 @@ const statusLabel = status === 'new' ? 'New' : status === 'forthcoming' ? 'Forth
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: var(--card-accent);
+    color: var(--card-accent-text);
   }
 
   .guide-card-title {
@@ -159,7 +165,7 @@ const statusLabel = status === 'new' ? 'New' : status === 'forthcoming' ? 'Forth
     font-weight: 700;
     letter-spacing: 0.03em;
     text-transform: uppercase;
-    color: var(--card-accent);
+    color: var(--card-accent-text);
   }
 
   a.guide-card { transition: border-color var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out); }

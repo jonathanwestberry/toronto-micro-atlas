@@ -41,7 +41,13 @@ const FG03_SYMBOL_RECIPES = Object.freeze([
   Object.freeze(["fg03-new", "triangle", "#1a1f2a", "#1a1f2a"]),
   Object.freeze(["fg03-verify", "diamond", "#f3eddd", "#1A2F66"]),
   Object.freeze(["fg03-retrofit", "plus", "#f3eddd", "#1A2F66"]),
-  Object.freeze(["fg03-unknown", "cross", "#f3eddd", "#C9A52E"])
+  /* #9C8023 is Mustard (#C9A52E) deepened. The marker's fill is cream, so the
+     stroke is the only thing separating it from a cream map: at Mustard that
+     boundary was 2.19:1, under the 3:1 that SC 1.4.11 asks of a graphical
+     object. Fg03MapFigure.astro paints the legend swatch with the same
+     literal, and the two must stay identical or the legend stops describing
+     the map. */
+  Object.freeze(["fg03-unknown", "cross", "#f3eddd", "#9C8023"])
 ]);
 function asRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value : null;
@@ -280,7 +286,7 @@ function createFg03OperationalLayers() {
       paint: {
         "circle-color": "#f3eddd",
         "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 1.8, 16, 4],
-        "circle-stroke-color": "#C9A52E",
+        "circle-stroke-color": "#9C8023",
         "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 9, 1, 16, 2],
         "circle-opacity": 0.92
       }

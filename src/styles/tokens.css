@@ -161,6 +161,27 @@
   --atlas-line-strong: var(--street-major);   /* stronger rule */
   --atlas-accent:      var(--threshold);      /* primary accent (Tomato-adjacent) */
   --atlas-accent-2:    var(--landscape);      /* secondary accent */
+  /* Text-weight siblings of the two accents.
+
+     An accent chosen to work as a FILL (a 3px rule, a filled chip, a map
+     marker) does not survive being set as 11-14px type on a light ground: it
+     only has to clear 3:1 as a fill, and 4.5:1 as text. Every small-text
+     contrast failure in the Phase 6 audit was one accent doing both jobs
+     (Kelly at 2.94, Tomato at 4.12, Hot Orange at 2.49 on cream).
+
+     So the accents keep their brand value for fills, and these darker
+     siblings carry type. Same hue and saturation, lightness lowered until the
+     ratio clears 4.8 against the theme's own ground -- 4.8 rather than 4.5 so
+     a hover state or a slightly different surface cannot tip it back under.
+     Never set an --atlas-accent* on text; use these. */
+  --atlas-accent-text:   #CB3510;             /* Tomato, darkened: 4.80 on cream */
+  --atlas-accent-2-text: #347A50;             /* Kelly, darkened: 4.81 on cream */
+  /* Boundary of an interactive control (SC 1.4.11, 3:1). Distinct from
+     --atlas-line, which is a content hairline and is allowed to be faint.
+     The map stage's buttons fill with --atlas-surface, which on a cream page
+     is ~1.02:1 against the ground, so the border is the only thing that says
+     where the control is. It measured 1.45:1. */
+  --atlas-control-line: #8F836B;              /* 3.47 on cream */
   --atlas-link:        var(--ink);            /* link colour */
   --atlas-focus:       var(--ink);            /* focus ring colour */
   --atlas-marker:      var(--threshold);      /* map marker fill */
@@ -194,6 +215,8 @@
 [data-guide-theme='fg01'] {
   --atlas-accent:      #2A5BD0;                  /* Cobalt */
   --atlas-accent-2:    #45A26A;                  /* Kelly */
+  --atlas-accent-text:   #2A5BD0;                /* Cobalt already reads at 5.55 on cream */
+  --atlas-accent-2-text: #347A50;                /* Kelly darkened: 2.94 -> 4.81 */
   --atlas-focus:       #1A2F66;                  /* Deep Navy */
   --atlas-hover:       #1A2F66;
   --atlas-active:      #1A2F66;
@@ -211,6 +234,16 @@
   --atlas-line-strong: hsl(150, 22%, 34%);
   --atlas-accent:      hsl(72, 62%, 62%);        /* Lime */
   --atlas-accent-2:    hsl(76, 66%, 52%);
+  /* On a near-black ground the accents are the LIGHT end, so they already read
+     as text (Lime 11.96, accent-2 10.29). The text siblings exist so a shared
+     component can reference them in every theme without branching. */
+  --atlas-accent-text:   hsl(72, 62%, 62%);
+  --atlas-accent-2-text: hsl(76, 66%, 52%);
+  /* Solved against the LIGHTEST surface a control lands on, not the page
+     ground. Solving against the ground alone gave 3.20 there but only 2.60
+     behind the street-search field, which sits on a raised panel. 42.5%
+     clears 3.2 on all four fg02 surfaces. */
+  --atlas-control-line:  hsl(150, 22%, 42.5%);   /* 4.19 ground .. 3.20 card */
   --atlas-focus:       hsl(72, 62%, 62%);
   --atlas-hover:       hsl(76, 66%, 52%);
   --atlas-active:      hsl(76, 66%, 52%);
@@ -228,6 +261,8 @@
   --atlas-line-strong: rgba(26, 31, 42, 0.72);
   --atlas-accent:      #1A2F66;                  /* Deep Navy */
   --atlas-accent-2:    #F37E2A;                  /* Hot Orange */
+  --atlas-accent-text:   #1A2F66;                /* Navy already reads at 10.94 on this ground */
+  --atlas-accent-2-text: #A94C0A;                /* Hot Orange darkened: 2.49 -> 4.80 */
   --atlas-focus:       #1A2F66;
   --atlas-hover:       #1A2F66;
   --atlas-active:      #F37E2A;

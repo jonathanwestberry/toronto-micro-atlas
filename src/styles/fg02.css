@@ -464,7 +464,13 @@
   font-size: 11px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: hsl(150, 12%, 46%);
+  /* These are real text on the map, so SC 1.4.3 applies with no cartographic
+     exemption: they measured 4.36 and the water label 3.09 against the ground
+     their own dark halo matches. Lightness raised until both clear 4.8.
+     They still have to sit *behind* the Lime data dots in the reading order,
+     but that separation is carried by size, weight and letter-spacing, which
+     is where de-emphasis belongs. Contrast is the floor, not the dimmer. */
+  color: hsl(150, 12%, 48.6%);
   pointer-events: none;
   text-shadow: 0 1px 6px hsl(150, 44%, 5%);
   white-space: nowrap;
@@ -473,7 +479,7 @@
 .fg2-olabel--water {
   font-style: italic;
   letter-spacing: 0.22em;
-  color: hsl(150, 18%, 36%);
+  color: hsl(150, 18%, 46.9%);
 }
 
 /* Marker layers show/hide with chapter state. MapLibre writes an inline
@@ -604,7 +610,9 @@
 .fg2-search input {
   width: 100%;
   background-color: var(--n-ground-2);
-  border: 1px solid var(--n-line);
+  /* A text field's boundary is what identifies it as a text field, so it is a
+     1.4.11 control boundary, not a hairline. --n-line measured 1.53:1. */
+  border: 1px solid var(--atlas-control-line);
   color: var(--n-text);
   font-family: var(--font-ui);
   font-size: var(--text-sm);
@@ -838,7 +846,9 @@
 }
 
 .fg2 .maplibregl-ctrl-group button + button {
-  border-top: 1px solid var(--n-line-soft);
+  /* Same specificity as the shared stage's rule, so both must resolve to the
+     same value or source order decides which theme gets an AA divider. */
+  border-top: 1px solid var(--atlas-control-line);
 }
 
 .fg2 .maplibregl-ctrl button .maplibregl-ctrl-icon {

@@ -337,7 +337,9 @@ const mapLocations = locations.map((loc) => ({
     font-weight: 700;
     letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: var(--landscape);
+    /* Kelly is a fill colour; at 13px bold on the panel it measured 3.12:1.
+       --atlas-accent-2-text is the same hue, darkened to 4.81:1. */
+    color: var(--atlas-accent-2-text);
   }
 
   .guide-panel-title {

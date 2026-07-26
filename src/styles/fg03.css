@@ -45,13 +45,29 @@
   margin-inline: auto;
 }
 
-.fg03 a {
+/* Content links only.
+ *
+ * This was `.fg03 a`, a blanket reset on a bare element type. At (0,1,1) it
+ * outranked `.map-stage__btn--expand` (0,1,0) and forced `color: inherit` onto
+ * the shared map stage's filled Expand control -- painting Contour ink on Deep
+ * Navy at 1.29:1, a label you effectively could not read. It typechecked, it
+ * built, and all 154 tests passed.
+ *
+ * `:not([class])` is the fix rather than a `:not(.map-stage__btn)` exclusion
+ * list, because Phase 5 already recorded what an exclusion list costs: the
+ * fg02 header patch broke precisely by leaving `.nav-dd-summary` off one.
+ * Every link inside .fg03 that belongs to a shared component carries a class,
+ * and every editorial link in the guide's own prose does not. Keying on that
+ * makes the boundary structural: a component added tomorrow owns its own
+ * colour without anyone remembering to come back here.
+ */
+.fg03 a:not([class]) {
   color: inherit;
   text-decoration-color: var(--fg03-mauve);
   text-decoration-thickness: 0.125rem;
 }
 
-.fg03 a:hover {
+.fg03 a:not([class]):hover {
   color: var(--fg03-mauve);
 }
 
