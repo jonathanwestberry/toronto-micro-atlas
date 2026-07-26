@@ -380,7 +380,8 @@ const onAbout = path.includes('/about');
       .site-footer {
         margin-top: auto;
         border-top: 1px solid var(--ink);
-        background: var(--card);
+        background: var(--ink);
+        color: var(--paper);
       }
 
       .site-footer-inner {
@@ -471,6 +472,17 @@ const onAbout = path.includes('/about');
         color: var(--ink-3);
         line-height: 1.7;
       }
+
+      /* Dark footer: flip text tokens to read on ink */
+      .site-footer-mark { color: var(--paper); }
+      .site-footer-tagline,
+      .site-footer-signature { color: rgba(250, 246, 236, 0.7); }
+      .site-footer-meta { color: rgba(250, 246, 236, 0.55); }
+      .site-footer-heading { color: rgba(250, 246, 236, 0.55); }
+      .site-footer-signature a { color: var(--paper); }
+      .site-footer-links a { color: rgba(250, 246, 236, 0.82); }
+      .site-footer-links a:hover,
+      .site-footer-signature a:hover { color: #F7A25E; }
 
       /* ============================================================
          Prose typography
@@ -613,11 +625,11 @@ const onAbout = path.includes('/about');
           </ul>
         </nav>
         <div class="site-footer-colophon">
-          <p class="site-footer-heading">Colophon</p>
+          <p class="site-footer-heading">Credits</p>
           <p class="site-footer-meta">
-            Set in Bebas Neue, Space Mono, and Source Serif 4. Built with Astro and MapLibre GL JS.<br />
-            Map data &copy; OpenStreetMap contributors, City of Toronto.<br />
-            Code MIT. Writing and illustrations all rights reserved.
+            Built with Astro and MapLibre GL JS.<br />
+            Map data &copy; OpenStreetMap and the City of Toronto.<br />
+            Code is open source. Writing and illustrations reserved.
           </p>
         </div>
       </div>

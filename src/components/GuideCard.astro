@@ -55,7 +55,6 @@ const statusLabel = status === 'new' ? 'New' : status === 'forthcoming' ? 'Forth
     overflow: hidden;
     text-decoration: none;
     color: inherit;
-    height: 100%;
   }
   .guide-card--fg01 { --card-accent: #2A5BD0; --plate-bg: #dbe6f2; }
   .guide-card--fg02 { --card-accent: #45A26A; --plate-bg: #12331f; }
@@ -111,9 +110,8 @@ const statusLabel = status === 'new' ? 'New' : status === 'forthcoming' ? 'Forth
   .guide-card-body {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: var(--space-3);
     padding: var(--space-5) var(--space-5) var(--space-6);
-    flex: 1;
   }
 
   .guide-card-tag {
@@ -132,7 +130,7 @@ const statusLabel = status === 'new' ? 'New' : status === 'forthcoming' ? 'Forth
     letter-spacing: 0.01em;
     text-transform: uppercase;
     color: var(--ink);
-    margin: 0.1rem 0 0;
+    margin: 0;
   }
 
   .guide-card-desc {
@@ -144,8 +142,7 @@ const statusLabel = status === 'new' ? 'New' : status === 'forthcoming' ? 'Forth
   }
 
   .guide-card-cta {
-    margin-top: auto;
-    padding-top: var(--space-3);
+    margin-top: var(--space-2);
     font-family: var(--font-ui);
     font-size: 0.8125rem;
     font-weight: 700;
