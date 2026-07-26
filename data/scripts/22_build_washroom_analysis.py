@@ -9,6 +9,7 @@ import heapq
 import json
 import math
 import os
+import re
 import resource
 import shutil
 import tempfile
@@ -85,6 +86,7 @@ PUBLIC_ACTION_BY_CLASS = {
 MAX_SNAP_METRES = 200.0
 MAX_STOP_SNAP_METRES = 500.0
 PUBLIC_SIZE_LIMIT = 1_500_000
+ANALYSIS_FINGERPRINT_VERSION = 2
 PUBLIC_FILENAMES = (
     "manifest.json",
     "facilities.geojson",
@@ -135,6 +137,40 @@ def _json_bytes(value) -> bytes:
         )
         + "\n"
     ).encode("utf-8")
+
+
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _analysis_fingerprint(
+    *,
+    snapshot_date: str,
+    candidate_projections: Iterable[dict],
+    audit_contexts: Iterable[dict],
+    source_paths: dict[str, Path],
+) -> str:
+    payload = {
+        "schemaVersion": ANALYSIS_FINGERPRINT_VERSION,
+        "snapshotDate": snapshot_date,
+        "inputs": {
+            name: _file_sha256(path)
+            for name, path in sorted(source_paths.items())
+        },
+        "candidates": sorted(
+            candidate_projections,
+            key=lambda item: item["candidate_id"],
+        ),
+        "auditContext": sorted(
+            audit_contexts,
+            key=lambda item: item["candidateId"],
+        ),
+    }
+    return hashlib.sha256(_json_bytes(payload)).hexdigest()
 
 
 def _write_json(path: Path, value) -> None:
@@ -189,7 +225,12 @@ def _atomic_publish(staging: Path, destination: Path) -> None:
         shutil.rmtree(backup)
     if destination.exists():
         destination.rename(backup)
-    staging.rename(destination)
+    try:
+        staging.rename(destination)
+    except Exception:
+        if backup.exists():
+            backup.rename(destination)
+        raise
     if backup.exists():
         shutil.rmtree(backup)
 
@@ -433,7 +474,7 @@ def _stop_rows(events: tuple[ActiveStopEvent, ...]) -> dict[str, dict]:
         stop_id: {
             "id": stop_id,
             "name": items[0].stop_name,
-            "parentStation": items[0].parent_station,
+            "parentStation": items[0].parent_station_name,
             "lon": items[0].lon,
             "lat": items[0].lat,
             "eventCount": len(items),
@@ -1022,13 +1063,50 @@ def _candidate_group(candidate: CandidateGain) -> str:
     return "retrofit"
 
 
-def _analysis_hash(candidates: tuple[CandidateGain, ...]) -> str:
-    payload = []
+def _analysis_hash(
+    candidates: tuple[CandidateGain, ...],
+    audit_candidates: tuple[CandidateGain, ...],
+    engine: AnalysisEngine,
+    primary: Scenario,
+    snapshot_date: str,
+    source_paths: dict[str, Path],
+) -> str:
+    candidate_projections = []
     for candidate in candidates:
         projection = candidate_public_projection(candidate)
         projection["audit_status"] = "source review"
-        payload.append(projection)
-    return hashlib.sha256(_json_bytes(payload)).hexdigest()
+        candidate_projections.append(projection)
+    audit_contexts = []
+    for candidate in audit_candidates:
+        snap, source_offset, gained_stop_ids = _candidate_map_context(
+            candidate,
+            engine,
+            primary,
+        )
+        reach = _reach_geometry(
+            engine,
+            snap.node,
+            source_offset,
+            primary.walking_distance,
+        )
+        audit_contexts.append(
+            {
+                "candidateId": candidate.candidate_id,
+                "canonicalNetworkNode": [
+                    round(snap.node[0], 3),
+                    round(snap.node[1], 3),
+                ],
+                "sourceOffsetMetres": round(source_offset, 3),
+                "gainedStopIds": sorted(gained_stop_ids),
+                "reach400Sha256": hashlib.sha256(reach.wkb).hexdigest(),
+            }
+        )
+    return _analysis_fingerprint(
+        snapshot_date=snapshot_date,
+        candidate_projections=candidate_projections,
+        audit_contexts=audit_contexts,
+        source_paths=source_paths,
+    )
 
 
 def _audit_candidates(candidates: tuple[CandidateGain, ...]):
@@ -1061,11 +1139,45 @@ def _apply_audit_decisions(
     analysis_hash: str,
     decisions_path: Path,
 ):
-    decisions = {
-        row["candidate_id"]: row
-        for row in _read_csv(decisions_path)
-        if row.get("candidate_id")
-    }
+    rows = [row for row in _read_csv(decisions_path) if row.get("candidate_id")]
+    decision_id_counts = Counter(row["candidate_id"] for row in rows)
+    duplicate_ids = sorted(
+        candidate_id
+        for candidate_id, count in decision_id_counts.items()
+        if count > 1
+    )
+    if duplicate_ids:
+        raise _fail(
+            "FG03_AUDIT_INVALID",
+            f"duplicate audit decisions found for {', '.join(duplicate_ids[:5])}; keep one attributed decision per candidate",
+        )
+    for row in rows:
+        if row.get("audit_status") not in {"valid", "exclude"}:
+            continue
+        missing_fields = [
+            field
+            for field in ("evidence_note", "reviewer", "reviewed_at")
+            if not row.get(field, "").strip()
+        ]
+        if missing_fields:
+            raise _fail(
+                "FG03_AUDIT_INVALID",
+                f"{row['candidate_id']} is resolved but lacks {', '.join(missing_fields)}",
+            )
+        reviewed_at = row["reviewed_at"].strip()
+        try:
+            parsed_review_date = date.fromisoformat(reviewed_at)
+        except ValueError as error:
+            raise _fail(
+                "FG03_AUDIT_INVALID",
+                f"{row['candidate_id']} reviewed_at must be an ISO date in YYYY-MM-DD form",
+            ) from error
+        if parsed_review_date.isoformat() != reviewed_at:
+            raise _fail(
+                "FG03_AUDIT_INVALID",
+                f"{row['candidate_id']} reviewed_at must be an ISO date in YYYY-MM-DD form",
+            )
+    decisions = {row["candidate_id"]: row for row in rows}
     required_ids = {item.candidate_id for item in audit_candidates}
     stale = sorted(
         candidate_id
@@ -1279,28 +1391,43 @@ def _reach_geometry(engine: AnalysisEngine, node, source_offset: float, walk: in
     distances = engine.candidate_distances(node)
     pieces = []
     seen_edges = set()
-    for start, distance in distances.items():
-        remaining = budget - distance
-        if remaining <= 0:
-            continue
-        for end, edge in engine.network.graph[start].items():
-            edge_key = tuple(sorted((start, end)))
+    for start in sorted(distances):
+        for end, edge in sorted(engine.network.graph[start].items()):
+            edge_key = (start, end) if start <= end else (end, start)
             if edge_key in seen_edges:
                 continue
-            end_distance = distances.get(end, math.inf)
-            geometry = _orient_edge_geometry(edge["geometry"], start)
-            if end_distance <= budget:
-                pieces.append(geometry)
-                seen_edges.add(edge_key)
-                continue
-            clipped = substring(
-                geometry,
-                0,
-                min(remaining, geometry.length),
-            )
-            if clipped.geom_type == "LineString" and clipped.length > 0:
-                pieces.append(LineString(clipped.coords))
             seen_edges.add(edge_key)
+            edge_cost = float(edge["length"])
+            if edge_cost <= 0:
+                continue
+            start_fraction = min(
+                1.0,
+                max(0.0, (budget - distances.get(start, math.inf)) / edge_cost),
+            )
+            end_fraction = min(
+                1.0,
+                max(0.0, (budget - distances.get(end, math.inf)) / edge_cost),
+            )
+            if start_fraction <= 0 and end_fraction <= 0:
+                continue
+            geometry = _orient_edge_geometry(edge["geometry"], start)
+            if start_fraction + end_fraction >= 1.0:
+                pieces.append(geometry)
+                continue
+            start_reach = geometry.length * start_fraction
+            end_reach = geometry.length * end_fraction
+            if start_reach > 0:
+                clipped = substring(geometry, 0, start_reach)
+                if clipped.geom_type == "LineString" and clipped.length > 0:
+                    pieces.append(LineString(clipped.coords))
+            if end_reach > 0:
+                clipped = substring(
+                    geometry,
+                    geometry.length - end_reach,
+                    geometry.length,
+                )
+                if clipped.geom_type == "LineString" and clipped.length > 0:
+                    pieces.append(LineString(clipped.coords))
     return MultiLineString([list(piece.coords) for piece in pieces])
 
 
@@ -2258,6 +2385,14 @@ def _keys(value):
 
 def _validate_public(staging: Path, raw_trip_ids: set[str]):
     sizes = {}
+    trip_marker = re.compile(
+        r"""(?ix)
+        \btrip[_.-]?(?:id|key|identifier)s?
+        \s*[:=]\s*
+        ["']?
+        ([^"'\s,;&?\#}\]\)]+)
+        """
+    )
     for filename in PUBLIC_FILENAMES:
         path = staging / filename
         if not path.exists():
@@ -2273,21 +2408,38 @@ def _validate_public(staging: Path, raw_trip_ids: set[str]):
                 f"{filename} gzip size {len(compressed)} exceeds {PUBLIC_SIZE_LIMIT}; compact properties",
             )
         data = json.loads(raw)
-        forbidden_keys = {
-            "trip_id",
-            "tripid",
-            "trip_key",
-            "tripkey",
-            "trip_keys",
-        }
+        def is_forbidden_key(key):
+            normalized = "".join(
+                character
+                for character in str(key).casefold()
+                if character.isalnum()
+            )
+            return normalized.endswith(
+                (
+                    "tripid",
+                    "tripids",
+                    "tripkey",
+                    "tripkeys",
+                    "tripidentifier",
+                    "tripidentifiers",
+                )
+            )
+
         leaked_keys = sorted(
-            key for key in _keys(data) if key.casefold() in forbidden_keys
+            key for key in _keys(data) if is_forbidden_key(key)
         )
-        leaked_values = sorted(set(_string_leaves(data)).intersection(raw_trip_ids))
+        string_leaves = set(_string_leaves(data))
+        leaked_values = set(string_leaves).intersection(raw_trip_ids)
+        for value in string_leaves:
+            leaked_values.update(
+                match.group(1)
+                for match in trip_marker.finditer(value)
+                if match.group(1) in raw_trip_ids
+            )
         if leaked_keys or leaked_values:
             raise _fail(
                 "FG03_PUBLIC_TRIP_ID_LEAK",
-                f"{filename} leaks keys {leaked_keys[:3]} or values {leaked_values[:3]}; serialize only public projections",
+                f"{filename} leaks keys {leaked_keys[:3]} or values {sorted(leaked_values)[:3]}; serialize only public projections",
             )
         sizes[filename] = {
             "rawBytes": len(raw),
@@ -2507,8 +2659,22 @@ def build_phase2(
         engine,
         snapshot_day,
     )
-    analysis_hash = _analysis_hash(candidates)
     audit_required = _audit_candidates(candidates)
+    analysis_hash = _analysis_hash(
+        candidates,
+        audit_required,
+        engine,
+        primary,
+        snapshot_date,
+        {
+            "facilities": proof_dir / "facilities.csv",
+            "facilityStates": proof_dir / "facility-states.csv",
+            "gtfs": raw_dir / "completegtfs.zip",
+            "pedestrianNetwork": raw_dir / "pedestrian-network.gpkg",
+            "torontoBoundary": boundary_path,
+            "topologyExceptions": topology_exceptions_path,
+        },
+    )
     candidates, decisions, audit_reason = _apply_audit_decisions(
         candidates,
         audit_required,
@@ -2572,21 +2738,27 @@ def build_phase2(
                 for item in features
             )
             stop_headlines[snapshot_id] = {
-                "unrestrictedOpenAccessPoints": phase1_headline["open_access_points"],
-                "unrestrictedOpenRecords": phase1_headline["open_facility_records"],
-                "farePaidOpenAccessPoints": phase1_headline["fare_paid_open_access_points"],
-                "farePaidOpenRecords": phase1_headline["fare_paid_open_facility_records"],
-                "groupedActiveTransitPoints": phase1_headline["active_transit_stops"],
-                "unrestrictedCoveredCount": phase1_headline["covered_transit_stops"],
-                "unrestrictedCoveredPercent": phase1_headline["transit_coverage_pct"],
-                "phase2ActivePlatformStopCount": len(features),
-                "phase2EventCount": sum(
-                    item["properties"]["eventCount"] for item in features
-                ),
-                "phase2CoveredStopCount": covered,
-                "phase2UniqueTripCount": len(
-                    {event.trip_id for event in events_by_snapshot[snapshot_id]}
-                ),
+                "phase1Grouped": {
+                    "unit": "grouped transit points",
+                    "unrestrictedOpenAccessPointCount": phase1_headline["open_access_points"],
+                    "unrestrictedOpenFacilityRecordCount": phase1_headline["open_facility_records"],
+                    "farePaidOpenAccessPointCount": phase1_headline["fare_paid_open_access_points"],
+                    "farePaidOpenFacilityRecordCount": phase1_headline["fare_paid_open_facility_records"],
+                    "activeTransitPointCount": phase1_headline["active_transit_stops"],
+                    "unrestrictedCoveredTransitPointCount": phase1_headline["covered_transit_stops"],
+                    "unrestrictedCoveragePercent": phase1_headline["transit_coverage_pct"],
+                },
+                "phase2GtfsStops": {
+                    "unit": "GTFS stops and platforms",
+                    "activeStopCount": len(features),
+                    "eventCount": sum(
+                        item["properties"]["eventCount"] for item in features
+                    ),
+                    "unrestrictedCoveredStopCount": covered,
+                    "uniqueTripCount": len(
+                        {event.trip_id for event in events_by_snapshot[snapshot_id]}
+                    ),
+                },
             }
             _write_json(
                 public_staging / f"stops-{snapshot_id}.geojson",
@@ -2773,8 +2945,8 @@ def build_phase2(
             snapshot_date=snapshot_date,
             report=report,
         )
-        _atomic_publish(public_staging, public_dir)
         _atomic_publish(proof_staging, proof_destination)
+        _atomic_publish(public_staging, public_dir)
         return report
     finally:
         if public_staging.exists():

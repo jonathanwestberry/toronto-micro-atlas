@@ -8,7 +8,7 @@ This package measures scheduled TTC service supply near documented washroom acce
 
 - Result: pass
 - Reason: all product-gate conditions passed
-- Audited analysis hash: `97ac6d0224b911eaa71cd915487814e5995b70310a753ede2eb32087ac5c9084`
+- Audited analysis hash: `6d2454b8cb5c7da50a09922fefe56af3b1102d12d6439c7be7388f1d51de9f8b`
 
 ## Policy rules
 

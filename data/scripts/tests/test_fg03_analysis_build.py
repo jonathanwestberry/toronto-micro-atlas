@@ -5,15 +5,24 @@ import json
 import tempfile
 import unittest
 import zipfile
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import geopandas as gpd
-from shapely.geometry import LineString
+import networkx as nx
+from shapely.geometry import LineString, Point
 
 
 SCRIPT_PATH = Path(__file__).parents[1] / "22_build_washroom_analysis.py"
+
+
+@dataclass(frozen=True)
+class AuditCandidateStub:
+    candidate_id: str
+    audit_status: str = "source review"
 
 
 def load_builder():
@@ -124,9 +133,10 @@ class SyntheticFixture:
 
     def _write_gtfs(self):
         stops = [
-            ["s1", "Stop 1", "43.6500", "-79.4000", "", "0"],
-            ["s2", "Stop 2", "43.6500", "-79.3990", "", "0"],
-            ["s3", "Stop 3", "43.6500", "-79.3980", "", "0"],
+            ["s1", "Stop 1", "43.6500", "-79.4000", "p1", "0"],
+            ["s2", "Stop 2", "43.6500", "-79.3990", "p1", "0"],
+            ["s3", "Stop 3", "43.6500", "-79.3980", "p1", "0"],
+            ["p1", "Display Station", "43.6500", "-79.3990", "", "1"],
         ]
         trips = []
         stop_times = []
@@ -340,6 +350,322 @@ class Phase2BuildContractTests(unittest.TestCase):
                 {"facility:far": SimpleNamespace(offset_metres=201.0)}
             )
 
+    def test_duplicate_audit_decisions_are_rejected(self):
+        builder = load_builder()
+        candidate = AuditCandidateStub("candidate:one")
+        rows = [
+            {
+                "analysis_hash": "analysis-hash",
+                "candidate_id": candidate.candidate_id,
+                "audit_status": "valid",
+                "evidence_note": "Source and map agree.",
+                "reviewer": "Reviewer",
+                "reviewed_at": "2026-07-25",
+            },
+            {
+                "analysis_hash": "analysis-hash",
+                "candidate_id": candidate.candidate_id,
+                "audit_status": "exclude",
+                "evidence_note": "Second decision conflicts.",
+                "reviewer": "Reviewer",
+                "reviewed_at": "2026-07-25",
+            },
+        ]
+        write_csv(self.fixture.decisions, list(rows[0]), rows)
+
+        with self.assertRaisesRegex(
+            builder.Phase2BuildError,
+            r"FG03_AUDIT_INVALID.*duplicate.*candidate:one",
+        ):
+            builder._apply_audit_decisions(
+                (candidate,),
+                (candidate,),
+                "analysis-hash",
+                self.fixture.decisions,
+            )
+
+    def test_resolved_audit_decision_requires_attribution_and_evidence(self):
+        builder = load_builder()
+        candidate = AuditCandidateStub("candidate:one")
+        row = {
+            "analysis_hash": "analysis-hash",
+            "candidate_id": candidate.candidate_id,
+            "audit_status": "valid",
+            "evidence_note": " ",
+            "reviewer": "\t",
+            "reviewed_at": "  ",
+        }
+        write_csv(self.fixture.decisions, list(row), [row])
+
+        with self.assertRaisesRegex(
+            builder.Phase2BuildError,
+            r"FG03_AUDIT_INVALID.*candidate:one.*evidence_note.*reviewer.*reviewed_at",
+        ):
+            builder._apply_audit_decisions(
+                (candidate,),
+                (candidate,),
+                "analysis-hash",
+                self.fixture.decisions,
+            )
+
+    def test_resolved_audit_decision_requires_iso_review_date(self):
+        builder = load_builder()
+        candidate = AuditCandidateStub("candidate:one")
+        row = {
+            "analysis_hash": "analysis-hash",
+            "candidate_id": candidate.candidate_id,
+            "audit_status": "exclude",
+            "evidence_note": "The source contradicts the map.",
+            "reviewer": "Reviewer",
+            "reviewed_at": "July 25, 2026",
+        }
+        write_csv(self.fixture.decisions, list(row), [row])
+
+        with self.assertRaisesRegex(
+            builder.Phase2BuildError,
+            r"FG03_AUDIT_INVALID.*candidate:one.*ISO",
+        ):
+            builder._apply_audit_decisions(
+                (candidate,),
+                (candidate,),
+                "analysis-hash",
+                self.fixture.decisions,
+            )
+
+    def test_valid_attributed_audit_decision_resolves_candidate(self):
+        builder = load_builder()
+        candidate = AuditCandidateStub("candidate:one")
+        row = {
+            "analysis_hash": "analysis-hash",
+            "candidate_id": candidate.candidate_id,
+            "audit_status": "valid",
+            "evidence_note": "Source, snap, and map agree.",
+            "reviewer": "Reviewer",
+            "reviewed_at": "2026-07-25",
+        }
+        write_csv(self.fixture.decisions, list(row), [row])
+
+        updated, decisions, audit_reason = builder._apply_audit_decisions(
+            (candidate,),
+            (candidate,),
+            "analysis-hash",
+            self.fixture.decisions,
+        )
+
+        self.assertEqual(updated[0].audit_status, "valid")
+        self.assertEqual(decisions[candidate.candidate_id], row)
+        self.assertEqual(audit_reason, "")
+
+    def test_pending_audit_decision_remains_incomplete_without_attribution(self):
+        builder = load_builder()
+        candidate = AuditCandidateStub("candidate:one")
+        row = {
+            "analysis_hash": "analysis-hash",
+            "candidate_id": candidate.candidate_id,
+            "audit_status": "source review",
+            "evidence_note": "",
+            "reviewer": "",
+            "reviewed_at": "",
+        }
+        write_csv(self.fixture.decisions, list(row), [row])
+
+        updated, _decisions, audit_reason = builder._apply_audit_decisions(
+            (candidate,),
+            (candidate,),
+            "analysis-hash",
+            self.fixture.decisions,
+        )
+
+        self.assertEqual(updated[0].audit_status, "source review")
+        self.assertRegex(audit_reason, r"FG03_AUDIT_INCOMPLETE.*candidate:one")
+
+    def test_attributed_stale_audit_decision_is_not_applied(self):
+        builder = load_builder()
+        candidate = AuditCandidateStub("candidate:one")
+        row = {
+            "analysis_hash": "old-analysis-hash",
+            "candidate_id": candidate.candidate_id,
+            "audit_status": "valid",
+            "evidence_note": "Source, snap, and map agreed previously.",
+            "reviewer": "Reviewer",
+            "reviewed_at": "2026-07-25",
+        }
+        write_csv(self.fixture.decisions, list(row), [row])
+
+        updated, _decisions, audit_reason = builder._apply_audit_decisions(
+            (candidate,),
+            (candidate,),
+            "analysis-hash",
+            self.fixture.decisions,
+        )
+
+        self.assertEqual(updated[0].audit_status, "source review")
+        self.assertRegex(audit_reason, r"FG03_AUDIT_STALE.*candidate:one")
+
+    def test_reach_geometry_does_not_fill_unreachable_middle_of_cycle_edge(self):
+        builder = load_builder()
+        start = (0.0, 0.0)
+        end = (10.0, 0.0)
+        source = (5.0, 11.0 ** 0.5)
+        graph = nx.Graph()
+        graph.add_edge(
+            start,
+            end,
+            length=10.0,
+            geometry=LineString([start, end]),
+        )
+        graph.add_edge(
+            source,
+            start,
+            length=6.0,
+            geometry=LineString([source, start]),
+        )
+        graph.add_edge(
+            source,
+            end,
+            length=6.0,
+            geometry=LineString([source, end]),
+        )
+        engine = SimpleNamespace(
+            network=SimpleNamespace(graph=graph),
+            candidate_distances=lambda node: nx.single_source_dijkstra_path_length(
+                graph,
+                node,
+                cutoff=500.0,
+                weight="length",
+            ),
+        )
+
+        reach = builder._reach_geometry(
+            engine,
+            node=source,
+            source_offset=0.0,
+            walk=7,
+        )
+
+        self.assertEqual(len(reach.geoms), 4)
+        self.assertAlmostEqual(sum(line.length for line in reach.geoms), 14.0)
+        self.assertGreater(reach.distance(Point(5.0, 0.0)), 0.0)
+
+    def test_atomic_publish_restores_previous_output_when_swap_fails(self):
+        builder = load_builder()
+        destination = self.fixture.root / "published"
+        staging = self.fixture.root / "staging"
+        destination.mkdir()
+        staging.mkdir()
+        (destination / "marker.txt").write_text("previous", encoding="utf-8")
+        (staging / "marker.txt").write_text("replacement", encoding="utf-8")
+        original_rename = Path.rename
+
+        def fail_staging_swap(path, target):
+            if path == staging:
+                raise OSError("simulated swap failure")
+            return original_rename(path, target)
+
+        with patch.object(Path, "rename", fail_staging_swap):
+            with self.assertRaisesRegex(OSError, "simulated swap failure"):
+                builder._atomic_publish(staging, destination)
+
+        self.assertEqual(
+            (destination / "marker.txt").read_text(encoding="utf-8"),
+            "previous",
+        )
+        self.assertTrue(staging.exists())
+        self.assertEqual(
+            list(destination.parent.glob(f".{destination.name}.backup-*")),
+            [],
+        )
+
+    def test_proof_publish_failure_preserves_previous_public_contract(self):
+        builder = load_builder()
+        self.fixture.public.mkdir()
+        marker = self.fixture.public / "marker.txt"
+        marker.write_text("previous", encoding="utf-8")
+        real_atomic_publish = builder._atomic_publish
+
+        def fail_proof_publish(staging, destination):
+            if destination == self.fixture.proof / "phase2":
+                raise OSError("simulated proof publish failure")
+            return real_atomic_publish(staging, destination)
+
+        with patch.object(builder, "_atomic_publish", fail_proof_publish):
+            with self.assertRaisesRegex(
+                OSError,
+                "simulated proof publish failure",
+            ):
+                self.fixture.build(builder)
+
+        self.assertEqual(
+            {path.name for path in self.fixture.public.iterdir()},
+            {"marker.txt"},
+        )
+        self.assertEqual(marker.read_text(encoding="utf-8"), "previous")
+
+    def test_analysis_fingerprint_binds_source_bytes_and_audit_context(self):
+        builder = load_builder()
+        network_source = self.fixture.root / "network-source"
+        network_source.write_bytes(b"first network")
+        arguments = {
+            "snapshot_date": "2026-07-21",
+            "candidate_projections": [{"candidate_id": "candidate:one"}],
+            "audit_contexts": [
+                {
+                    "candidateId": "candidate:one",
+                    "canonicalNetworkNode": [1.0, 2.0],
+                    "sourceOffsetMetres": 3.0,
+                    "gainedStopIds": ["stop:one"],
+                    "reach400Sha256": "reach-one",
+                }
+            ],
+            "source_paths": {"pedestrianNetwork": network_source},
+        }
+        first = builder._analysis_fingerprint(**arguments)
+
+        network_source.write_bytes(b"second network")
+        second = builder._analysis_fingerprint(**arguments)
+        self.assertNotEqual(first, second)
+
+        changed_context = {
+            **arguments,
+            "audit_contexts": [
+                {
+                    **arguments["audit_contexts"][0],
+                    "reach400Sha256": "reach-two",
+                }
+            ],
+        }
+        third = builder._analysis_fingerprint(**changed_context)
+        self.assertNotEqual(second, third)
+
+    def test_public_validator_rejects_camel_case_and_embedded_trip_ids(self):
+        builder = load_builder()
+        self.fixture.build(builder)
+        manifest_path = self.fixture.public / "manifest.json"
+        safe_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        unsafe_values = (
+            ("effectTripKeys", []),
+            ("notes", "trip_id=secret-trip-2200-1"),
+            ("url", "tripIds=secret-trip-2200-1&mode=map"),
+            ("query", "trip_key=secret-trip-2200-1&mode=map"),
+        )
+
+        for key, value in unsafe_values:
+            with self.subTest(key=key):
+                manifest = json.loads(json.dumps(safe_manifest))
+                manifest[key] = value
+                manifest_path.write_text(
+                    json.dumps(manifest),
+                    encoding="utf-8",
+                )
+                with self.assertRaisesRegex(
+                    builder.Phase2BuildError,
+                    r"FG03_PUBLIC_TRIP_ID_LEAK.*manifest.json",
+                ):
+                    builder._validate_public(
+                        self.fixture.public,
+                        {"secret-trip-2200-1"},
+                    )
+
     def test_fixed_clock_build_is_deterministic_and_satisfies_public_contract(self):
         # Protected break: timestamps, unstable iteration, schema drift, leaked
         # trip IDs, or wrong URL assembly changes browser-visible bytes.
@@ -392,29 +718,62 @@ class Phase2BuildContractTests(unittest.TestCase):
             ["open", "extend", "new", "verify", "retrofit"],
         )
         self.assertNotIn(str(self.fixture.root), manifest["gate"]["reason"])
-        for headline in manifest["headlines"]["bySnapshot"].values():
+        for snapshot_id, headline in manifest["headlines"]["bySnapshot"].items():
             self.assertEqual(
                 set(headline),
                 {
-                    "unrestrictedOpenAccessPoints",
-                    "unrestrictedOpenRecords",
-                    "farePaidOpenAccessPoints",
-                    "farePaidOpenRecords",
-                    "groupedActiveTransitPoints",
-                    "unrestrictedCoveredCount",
-                    "unrestrictedCoveredPercent",
-                    "phase2ActivePlatformStopCount",
-                    "phase2EventCount",
-                    "phase2CoveredStopCount",
-                    "phase2UniqueTripCount",
+                    "phase1Grouped",
+                    "phase2GtfsStops",
                 },
             )
-            self.assertEqual(headline["groupedActiveTransitPoints"], 100)
-            self.assertEqual(headline["unrestrictedCoveredCount"], 10)
-            self.assertEqual(headline["unrestrictedCoveredPercent"], 10.0)
+            phase1 = headline["phase1Grouped"]
+            self.assertEqual(
+                set(phase1),
+                {
+                    "unit",
+                    "unrestrictedOpenAccessPointCount",
+                    "unrestrictedOpenFacilityRecordCount",
+                    "farePaidOpenAccessPointCount",
+                    "farePaidOpenFacilityRecordCount",
+                    "activeTransitPointCount",
+                    "unrestrictedCoveredTransitPointCount",
+                    "unrestrictedCoveragePercent",
+                },
+            )
+            self.assertEqual(phase1["unit"], "grouped transit points")
+            self.assertEqual(phase1["activeTransitPointCount"], 100)
+            self.assertEqual(phase1["unrestrictedCoveredTransitPointCount"], 10)
+            self.assertEqual(phase1["unrestrictedCoveragePercent"], 10.0)
+            phase2 = headline["phase2GtfsStops"]
+            self.assertEqual(
+                set(phase2),
+                {
+                    "unit",
+                    "activeStopCount",
+                    "eventCount",
+                    "unrestrictedCoveredStopCount",
+                    "uniqueTripCount",
+                },
+            )
+            self.assertEqual(phase2["unit"], "GTFS stops and platforms")
             self.assertLessEqual(
-                headline["phase2CoveredStopCount"],
-                headline["phase2ActivePlatformStopCount"],
+                phase2["unrestrictedCoveredStopCount"],
+                phase2["activeStopCount"],
+            )
+            stop_features = json.loads(
+                (first / f"stops-{snapshot_id}.geojson").read_text()
+            )["features"]
+            self.assertEqual(phase2["activeStopCount"], len(stop_features))
+            self.assertEqual(
+                phase2["eventCount"],
+                sum(item["properties"]["eventCount"] for item in stop_features),
+            )
+            self.assertEqual(
+                phase2["unrestrictedCoveredStopCount"],
+                sum(
+                    item["properties"]["coverage"]["public"]["400"]
+                    for item in stop_features
+                ),
             )
         report = self.fixture.proof / "phase2" / "build-report.json"
         diagnostics = json.loads(report.read_text())["snaps"]
@@ -462,6 +821,10 @@ class Phase2BuildContractTests(unittest.TestCase):
 
         public_stops = json.loads((first / "stops-2200.geojson").read_text())
         for feature in public_stops["features"]:
+            self.assertEqual(
+                feature["properties"]["parentStation"],
+                "Display Station",
+            )
             coverage = feature["properties"]["coverage"]
             self.assertLessEqual(
                 coverage["public"]["400"],
