@@ -8,6 +8,7 @@
     "preview": "astro preview",
     "astro": "astro",
     "maps": "node scripts/build-contextual-maps.mjs",
+    "build-hero-map": "node scripts/build-hero-map.mjs",
     "check": "astro check",
     "test:web": "node --test tests/atlas-events.test.mjs tests/fg03-state.test.mjs tests/fg03-results.test.mjs tests/fg03-map.test.mjs",
     "test:web:contract": "node --test tests/fg03-contract.test.mjs",

@@ -348,23 +348,18 @@ test('shared discovery surfaces publish all three guides with FG03 newest', () =
     assert.match(about, new RegExp(`href="${escapedHref}".*?${title}`));
   }
 
-  // The homepage h1 is now the publication identity (fixes heading order); the
-  // featured guide title is an h2.
+  // The homepage h1 is the hero tagline (single h1, fixes heading order); each
+  // guide is a peer card in one gallery, the newest wearing the New status.
   assert.equal((homeMain.match(/<h1\b/g) ?? []).length, 1);
-  assert.match(homeMain, /<h1[^>]*>Toronto&nbsp;Micro-Atlas<\/h1>/);
-  assert.match(homeMain, /<h2[^>]*>\s*When Toronto Has to Go\s*<\/h2>/);
+  assert.match(homeMain, /<h1[^>]*>\s*Field guides to a city you think you know\s*<\/h1>/);
   assert.equal(
-    (homeMain.match(/New guide/g) ?? []).length,
+    (homeMain.match(/guide-card-status--new/g) ?? []).length,
     1,
-    'Only the newest guide may carry the New label',
+    'Only the newest guide may carry the New status',
   );
   assert.ok(
     homeMain.indexOf('When Toronto Has to Go') < homeMain.indexOf('Sidewalk Forest'),
     'FG03 must appear before the older guides on the homepage',
-  );
-  assert.match(
-    homeMain,
-    /href="\/guides\/when-toronto-has-to-go\/"[\s\S]*?>Open the guide<\/a>/,
   );
 });
 

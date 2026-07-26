@@ -1,9 +1,9 @@
 ---
 /**
- * GuideCard: one guide in the gallery. A vivid themed title-plate (the preview)
- * over a cream editorial body. Whole card is the link when href is set;
- * forthcoming guides render as a non-interactive card. Status uses text + a
- * shaped dot so it never rides on colour alone.
+ * GuideCard: one guide in the gallery. A real map thumbnail on top, editorial
+ * meta below. Whole card is the link when href is set. Status is a shape + text
+ * pill so it never rides on colour alone. Cover is optional (forthcoming guides
+ * render a muted themed panel instead).
  */
 interface Props {
   title: string;
@@ -12,28 +12,32 @@ interface Props {
   tag?: string;
   status?: 'new' | 'live' | 'forthcoming';
   theme?: 'fg01' | 'fg02' | 'fg03';
+  cover?: string;
   level?: 2 | 3;
 }
 
-const { title, description, href, tag, status = 'live', theme, level = 3 } = Astro.props;
+const { title, description, href, tag, status = 'live', theme, cover, level = 3 } = Astro.props;
 const Wrapper = href ? 'a' : 'div';
 const Heading = `h${level}` as 'h2' | 'h3';
 const statusLabel = status === 'new' ? 'New' : status === 'forthcoming' ? 'Forthcoming' : 'Live';
 ---
 
 <Wrapper
-  class:list={['guide-card', theme && `guide-card--${theme}`, !href && 'guide-card--static', href && 'hover-raise']}
+  class:list={['guide-card', theme && `guide-card--${theme}`, !href && 'guide-card--static']}
   href={href}
   {...(href ? { 'data-astro-reload': true } : {})}
 >
-  <div class="guide-card-plate">
+  <div class="guide-card-media">
+    {cover
+      ? <img src={cover} alt="" loading="lazy" decoding="async" width="1000" height="620" />
+      : <span class="guide-card-media-empty" aria-hidden="true"></span>}
     <span class:list={['guide-card-status', `guide-card-status--${status}`]}>
       <span class="guide-card-status-dot" aria-hidden="true"></span>{statusLabel}
     </span>
-    <Heading class="guide-card-title">{title}</Heading>
   </div>
-  <div class="guide-card-meta">
+  <div class="guide-card-body">
     {tag && <span class="guide-card-tag">{tag}</span>}
+    <Heading class="guide-card-title">{title}</Heading>
     <p class="guide-card-desc">{description}</p>
     {href && <span class="guide-card-cta" aria-hidden="true">Open the guide &rarr;</span>}
   </div>
@@ -41,12 +45,8 @@ const statusLabel = status === 'new' ? 'New' : status === 'forthcoming' ? 'Forth
 
 <style>
   .guide-card {
-    /* Per-theme plate colours; default = atlas shell accent */
-    --plate-bg: var(--ink);
-    --plate-ink: var(--paper);
-    --plate-tag: var(--paper);
     --card-accent: var(--threshold);
-
+    --plate-bg: var(--ink);
     display: flex;
     flex-direction: column;
     background-color: var(--card);
@@ -57,78 +57,82 @@ const statusLabel = status === 'new' ? 'New' : status === 'forthcoming' ? 'Forth
     color: inherit;
     height: 100%;
   }
+  .guide-card--fg01 { --card-accent: #2A5BD0; --plate-bg: #dbe6f2; }
+  .guide-card--fg02 { --card-accent: #45A26A; --plate-bg: #12331f; }
+  .guide-card--fg03 { --card-accent: #1A2F66; --plate-bg: #ece4d0; }
 
-  /* Per-guide plate palettes (all on the ONE PALETTE, all AA on their plate) */
-  .guide-card--fg01 { --plate-bg: #2A5BD0; --plate-ink: #FAF6EC; --plate-tag: #CCDFF2; --card-accent: #2A5BD0; }
-  .guide-card--fg02 { --plate-bg: #163A24; --plate-ink: #FAF6EC; --plate-tag: #C5DE5F; --card-accent: #45A26A; }
-  .guide-card--fg03 { --plate-bg: #1A2F66; --plate-ink: #FAF6EC; --plate-tag: #F37E2A; --card-accent: #1A2F66; }
-
-  .guide-card-plate {
+  .guide-card-media {
     position: relative;
+    aspect-ratio: 16 / 10;
     background-color: var(--plate-bg);
-    color: var(--plate-ink);
-    padding: var(--space-6);
-    min-height: 168px;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    gap: var(--space-3);
+    overflow: hidden;
+    border-bottom: 3px solid var(--card-accent);
   }
-
-  .guide-card-title {
-    font-family: var(--font-heading);
-    font-weight: 900;
-    font-size: clamp(1.5rem, 3.5vw, 2rem);
-    line-height: 1.04;
-    letter-spacing: -0.01em;
-    text-transform: uppercase;
-    color: var(--plate-ink);
-    margin: 0;
+  .guide-card-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+    transition: transform var(--dur-3) var(--ease-out);
   }
+  .guide-card-media-empty { position: absolute; inset: 0; }
 
+  /* Status pill: cream so it stays legible over any map (light or dark); the
+     dot's shape carries status (filled New, ring Live, hollow Forthcoming). */
   .guide-card-status {
     position: absolute;
-    top: var(--space-4);
-    left: var(--space-6);
+    top: var(--space-3);
+    left: var(--space-3);
     display: inline-flex;
     align-items: center;
-    gap: 0.4em;
+    gap: 0.45em;
+    padding: 0.28rem 0.6rem;
+    background-color: var(--paper);
+    border: 1px solid var(--street-minor);
+    border-radius: 999px;
     font-family: var(--font-ui);
-    font-size: var(--text-xs);
+    font-size: 0.6875rem;
     font-weight: 700;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--plate-tag);
+    color: var(--ink);
   }
-
-  /* Shape carries status alongside colour: filled dot = New, ring = Live,
-     hollow dot = Forthcoming */
   .guide-card-status-dot {
     width: 0.5rem;
     height: 0.5rem;
     border-radius: 50%;
-    border: 1.5px solid currentColor;
-    background-color: currentColor;
+    border: 1.5px solid var(--card-accent);
+    background-color: var(--card-accent);
   }
   .guide-card-status--live .guide-card-status-dot { background-color: transparent; }
-  .guide-card-status--forthcoming .guide-card-status-dot { background-color: transparent; opacity: 0.6; }
+  .guide-card-status--forthcoming .guide-card-status-dot { background-color: transparent; border-color: var(--ink-3); }
 
-  .guide-card-meta {
+  .guide-card-body {
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
-    padding: var(--space-5) var(--space-6) var(--space-6);
-    border-top: 3px solid var(--card-accent);
+    padding: var(--space-5) var(--space-5) var(--space-6);
     flex: 1;
   }
 
   .guide-card-tag {
     font-family: var(--font-ui);
-    font-size: var(--text-xs);
+    font-size: 0.6875rem;
     font-weight: 700;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: var(--ink-3);
+    color: var(--card-accent);
+  }
+
+  .guide-card-title {
+    font-family: var(--font-heading);
+    font-size: clamp(1.75rem, 3.5vw, 2.25rem);
+    line-height: 0.98;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin: 0.1rem 0 0;
   }
 
   .guide-card-desc {
@@ -137,39 +141,31 @@ const statusLabel = status === 'new' ? 'New' : status === 'forthcoming' ? 'Forth
     line-height: 1.55;
     color: var(--ink-2);
     margin: 0;
-    max-width: 46ch;
   }
 
   .guide-card-cta {
     margin-top: auto;
     padding-top: var(--space-3);
     font-family: var(--font-ui);
-    font-size: var(--text-sm);
-    font-weight: 600;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
     color: var(--card-accent);
   }
 
-  /* States: only interactive cards react */
-  .guide-card:not(.guide-card--static) {
-    transition: border-color var(--dur-2) var(--ease-out);
-  }
-
+  a.guide-card { transition: border-color var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out); }
   @media (hover: hover) {
-    a.guide-card:hover {
-      border-color: var(--card-accent);
-    }
+    a.guide-card:hover { border-color: var(--card-accent); box-shadow: 0 6px 20px -10px rgba(39, 36, 29, 0.35); }
+    a.guide-card:hover .guide-card-media img { transform: scale(1.04); }
   }
+  a.guide-card:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-ring-offset); }
 
-  a.guide-card:focus-visible {
-    outline: var(--focus-ring);
-    outline-offset: var(--focus-ring-offset);
-  }
+  .guide-card--static { opacity: 0.92; }
+  .guide-card--static .guide-card-media { filter: saturate(0.6); }
 
-  .guide-card--static {
-    opacity: 0.9;
-  }
-  .guide-card--static .guide-card-plate {
-    /* Forthcoming: muted plate so live guides read as primary */
-    filter: saturate(0.55);
+  @media (prefers-reduced-motion: reduce) {
+    .guide-card-media img { transition: none; }
+    a.guide-card:hover .guide-card-media img { transform: none; }
   }
 </style>

@@ -51,10 +51,11 @@
   --text-4xl: 2.75rem;   /* 44px */
   --text-5xl: 3.75rem;   /* 60px */
 
-  /* Font families */
-  --font-heading: "Archivo Variable", system-ui, sans-serif;
+  /* Font families. Atlas voice = Bebas display + Space Mono interface/label +
+     Source Serif reading body. (--font-display / --font-mono defined below.) */
+  --font-heading: "Bebas Neue", "Archivo Variable", system-ui, sans-serif;
   --font-body: "Source Serif 4 Variable", Georgia, serif;
-  --font-ui: "Archivo Variable", system-ui, sans-serif;
+  --font-ui: "Space Mono", ui-monospace, "SFMono-Regular", monospace;
 
   /* Focus ring */
   --focus-ring: 2px solid var(--ink);
