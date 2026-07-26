@@ -2,6 +2,7 @@ import csv
 import gzip
 import importlib.util
 import json
+import re
 import tempfile
 import unittest
 import zipfile
@@ -17,6 +18,7 @@ from shapely.geometry import LineString, Point
 
 
 SCRIPT_PATH = Path(__file__).parents[1] / "22_build_washroom_analysis.py"
+SAFE_PLACE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 
 
 @dataclass(frozen=True)
@@ -665,6 +667,375 @@ class Phase2BuildContractTests(unittest.TestCase):
                         self.fixture.public,
                         {"secret-trip-2200-1"},
                     )
+
+    def test_publication_maps_unsafe_internal_place_ids_consistently(self):
+        # Protected break: an audited internal source ID containing spaces or
+        # pipes leaks into browser state, URLs, or reach-sidecar joins.
+        builder = load_builder()
+        unsafe_id = "crem:City Hall|100 Queen Street West"
+        expected_public_id = (
+            "crem:"
+            "862d2f9be72a0f3d9042bd235a5091dd39bd1db64301865c7fa98a17bb128bee"
+        )
+        facilities_path = self.fixture.proof / "facilities.csv"
+        with facilities_path.open(encoding="utf-8") as source:
+            facilities = list(csv.DictReader(source))
+        facilities[0]["facility_id"] = unsafe_id
+        write_csv(facilities_path, list(facilities[0]), facilities)
+        states_path = self.fixture.proof / "facility-states.csv"
+        with states_path.open(encoding="utf-8") as source:
+            states = list(csv.DictReader(source))
+        for state in states:
+            if state["facility_id"] == "library:late":
+                state["facility_id"] = unsafe_id
+        write_csv(states_path, list(states[0]), states)
+
+        self.fixture.build(builder)
+
+        facility_features = json.loads(
+            (self.fixture.public / "facilities.geojson").read_text()
+        )["features"]
+        published = next(
+            feature
+            for feature in facility_features
+            if feature["properties"]["name"] == "Late Library"
+        )
+        self.assertEqual(published["id"], expected_public_id)
+        self.assertEqual(published["properties"]["id"], expected_public_id)
+        reach_features = json.loads(
+            (self.fixture.public / "reach-facilities.geojson").read_text()
+        )["features"]
+        published_reach = [
+            feature
+            for feature in reach_features
+            if feature["properties"]["placeId"] == expected_public_id
+        ]
+        self.assertEqual(len(published_reach), 3)
+        self.assertEqual(
+            {feature["properties"]["walk"] for feature in published_reach},
+            {300, 400, 500},
+        )
+        self.assertEqual(
+            {feature["id"] for feature in published_reach},
+            {
+                f"reach:{expected_public_id}:300",
+                f"reach:{expected_public_id}:400",
+                f"reach:{expected_public_id}:500",
+            },
+        )
+        for filename in (
+            "facilities.geojson",
+            "interventions.geojson",
+            "reach-facilities.geojson",
+            "reach-promoted.geojson",
+        ):
+            features = json.loads(
+                (self.fixture.public / filename).read_text()
+            )["features"]
+            for feature in features:
+                self.assertRegex(str(feature["id"]), SAFE_PLACE_ID)
+                for key in ("id", "placeId", "facilityId"):
+                    value = feature["properties"].get(key)
+                    if value is not None:
+                        self.assertRegex(str(value), SAFE_PLACE_ID)
+
+    def test_public_intervention_maps_candidate_and_facility_identities(self):
+        # Protected break: an audited intervention maps its feature identity
+        # but leaks the unsafe source facility identity through facilityId.
+        builder = load_builder()
+        internal_facility_id = "crem:City Hall|100 Queen Street West"
+        internal_candidate_id = (
+            "extend-hours:crem:City Hall|100 Queen Street West"
+        )
+        public_facility_id = (
+            "crem:"
+            "862d2f9be72a0f3d9042bd235a5091dd39bd1db64301865c7fa98a17bb128bee"
+        )
+        public_candidate_id = (
+            "extend-hours:"
+            "27166b7126a34f28115200ee758383bb421e7c045fb50ad8d4058f2fe81aa5c4"
+        )
+        candidate = SimpleNamespace(
+            candidate_id=internal_candidate_id,
+            candidate_class="extend_hours",
+            source_stop_id=None,
+            facility_id=internal_facility_id,
+            lon=-79.38,
+            lat=43.65,
+            audit_status="valid",
+            stability="robust",
+        )
+        projection = {
+            "candidate_id": internal_candidate_id,
+            "candidate_class": "extend_hours",
+            "verification_kind": None,
+            "name": "City Hall extension",
+            "facility_id": internal_facility_id,
+            "facility": {
+                "access_condition": "unrestricted",
+                "hours": "Mon-Fri 9:00am-5:00pm",
+                "closure_category": "none",
+                "accessibility": "accessible",
+                "source_url": "https://example.test/city-hall",
+            },
+            "audit_status": "valid",
+            "stability": "robust",
+            "material_gain": True,
+            "primary_rank": 1,
+            "primary_metrics": {},
+            "sensitivity_ranks": [],
+        }
+        engine = SimpleNamespace(
+            facility_snaps={
+                internal_facility_id: SimpleNamespace(
+                    node=(0.0, 0.0),
+                    offset_metres=0.0,
+                )
+            }
+        )
+        public_place_ids = {
+            internal_facility_id: public_facility_id,
+            internal_candidate_id: public_candidate_id,
+        }
+
+        with (
+            patch.object(
+                builder,
+                "candidate_public_projection",
+                return_value=projection,
+            ),
+            patch.object(builder, "_query_cells", return_value=[]),
+        ):
+            features, _places = builder._public_interventions(
+                (candidate,),
+                engine,
+                "2026-07-21",
+                public_place_ids,
+            )
+
+        self.assertEqual(features[0]["id"], public_candidate_id)
+        self.assertEqual(
+            features[0]["properties"]["id"],
+            public_candidate_id,
+        )
+        self.assertEqual(
+            features[0]["properties"]["facilityId"],
+            public_facility_id,
+        )
+        self.assertRegex(features[0]["id"], SAFE_PLACE_ID)
+        self.assertRegex(
+            features[0]["properties"]["facilityId"],
+            SAFE_PLACE_ID,
+        )
+
+    def test_publication_rejects_a_generated_place_id_collision(self):
+        # Protected break: two different internal identities publish as one
+        # browser identity and make selection and reach joins ambiguous.
+        builder = load_builder()
+        unsafe_id = "crem:City Hall|100 Queen Street West"
+        colliding_safe_id = (
+            "crem:"
+            "862d2f9be72a0f3d9042bd235a5091dd39bd1db64301865c7fa98a17bb128bee"
+        )
+        facilities_path = self.fixture.proof / "facilities.csv"
+        with facilities_path.open(encoding="utf-8") as source:
+            facilities = list(csv.DictReader(source))
+        facilities[0]["facility_id"] = unsafe_id
+        facilities.append(
+            {
+                **facilities[0],
+                "facility_id": colliding_safe_id,
+                "name": "Collision fixture",
+                "address": "2 Test Street",
+                "lon": "-79.3980",
+                "cluster_id": "3",
+            }
+        )
+        write_csv(facilities_path, list(facilities[0]), facilities)
+        states_path = self.fixture.proof / "facility-states.csv"
+        with states_path.open(encoding="utf-8") as source:
+            states = list(csv.DictReader(source))
+        for state in states:
+            if state["facility_id"] == "library:late":
+                state["facility_id"] = unsafe_id
+        states.extend(
+            {
+                "facility_id": colliding_safe_id,
+                "snapshot": snapshot,
+                "state": "open",
+            }
+            for snapshot in ("1200", "2030", "2200", "0030")
+        )
+        write_csv(states_path, list(states[0]), states)
+
+        with self.assertRaisesRegex(
+            builder.Phase2BuildError,
+            r"FG03_PUBLIC_ID_COLLISION.*crem:City Hall.*crem:862d",
+        ):
+            self.fixture.build(builder)
+
+    def test_reach_ids_hash_only_when_a_safe_place_id_would_overflow(self):
+        # Protected break: a valid 128-character place ID becomes an invalid
+        # feature ID after the readable reach prefix and walk suffix are added.
+        builder = load_builder()
+        long_safe_id = "x" * 128
+        reach_digest = (
+            "24da1b81d0b16df6428eee73c69fcb2a"
+            "93c76bc6df706f0c6670fe6bfe800464"
+        )
+        facilities_path = self.fixture.proof / "facilities.csv"
+        with facilities_path.open(encoding="utf-8") as source:
+            facilities = list(csv.DictReader(source))
+        facilities[0]["facility_id"] = long_safe_id
+        write_csv(facilities_path, list(facilities[0]), facilities)
+        states_path = self.fixture.proof / "facility-states.csv"
+        with states_path.open(encoding="utf-8") as source:
+            states = list(csv.DictReader(source))
+        for state in states:
+            if state["facility_id"] == "library:late":
+                state["facility_id"] = long_safe_id
+        write_csv(states_path, list(states[0]), states)
+
+        try:
+            self.fixture.build(builder)
+        except builder.Phase2BuildError as error:
+            self.fail(f"a valid place ID must remain publishable: {error}")
+
+        facilities = json.loads(
+            (self.fixture.public / "facilities.geojson").read_text()
+        )["features"]
+        published = next(
+            feature
+            for feature in facilities
+            if feature["properties"]["name"] == "Late Library"
+        )
+        self.assertEqual(published["id"], long_safe_id)
+        reaches = json.loads(
+            (self.fixture.public / "reach-facilities.geojson").read_text()
+        )["features"]
+        published_reaches = [
+            feature
+            for feature in reaches
+            if feature["properties"]["placeId"] == long_safe_id
+        ]
+        self.assertEqual(
+            {feature["id"] for feature in published_reaches},
+            {
+                f"reach:{reach_digest}:300",
+                f"reach:{reach_digest}:400",
+                f"reach:{reach_digest}:500",
+            },
+        )
+        self.assertEqual(
+            {feature["properties"]["placeId"] for feature in published_reaches},
+            {long_safe_id},
+        )
+        for feature in published_reaches:
+            self.assertRegex(feature["id"], SAFE_PLACE_ID)
+
+    def test_publication_rejects_a_hashed_reach_id_collision(self):
+        # Protected break: a long place ID's hashed reach ID collides with the
+        # readable reach ID of a different, already-safe place.
+        builder = load_builder()
+        long_safe_id = "x" * 128
+        colliding_safe_id = (
+            "24da1b81d0b16df6428eee73c69fcb2a"
+            "93c76bc6df706f0c6670fe6bfe800464"
+        )
+        facilities_path = self.fixture.proof / "facilities.csv"
+        with facilities_path.open(encoding="utf-8") as source:
+            facilities = list(csv.DictReader(source))
+        facilities[0]["facility_id"] = long_safe_id
+        facilities.append(
+            {
+                **facilities[0],
+                "facility_id": colliding_safe_id,
+                "name": "Reach collision fixture",
+                "address": "2 Test Street",
+                "lon": "-79.3980",
+                "cluster_id": "3",
+            }
+        )
+        write_csv(facilities_path, list(facilities[0]), facilities)
+        states_path = self.fixture.proof / "facility-states.csv"
+        with states_path.open(encoding="utf-8") as source:
+            states = list(csv.DictReader(source))
+        for state in states:
+            if state["facility_id"] == "library:late":
+                state["facility_id"] = long_safe_id
+        states.extend(
+            {
+                "facility_id": colliding_safe_id,
+                "snapshot": snapshot,
+                "state": "open",
+            }
+            for snapshot in ("1200", "2030", "2200", "0030")
+        )
+        write_csv(states_path, list(states[0]), states)
+
+        with self.assertRaisesRegex(
+            builder.Phase2BuildError,
+            r"FG03_PUBLIC_ID_COLLISION.*reach:",
+        ):
+            self.fixture.build(builder)
+
+    def test_public_validator_rejects_feature_and_property_id_drift(self):
+        # Protected break: the browser selects a feature by one ID while its
+        # details and reach lookup advertise another.
+        builder = load_builder()
+        self.fixture.build(builder)
+        facilities_path = self.fixture.public / "facilities.geojson"
+        facilities = json.loads(facilities_path.read_text())
+        facilities["features"][0]["id"] = "facility:mismatched"
+        facilities_path.write_text(json.dumps(facilities), encoding="utf-8")
+
+        with self.assertRaisesRegex(
+            builder.Phase2BuildError,
+            r"FG03_CONTRACT_INVALID.*feature\.id.*properties\.id",
+        ):
+            builder._validate_public(
+                self.fixture.public,
+                {"secret-trip-2200-1"},
+            )
+
+    def test_public_validator_rejects_reach_identity_drift(self):
+        # Protected break: a sidecar feature can advertise the correct place
+        # but carry an unrelated feature ID, breaking map source updates.
+        builder = load_builder()
+        self.fixture.build(builder)
+        reaches_path = self.fixture.public / "reach-facilities.geojson"
+        reaches = json.loads(reaches_path.read_text())
+        reaches["features"][0]["id"] = "reach:mismatched:300"
+        reaches_path.write_text(json.dumps(reaches), encoding="utf-8")
+
+        with self.assertRaisesRegex(
+            builder.Phase2BuildError,
+            r"FG03_CONTRACT_INVALID.*reach feature.*placeId.*walk",
+        ):
+            builder._validate_public(
+                self.fixture.public,
+                {"secret-trip-2200-1"},
+            )
+
+    def test_public_validator_rejects_ids_outside_exact_safe_contract(self):
+        # Protected break: a future serializer adds a whitespace, slash, pipe,
+        # or overlong ID that Task 5 correctly refuses to load from the URL.
+        builder = load_builder()
+        self.fixture.build(builder)
+        facilities_path = self.fixture.public / "facilities.geojson"
+        facilities = json.loads(facilities_path.read_text())
+        facilities["features"][0]["id"] = "unsafe place|one"
+        facilities["features"][0]["properties"]["id"] = "unsafe place|one"
+        facilities_path.write_text(json.dumps(facilities), encoding="utf-8")
+
+        with self.assertRaisesRegex(
+            builder.Phase2BuildError,
+            r"FG03_CONTRACT_INVALID.*exact public place ID contract",
+        ):
+            builder._validate_public(
+                self.fixture.public,
+                {"secret-trip-2200-1"},
+            )
 
     def test_fixed_clock_build_is_deterministic_and_satisfies_public_contract(self):
         # Protected break: timestamps, unstable iteration, schema drift, leaked

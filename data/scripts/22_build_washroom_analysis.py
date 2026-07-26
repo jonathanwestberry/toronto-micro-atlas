@@ -87,6 +87,10 @@ MAX_SNAP_METRES = 200.0
 MAX_STOP_SNAP_METRES = 500.0
 PUBLIC_SIZE_LIMIT = 1_500_000
 ANALYSIS_FINGERPRINT_VERSION = 2
+PUBLIC_PLACE_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+PUBLIC_ID_NAMESPACE_PATTERN = re.compile(
+    r"^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$"
+)
 PUBLIC_FILENAMES = (
     "manifest.json",
     "facilities.geojson",
@@ -171,6 +175,40 @@ def _analysis_fingerprint(
         ),
     }
     return hashlib.sha256(_json_bytes(payload)).hexdigest()
+
+
+def _public_place_id(internal_id: str) -> str:
+    if PUBLIC_PLACE_ID_PATTERN.fullmatch(internal_id):
+        return internal_id
+    namespace, separator, _tail = internal_id.partition(":")
+    if not separator or not PUBLIC_ID_NAMESPACE_PATTERN.fullmatch(namespace):
+        namespace = "place"
+    digest = hashlib.sha256(internal_id.encode("utf-8")).hexdigest()
+    return f"{namespace}:{digest}"
+
+
+def _public_place_id_map(internal_ids: Iterable[str]) -> dict[str, str]:
+    mapping = {}
+    internal_by_public = {}
+    for internal_id in sorted(set(internal_ids)):
+        public_id = _public_place_id(internal_id)
+        previous = internal_by_public.get(public_id)
+        if previous is not None and previous != internal_id:
+            raise _fail(
+                "FG03_PUBLIC_ID_COLLISION",
+                f"internal IDs {previous!r} and {internal_id!r} publish as {public_id!r}",
+            )
+        mapping[internal_id] = public_id
+        internal_by_public[public_id] = internal_id
+    return mapping
+
+
+def _public_reach_id(public_place_id: str, walk: int) -> str:
+    readable_id = f"reach:{public_place_id}:{walk}"
+    if PUBLIC_PLACE_ID_PATTERN.fullmatch(readable_id):
+        return readable_id
+    digest = hashlib.sha256(public_place_id.encode("utf-8")).hexdigest()
+    return f"reach:{digest}:{walk}"
 
 
 def _write_json(path: Path, value) -> None:
@@ -1444,9 +1482,11 @@ def _to_lonlat_geometry(geometry):
 def _reach_features(
     engine: AnalysisEngine,
     places: Iterable[tuple[str, tuple[float, float], float, str]],
+    public_place_ids: dict[str, str],
 ):
     features = []
     for place_id, node, offset, access_condition in sorted(places):
+        public_place_id = public_place_ids[place_id]
         for walk in WALKS:
             geometry = _to_lonlat_geometry(
                 _reach_geometry(engine, node, offset, walk)
@@ -1454,11 +1494,11 @@ def _reach_features(
             features.append(
                 {
                     "type": "Feature",
-                    "id": f"reach:{place_id}:{walk}",
+                    "id": _public_reach_id(public_place_id, walk),
                     "geometry": geometry.__geo_interface__,
                     "properties": {
                         "schemaVersion": 1,
-                        "placeId": place_id,
+                        "placeId": public_place_id,
                         "walk": walk,
                         "accessCondition": access_condition,
                     },
@@ -1470,6 +1510,7 @@ def _reach_features(
 def _public_facilities(
     facilities,
     snapshots,
+    public_place_ids,
 ):
     states = {
         (item.facility_id, item.snapshot_id): item
@@ -1477,17 +1518,18 @@ def _public_facilities(
     }
     features = []
     for facility in sorted(facilities, key=lambda item: item.facility_id):
+        public_place_id = public_place_ids[facility.facility_id]
         features.append(
             {
                 "type": "Feature",
-                "id": facility.facility_id,
+                "id": public_place_id,
                 "geometry": {
                     "type": "Point",
                     "coordinates": [facility.lon, facility.lat],
                 },
                 "properties": {
                     "schemaVersion": 1,
-                    "id": facility.facility_id,
+                    "id": public_place_id,
                     "name": facility.name,
                     "source": facility.source,
                     "address": facility.address,
@@ -1595,13 +1637,19 @@ def _public_stop_features(
     return features, gaps
 
 
-def _public_interventions(candidates, engine, snapshot_date):
+def _public_interventions(
+    candidates,
+    engine,
+    snapshot_date,
+    public_place_ids,
+):
     features = []
     places = []
     for candidate in sorted(candidates, key=lambda item: item.candidate_id):
         if candidate.audit_status != "valid" or candidate.stability != "robust":
             continue
         projection = candidate_public_projection(candidate)
+        public_place_id = public_place_ids[projection["candidate_id"]]
         if candidate.candidate_class == "new_facility_zone":
             snap = engine.stop_snaps[candidate.source_stop_id]
             node = snap.node
@@ -1622,12 +1670,16 @@ def _public_interventions(candidates, engine, snapshot_date):
             source_url = projection["facility"]["source_url"]
         properties = {
             "schemaVersion": 1,
-            "id": projection["candidate_id"],
+            "id": public_place_id,
             "action": PUBLIC_ACTION_BY_CLASS[projection["candidate_class"]],
             "actionClass": projection["candidate_class"],
             "verificationSubtype": projection["verification_kind"],
             "name": projection["name"],
-            "facilityId": projection["facility_id"],
+            "facilityId": (
+                public_place_ids[projection["facility_id"]]
+                if projection["facility_id"] is not None
+                else None
+            ),
             "accessCondition": access,
             "hours": hours,
             "closureCategory": closure,
@@ -1645,7 +1697,7 @@ def _public_interventions(candidates, engine, snapshot_date):
         features.append(
             {
                 "type": "Feature",
-                "id": candidate.candidate_id,
+                "id": public_place_id,
                 "geometry": {
                     "type": "Point",
                     "coordinates": [candidate.lon, candidate.lat],
@@ -2462,13 +2514,55 @@ def _validate_public(staging: Path, raw_trip_ids: set[str]):
                 "FG03_CONTRACT_INVALID",
                 f"manifest URL {url!r} is not a resolvable dated root-relative path",
             )
-    facility_data = json.loads((staging / "facilities.geojson").read_text())
-    intervention_data = json.loads((staging / "interventions.geojson").read_text())
+    geojson = {
+        filename: json.loads((staging / filename).read_text())
+        for filename in PUBLIC_FILENAMES
+        if filename.endswith(".geojson")
+    }
+
+    def require_public_id(value, context):
+        if (
+            not isinstance(value, str)
+            or not PUBLIC_PLACE_ID_PATTERN.fullmatch(value)
+        ):
+            raise _fail(
+                "FG03_CONTRACT_INVALID",
+                f"{context} {value!r} does not match the exact public place ID contract",
+            )
+
+    for filename, collection in geojson.items():
+        for item in collection["features"]:
+            feature_id = item.get("id")
+            require_public_id(feature_id, f"{filename} feature.id")
+            property_id = item.get("properties", {}).get("id")
+            if property_id is not None:
+                require_public_id(
+                    property_id,
+                    f"{filename} properties.id",
+                )
+                if feature_id != property_id:
+                    raise _fail(
+                        "FG03_CONTRACT_INVALID",
+                        f"{filename} feature.id {feature_id!r} does not match properties.id {property_id!r}",
+                    )
+            for key in ("placeId", "facilityId"):
+                value = item.get("properties", {}).get(key)
+                if value is not None:
+                    require_public_id(
+                        value,
+                        f"{filename} properties.{key}",
+                    )
+
+    facility_data = geojson["facilities.geojson"]
+    intervention_data = geojson["interventions.geojson"]
     facility_ids = [item["properties"]["id"] for item in facility_data["features"]]
     intervention_ids = [
         item["properties"]["id"] for item in intervention_data["features"]
     ]
-    if len(facility_ids) != len(set(facility_ids)) or len(intervention_ids) != len(set(intervention_ids)):
+    if (
+        len(facility_ids) != len(set(facility_ids))
+        or len(intervention_ids) != len(set(intervention_ids))
+    ):
         raise _fail(
             "FG03_CONTRACT_INVALID",
             "public place IDs are not unique within their files",
@@ -2478,22 +2572,72 @@ def _validate_public(staging: Path, raw_trip_ids: set[str]):
             "FG03_CONTRACT_INVALID",
             "facility and intervention place IDs overlap",
         )
+    facility_id_set = set(facility_ids)
+    for item in intervention_data["features"]:
+        referenced_id = item["properties"].get("facilityId")
+        if referenced_id is not None and referenced_id not in facility_id_set:
+            raise _fail(
+                "FG03_CONTRACT_INVALID",
+                f"intervention {item['id']!r} references unknown facilityId {referenced_id!r}",
+            )
     for item in facility_data["features"]:
         if item["properties"]["accessCondition"] not in {"unrestricted", "fare_paid"}:
             raise _fail(
                 "FG03_CONTRACT_INVALID",
                 f"facility {item['id']} has an unsupported access condition",
             )
-    advertised = {
-        item["properties"]["placeId"]
-        for filename in ("reach-facilities.geojson", "reach-promoted.geojson")
-        for item in json.loads((staging / filename).read_text())["features"]
-    }
-    expected = set(facility_ids).union(intervention_ids)
-    if advertised != expected:
+
+    def validate_reach_sidecar(filename, expected_place_ids):
+        observed = set()
+        identity_by_feature_id = {}
+        for item in geojson[filename]["features"]:
+            place_id = item["properties"].get("placeId")
+            walk = item["properties"].get("walk")
+            expected_feature_id = _public_reach_id(place_id, walk)
+            if item["id"] != expected_feature_id:
+                raise _fail(
+                    "FG03_CONTRACT_INVALID",
+                    f"{filename} reach feature {item['id']!r} does not match its placeId {place_id!r} and walk {walk!r}",
+                )
+            key = (place_id, walk)
+            previous = identity_by_feature_id.get(item["id"])
+            if previous is not None and previous != key:
+                raise _fail(
+                    "FG03_PUBLIC_ID_COLLISION",
+                    f"{filename} reach identities {previous!r} and {key!r} publish as {item['id']!r}",
+                )
+            identity_by_feature_id[item["id"]] = key
+            if key in observed:
+                raise _fail(
+                    "FG03_CONTRACT_INVALID",
+                    f"{filename} repeats reach identity {key!r}",
+                )
+            observed.add(key)
+        expected = {
+            (place_id, walk)
+            for place_id in expected_place_ids
+            for walk in WALKS
+        }
+        if observed != expected:
+            raise _fail(
+                "FG03_CONTRACT_INVALID",
+                f"{filename} advertises {len(observed)} place and walk pairs, expected {len(expected)}",
+            )
+        return set(identity_by_feature_id)
+
+    facility_reach_ids = validate_reach_sidecar(
+        "reach-facilities.geojson",
+        set(facility_ids),
+    )
+    promoted_reach_ids = validate_reach_sidecar(
+        "reach-promoted.geojson",
+        set(intervention_ids),
+    )
+    overlap = facility_reach_ids.intersection(promoted_reach_ids)
+    if overlap:
         raise _fail(
-            "FG03_CONTRACT_INVALID",
-            f"reach sidecars advertise {len(advertised)} places, expected {len(expected)}",
+            "FG03_PUBLIC_ID_COLLISION",
+            f"facility and intervention reach feature IDs overlap at {sorted(overlap)[0]!r}",
         )
     return sizes
 
@@ -2709,9 +2853,22 @@ def build_phase2(
         )
     )
     try:
+        published_candidate_ids = [
+            candidate.candidate_id
+            for candidate in candidates
+            if candidate.audit_status == "valid"
+            and candidate.stability == "robust"
+        ]
+        public_place_ids = _public_place_id_map(
+            [
+                *(facility.facility_id for facility in facilities),
+                *published_candidate_ids,
+            ]
+        )
         facility_features = _public_facilities(
             facilities,
             facility_snapshots,
+            public_place_ids,
         )
         _write_json(
             public_staging / "facilities.geojson",
@@ -2768,6 +2925,7 @@ def build_phase2(
             candidates,
             engine,
             snapshot_day,
+            public_place_ids,
         )
         _write_json(
             public_staging / "interventions.geojson",
@@ -2784,11 +2942,23 @@ def build_phase2(
         ]
         _write_json(
             public_staging / "reach-facilities.geojson",
-            _feature_collection(_reach_features(engine, facility_places)),
+            _feature_collection(
+                _reach_features(
+                    engine,
+                    facility_places,
+                    public_place_ids,
+                )
+            ),
         )
         _write_json(
             public_staging / "reach-promoted.geojson",
-            _feature_collection(_reach_features(engine, promoted_places)),
+            _feature_collection(
+                _reach_features(
+                    engine,
+                    promoted_places,
+                    public_place_ids,
+                )
+            ),
         )
         root_url = f"/data/fg03/{snapshot_date}"
         manifest = {
