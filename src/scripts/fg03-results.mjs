@@ -8,9 +8,18 @@ export function toDataAccessMode(access) {
   return null;
 }
 
+function foldCase(value) {
+  return value
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/\u00df/gu, 'ss')
+    .replace(/\u03c2/gu, '\u03c3')
+    .normalize('NFKC');
+}
+
 function normalizeText(value) {
   return typeof value === 'string'
-    ? value.normalize('NFKC').toLocaleLowerCase('en-CA').trim().replace(/\s+/gu, ' ')
+    ? foldCase(value).trim().replace(/\s+/gu, ' ')
     : '';
 }
 
@@ -29,44 +38,72 @@ function safeProperties(feature) {
     : null;
 }
 
+function snapshotFeature(feature) {
+  const properties = safeProperties(feature);
+  return {
+    feature,
+    hasProperties: properties !== null,
+    accessCondition: safeRead(properties, 'accessCondition'),
+    action: safeRead(properties, 'action'),
+    actionClass: safeRead(properties, 'actionClass'),
+    address: safeRead(properties, 'address'),
+    facilityId: safeRead(properties, 'facilityId'),
+    id: safeRead(properties, 'id'),
+    materialGain: safeRead(properties, 'materialGain'),
+    name: safeRead(properties, 'name'),
+    primaryRank: safeRead(properties, 'primaryRank'),
+    queryCells: safeRead(properties, 'queryCells'),
+    source: safeRead(properties, 'source'),
+    sourceLabel: safeRead(properties, 'sourceLabel'),
+    sourceUrl: safeRead(properties, 'sourceUrl'),
+    stateByTime: safeRead(properties, 'stateByTime'),
+    verificationSubtype: safeRead(properties, 'verificationSubtype'),
+  };
+}
+
+function snapshotCollection(collection, required = false) {
+  const features = safeRead(collection, 'features');
+  if (!Array.isArray(features)) {
+    if (required) {
+      throw new TypeError('FG03 result data must contain a features array');
+    }
+    return [];
+  }
+  return features.map(snapshotFeature);
+}
+
 function compareText(left, right) {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function compareFacilities(left, right) {
   const nameOrder = compareText(
-    normalizeText(left?.properties?.name),
-    normalizeText(right?.properties?.name),
+    normalizeText(left.name),
+    normalizeText(right.name),
   );
   if (nameOrder !== 0) {
     return nameOrder;
   }
   return compareText(
-    String(left?.properties?.id ?? ''),
-    String(right?.properties?.id ?? ''),
+    String(left.id ?? ''),
+    String(right.id ?? ''),
   );
 }
 
-export function filterOpenFacilities(collection, state) {
-  const sourceFeatures = safeRead(collection, 'features');
-  const features = Array.isArray(sourceFeatures)
-    ? sourceFeatures
-    : [];
-  const time = safeRead(state, 'time');
-  const access = safeRead(state, 'access');
-  return features
+function filterOpenSnapshots(snapshots, state) {
+  return snapshots
     .filter((feature) => {
-      const properties = safeProperties(feature);
-      const accessCondition = safeRead(properties, 'accessCondition');
-      const accessAllowed = access === 'public'
-        ? accessCondition === 'unrestricted'
-        : access === 'rider'
+      const accessAllowed = state.access === 'public'
+        ? feature.accessCondition === 'unrestricted'
+        : state.access === 'rider'
           && (
-            accessCondition === 'unrestricted'
-            || accessCondition === 'fare_paid'
+            feature.accessCondition === 'unrestricted'
+            || feature.accessCondition === 'fare_paid'
           );
-      const stateByTime = safeRead(properties, 'stateByTime');
-      const observedState = safeRead(safeRead(stateByTime, time), 'observed');
+      const observedState = safeRead(
+        safeRead(feature.stateByTime, state.time),
+        'observed',
+      );
       return (
         accessAllowed
         && observedState === 'open'
@@ -75,8 +112,21 @@ export function filterOpenFacilities(collection, state) {
     .sort(compareFacilities);
 }
 
-export function getAccessDisclosure(feature) {
-  const condition = safeRead(safeProperties(feature), 'accessCondition');
+function snapshotOpenState(state) {
+  return {
+    access: safeRead(state, 'access'),
+    time: safeRead(state, 'time'),
+  };
+}
+
+export function filterOpenFacilities(collection, state) {
+  return filterOpenSnapshots(
+    snapshotCollection(collection),
+    snapshotOpenState(state),
+  ).map((snapshot) => snapshot.feature);
+}
+
+function accessDisclosure(condition) {
   if (condition === 'fare_paid') {
     return {
       condition,
@@ -92,6 +142,10 @@ export function getAccessDisclosure(feature) {
     };
   }
   return null;
+}
+
+export function getAccessDisclosure(feature) {
+  return accessDisclosure(snapshotFeature(feature).accessCondition);
 }
 
 function hasPositiveGain(cell) {
@@ -113,22 +167,18 @@ function snapshotInterventionState(state) {
   };
 }
 
-function matchingQueryCell(feature, state) {
-  const properties = safeProperties(feature);
-  const action = safeRead(properties, 'action');
-  const materialGain = safeRead(properties, 'materialGain');
-  const queryCells = safeRead(properties, 'queryCells');
+function matchingQueryCell(snapshot, state) {
   const dataAccess = toDataAccessMode(state.access);
   if (
-    action !== state.action
-    || materialGain !== true
+    snapshot.action !== state.action
+    || snapshot.materialGain !== true
     || dataAccess === null
-    || !Array.isArray(queryCells)
+    || !Array.isArray(snapshot.queryCells)
   ) {
     return null;
   }
 
-  const matchingCells = queryCells.filter(
+  const matchingCells = snapshot.queryCells.filter(
     (candidate) => (
       safeRead(candidate, 'time') === state.time
       && safeRead(candidate, 'access') === dataAccess
@@ -145,40 +195,41 @@ function matchingQueryCell(feature, state) {
 }
 
 export function getMatchingQueryCell(feature, state) {
-  return matchingQueryCell(feature, snapshotInterventionState(state));
+  return matchingQueryCell(
+    snapshotFeature(feature),
+    snapshotInterventionState(state),
+  );
 }
 
 export function filterInterventions(collection, state) {
-  const sourceFeatures = safeRead(collection, 'features');
-  const features = Array.isArray(sourceFeatures)
-    ? sourceFeatures
-    : [];
+  const snapshots = snapshotCollection(collection);
   const snapshot = snapshotInterventionState(state);
-  const matching = features.filter(
+  const matching = snapshots.filter(
     (feature) => matchingQueryCell(feature, snapshot) !== null,
   );
-  return groupRankedInterventions(matching).flatMap((group) => group.items);
+  return groupRankedSnapshots(matching).flatMap(
+    (group) => group.snapshots.map((item) => item.feature),
+  );
 }
 
-function interventionGroupId(feature) {
-  const properties = feature?.properties;
-  if (properties?.action === 'verify') {
-    if (properties.verificationSubtype === 'hours') {
+function interventionGroupId(snapshot) {
+  if (snapshot.action === 'verify') {
+    if (snapshot.verificationSubtype === 'hours') {
       return 'verify-hours';
     }
-    if (properties.verificationSubtype === 'accessibility') {
+    if (snapshot.verificationSubtype === 'accessibility') {
       return 'verify-accessibility';
     }
     return 'verify-information';
   }
-  return typeof properties?.actionClass === 'string'
-    ? properties.actionClass
+  return typeof snapshot.actionClass === 'string'
+    ? snapshot.actionClass
     : 'unknown';
 }
 
 function compareInterventionRank(left, right) {
-  const leftRank = left?.properties?.primaryRank;
-  const rightRank = right?.properties?.primaryRank;
+  const leftRank = left.primaryRank;
+  const rightRank = right.primaryRank;
   const safeLeftRank = typeof leftRank === 'number' && Number.isFinite(leftRank)
     ? leftRank
     : Number.POSITIVE_INFINITY;
@@ -189,8 +240,8 @@ function compareInterventionRank(left, right) {
     return safeLeftRank - safeRightRank;
   }
   return compareText(
-    String(left?.properties?.id ?? ''),
-    String(right?.properties?.id ?? ''),
+    String(left.id ?? ''),
+    String(right.id ?? ''),
   );
 }
 
@@ -213,25 +264,21 @@ const SOURCE_LABELS = Object.freeze({
 });
 const SAFE_RESULT_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 
-function sourceLabelFromProperties(properties) {
-  const sourceLabel = safeRead(properties, 'sourceLabel');
-  if (typeof sourceLabel === 'string') {
-    return sourceLabel;
+function sourceLabelFromSnapshot(snapshot) {
+  if (typeof snapshot.sourceLabel === 'string') {
+    return snapshot.sourceLabel;
   }
 
-  const rawSource = safeRead(properties, 'source');
-  let source = typeof rawSource === 'string'
-    ? rawSource
+  let source = typeof snapshot.source === 'string'
+    ? snapshot.source
     : null;
-  const facilityId = safeRead(properties, 'facilityId');
-  if (source === null && typeof facilityId === 'string') {
-    [source] = facilityId.split(':', 1);
+  if (source === null && typeof snapshot.facilityId === 'string') {
+    [source] = snapshot.facilityId.split(':', 1);
   }
-  const sourceUrl = safeRead(properties, 'sourceUrl');
   if (
     source === null
-    && typeof sourceUrl === 'string'
-    && /^https:\/\/(?:www\.)?ttc\.ca(?:\/|$)/i.test(sourceUrl)
+    && typeof snapshot.sourceUrl === 'string'
+    && /^https:\/\/(?:www\.)?ttc\.ca(?:\/|$)/i.test(snapshot.sourceUrl)
   ) {
     source = 'ttc';
   }
@@ -241,20 +288,19 @@ function sourceLabelFromProperties(properties) {
 }
 
 export function getSourceLabel(feature) {
-  return sourceLabelFromProperties(safeProperties(feature));
+  return sourceLabelFromSnapshot(snapshotFeature(feature));
 }
 
-function actionLabelFromProperties(properties) {
-  if (properties === null) {
+function actionLabelFromSnapshot(snapshot) {
+  if (!snapshot.hasProperties) {
     return '';
   }
-  const action = safeRead(properties, 'action') ?? 'open';
-  const verificationSubtype = safeRead(properties, 'verificationSubtype');
+  const action = snapshot.action ?? 'open';
   if (action === 'verify') {
-    if (verificationSubtype === 'hours') {
+    if (snapshot.verificationSubtype === 'hours') {
       return 'Verify hours';
     }
-    if (verificationSubtype === 'accessibility') {
+    if (snapshot.verificationSubtype === 'accessibility') {
       return 'Verify accessibility';
     }
     return 'Verify information';
@@ -268,39 +314,41 @@ function actionLabelFromProperties(properties) {
 }
 
 export function getActionLabel(feature) {
-  return actionLabelFromProperties(safeProperties(feature));
+  return actionLabelFromSnapshot(snapshotFeature(feature));
+}
+
+function searchSnapshots(snapshots, query) {
+  const normalizedQuery = normalizeText(query);
+  if (normalizedQuery === '') {
+    return snapshots.slice();
+  }
+  const tokens = normalizedQuery.split(' ');
+
+  return snapshots.filter((snapshot) => {
+    const searchableText = normalizeText([
+      snapshot.name,
+      snapshot.address,
+      sourceLabelFromSnapshot(snapshot),
+      actionLabelFromSnapshot(snapshot),
+    ].filter((value) => typeof value === 'string').join(' '));
+    return tokens.every((token) => searchableText.includes(token));
+  });
 }
 
 export function searchFg03Results(features, query) {
   if (!Array.isArray(features)) {
     return [];
   }
-  const normalizedQuery = normalizeText(query);
-  if (normalizedQuery === '') {
-    return features.slice();
-  }
-  const tokens = normalizedQuery.split(' ');
-
-  return features.filter((feature) => {
-    const properties = safeProperties(feature);
-    const searchableText = normalizeText([
-      safeRead(properties, 'name'),
-      safeRead(properties, 'address'),
-      sourceLabelFromProperties(properties),
-      actionLabelFromProperties(properties),
-    ].filter((value) => typeof value === 'string').join(' '));
-    return tokens.every((token) => searchableText.includes(token));
-  });
+  return searchSnapshots(features.map(snapshotFeature), query).map(
+    (snapshot) => snapshot.feature,
+  );
 }
 
 export function collectFg03ResultIds(facilities, interventions) {
   const ids = new Set();
   for (const collection of [facilities, interventions]) {
-    if (!Array.isArray(collection?.features)) {
-      throw new TypeError('FG03 result data must contain a features array');
-    }
-    for (const feature of collection.features) {
-      const id = feature?.properties?.id;
+    for (const snapshot of snapshotCollection(collection, true)) {
+      const { id } = snapshot;
       if (typeof id !== 'string' || !SAFE_RESULT_ID.test(id)) {
         throw new TypeError('Every FG03 result must have a valid ID');
       }
@@ -313,21 +361,27 @@ export function collectFg03ResultIds(facilities, interventions) {
   return ids;
 }
 
-export function reconcileFg03Selection(selectedId, visibleFeatures) {
+function reconcileSnapshotSelection(selectedId, visibleSnapshots) {
   if (selectedId === null || selectedId === undefined) {
     return {
       selectedId: null,
       invalidated: false,
     };
   }
-  const visible = Array.isArray(visibleFeatures) ? visibleFeatures : [];
-  const remainsVisible = visible.some(
-    (feature) => safeRead(safeProperties(feature), 'id') === selectedId,
+  const remainsVisible = visibleSnapshots.some(
+    (snapshot) => snapshot.id === selectedId,
   );
   return {
     selectedId: remainsVisible ? selectedId : null,
     invalidated: !remainsVisible,
   };
+}
+
+export function reconcileFg03Selection(selectedId, visibleFeatures) {
+  const snapshots = Array.isArray(visibleFeatures)
+    ? visibleFeatures.map(snapshotFeature)
+    : [];
+  return reconcileSnapshotSelection(selectedId, snapshots);
 }
 
 const PUSH_HISTORY_CAUSES = new Set([
@@ -371,15 +425,29 @@ export function deriveFg03Results({
   state,
   search = '',
 } = {}) {
-  const snapshot = snapshotResultState(state);
-  const filtered = snapshot.action === 'open'
-    ? filterOpenFacilities(facilities, snapshot)
-    : filterInterventions(interventions, snapshot);
-  const features = searchFg03Results(filtered, search);
-  const groups = snapshot.action === 'open'
+  const stateSnapshot = snapshotResultState(state);
+  const filteredSnapshots = stateSnapshot.action === 'open'
+    ? filterOpenSnapshots(
+        snapshotCollection(facilities),
+        stateSnapshot,
+      )
+    : groupRankedSnapshots(
+        snapshotCollection(interventions).filter(
+          (feature) => matchingQueryCell(feature, stateSnapshot) !== null,
+        ),
+      ).flatMap((group) => group.snapshots);
+  const visibleSnapshots = searchSnapshots(filteredSnapshots, search);
+  const features = visibleSnapshots.map((snapshot) => snapshot.feature);
+  const groups = stateSnapshot.action === 'open'
     ? [{ id: 'open', items: features }]
-    : groupRankedInterventions(features);
-  const selection = reconcileFg03Selection(snapshot.place, features);
+    : groupRankedSnapshots(visibleSnapshots).map((group) => ({
+        id: group.id,
+        items: group.snapshots.map((snapshot) => snapshot.feature),
+      }));
+  const selection = reconcileSnapshotSelection(
+    stateSnapshot.place,
+    visibleSnapshots,
+  );
 
   return {
     features,
@@ -389,18 +457,14 @@ export function deriveFg03Results({
   };
 }
 
-export function groupRankedInterventions(features) {
-  if (!Array.isArray(features)) {
-    return [];
-  }
-
+function groupRankedSnapshots(snapshots) {
   const groups = new Map();
-  for (const feature of features) {
-    const id = interventionGroupId(feature);
+  for (const snapshot of snapshots) {
+    const id = interventionGroupId(snapshot);
     if (!groups.has(id)) {
       groups.set(id, []);
     }
-    groups.get(id).push(feature);
+    groups.get(id).push(snapshot);
   }
 
   return [...groups]
@@ -411,8 +475,18 @@ export function groupRankedInterventions(features) {
         ?? Number.POSITIVE_INFINITY;
       return leftOrder - rightOrder || compareText(leftId, rightId);
     })
-    .map(([id, items]) => ({
+    .map(([id, snapshotsInGroup]) => ({
       id,
-      items: items.sort(compareInterventionRank),
+      snapshots: snapshotsInGroup.sort(compareInterventionRank),
     }));
+}
+
+export function groupRankedInterventions(features) {
+  if (!Array.isArray(features)) {
+    return [];
+  }
+  return groupRankedSnapshots(features.map(snapshotFeature)).map((group) => ({
+    id: group.id,
+    items: group.snapshots.map((snapshot) => snapshot.feature),
+  }));
 }

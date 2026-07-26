@@ -51,6 +51,33 @@ function collection(features) {
   return { type: 'FeatureCollection', features };
 }
 
+function withOnceProperties(feature, reads, key) {
+  const properties = feature.properties;
+  return {
+    ...feature,
+    get properties() {
+      reads[key] = (reads[key] ?? 0) + 1;
+      if (reads[key] > 1) {
+        throw new Error(`${key} properties read twice`);
+      }
+      return properties;
+    },
+  };
+}
+
+function collectionWithOnceFeatures(features, reads, key) {
+  return {
+    type: 'FeatureCollection',
+    get features() {
+      reads[key] = (reads[key] ?? 0) + 1;
+      if (reads[key] > 1) {
+        throw new Error(`${key} features read twice`);
+      }
+      return features;
+    },
+  };
+}
+
 function queryCell({
   access = 'public',
   active = true,
@@ -71,6 +98,36 @@ function queryCell({
     uniqueTrips,
     walk,
   };
+}
+
+function completeQueryCells({
+  access: activeAccess,
+  time: activeTime,
+  walk: activeWalk,
+}) {
+  const cells = [];
+  for (const time of ['1200', '2030', '2200', '0030']) {
+    for (const access of ['public', 'rider_conditional']) {
+      for (const walk of [300, 400, 500]) {
+        const active = (
+          time === activeTime
+          && access === activeAccess
+          && walk === activeWalk
+        );
+        cells.push(queryCell({
+          access,
+          active,
+          activeStops: active ? 1 : 0,
+          events: active ? 2 : 0,
+          time,
+          uniqueRoutes: active ? 1 : 0,
+          uniqueTrips: active ? 2 : 0,
+          walk,
+        }));
+      }
+    }
+  }
+  return cells;
 }
 
 function intervention(
@@ -316,6 +373,142 @@ test('interventions reject an ambiguous duplicate query cell', () => {
   );
 });
 
+test('all 120 control combinations use only the exact action and query cell', () => {
+  const closed = { observed: 'scheduled_closed', scheduled: 'closed' };
+  const open = { observed: 'open', scheduled: 'open' };
+  const publicFacility = facility('public-open', {
+    observed: 'scheduled_closed',
+    states: {
+      '0030': closed,
+      '1200': open,
+      '2030': closed,
+      '2200': closed,
+    },
+  });
+  const farePaidFacility = facility('fare-open', {
+    accessCondition: 'fare_paid',
+    observed: 'scheduled_closed',
+    states: {
+      '0030': closed,
+      '1200': closed,
+      '2030': open,
+      '2200': closed,
+    },
+  });
+  const interventions = collection([
+    intervention('extend-exact', {
+      action: 'extend',
+      actionClass: 'extend_hours',
+      queryCells: completeQueryCells({
+        access: 'public',
+        time: '1200',
+        walk: 300,
+      }),
+    }),
+    intervention('new-exact', {
+      action: 'new',
+      actionClass: 'new_facility_zone',
+      queryCells: completeQueryCells({
+        access: 'rider_conditional',
+        time: '2030',
+        walk: 400,
+      }),
+    }),
+    intervention('verify-exact', {
+      action: 'verify',
+      actionClass: 'verify_information',
+      queryCells: completeQueryCells({
+        access: 'public',
+        time: '2200',
+        walk: 500,
+      }),
+      verificationSubtype: 'hours',
+    }),
+    intervention('retrofit-exact', {
+      action: 'retrofit',
+      actionClass: 'retrofit_accessibility',
+      queryCells: completeQueryCells({
+        access: 'rider_conditional',
+        time: '0030',
+        walk: 300,
+      }),
+    }),
+  ]);
+  const facilities = collection([farePaidFacility, publicFacility]);
+  let combinations = 0;
+  let nonempty = 0;
+
+  for (const time of ['1200', '2030', '2200', '0030']) {
+    for (const access of ['public', 'rider']) {
+      for (const walk of [300, 400, 500]) {
+        for (const action of ['open', 'extend', 'new', 'verify', 'retrofit']) {
+          let expected = [];
+          if (action === 'open' && time === '1200') {
+            expected = ['public-open'];
+          } else if (
+            action === 'open'
+            && time === '2030'
+            && access === 'rider'
+          ) {
+            expected = ['fare-open'];
+          } else if (
+            action === 'extend'
+            && time === '1200'
+            && access === 'public'
+            && walk === 300
+          ) {
+            expected = ['extend-exact'];
+          } else if (
+            action === 'new'
+            && time === '2030'
+            && access === 'rider'
+            && walk === 400
+          ) {
+            expected = ['new-exact'];
+          } else if (
+            action === 'verify'
+            && time === '2200'
+            && access === 'public'
+            && walk === 500
+          ) {
+            expected = ['verify-exact'];
+          } else if (
+            action === 'retrofit'
+            && time === '0030'
+            && access === 'rider'
+            && walk === 300
+          ) {
+            expected = ['retrofit-exact'];
+          }
+
+          const actual = results.deriveFg03Results({
+            facilities,
+            interventions,
+            state: {
+              time,
+              access,
+              walk,
+              action,
+              place: null,
+            },
+          }).features.map((feature) => feature.properties.id);
+
+          assert.deepEqual(
+            actual,
+            expected,
+            `${time}/${access}/${walk}/${action}`,
+          );
+          combinations += 1;
+          nonempty += Number(actual.length > 0);
+        }
+      }
+    }
+  }
+
+  assert.equal(combinations, 120);
+  assert.equal(nonempty, 13);
+});
+
 test('verification rankings stay separate by subtype and retain exported ranks', () => {
   const features = [
     intervention('access-4', {
@@ -459,6 +652,34 @@ test('search uses normalized AND tokens only across approved result labels', () 
     ['king', 'hidden'],
   );
   assert.deepEqual(search(ordered, '   '), ordered);
+});
+
+test('search folds German sharp s after compatibility normalization', () => {
+  const features = [
+    facility('strasse', { address: '1 Queen Street', name: 'Straße' }),
+    facility('nearby', { address: '2 Queen Street', name: 'Strase' }),
+  ];
+
+  assert.deepEqual(
+    results
+      .searchFg03Results(features, 'ＳＴＲＡＳＳＥ')
+      .map((feature) => feature.properties.id),
+    ['strasse'],
+  );
+});
+
+test('search treats ordinary and final Greek sigma as equivalent', () => {
+  const features = [
+    facility('ordinary-sigma', { name: 'οσ' }),
+    facility('final-sigma', { name: 'ος' }),
+  ];
+
+  assert.deepEqual(
+    results
+      .searchFg03Results(features, 'ΟΣ')
+      .map((feature) => feature.properties.id),
+    ['ordinary-sigma', 'final-sigma'],
+  );
 });
 
 test('global result IDs are collected once and duplicates or missing IDs are rejected', () => {
@@ -747,6 +968,163 @@ test('derived results snapshot every state field before routing work', () => {
     place: 1,
     time: 1,
     walk: 1,
+  });
+});
+
+test('open derivation snapshots collection and sortable feature properties once', () => {
+  const reads = {};
+  const alpha = withOnceProperties(
+    facility('alpha', { name: 'Alpha washroom' }),
+    reads,
+    'alpha',
+  );
+  const beta = withOnceProperties(
+    facility('beta', { name: 'Beta washroom' }),
+    reads,
+    'beta',
+  );
+  const facilities = collectionWithOnceFeatures(
+    [beta, alpha],
+    reads,
+    'facilities',
+  );
+  let actual;
+
+  assert.doesNotThrow(() => {
+    actual = results.deriveFg03Results({
+      facilities,
+      interventions: collection([]),
+      state: {
+        time: '2200',
+        access: 'public',
+        walk: 400,
+        action: 'open',
+        place: 'alpha',
+      },
+      search: 'alpha',
+    });
+  });
+  assert.deepEqual(
+    actual.features.map((feature) => feature === alpha ? 'alpha' : 'other'),
+    ['alpha'],
+  );
+  assert.equal(actual.selectedId, 'alpha');
+  assert.deepEqual(reads, {
+    alpha: 1,
+    beta: 1,
+    facilities: 1,
+  });
+});
+
+test('intervention derivation snapshots grouping and ranking properties once', () => {
+  const reads = {};
+  const hoursTwo = withOnceProperties(
+    intervention('hours-two', {
+      action: 'verify',
+      actionClass: 'verify_information',
+      primaryRank: 2,
+      verificationSubtype: 'hours',
+    }),
+    reads,
+    'hours-two',
+  );
+  const accessibility = withOnceProperties(
+    intervention('accessibility-one', {
+      action: 'verify',
+      actionClass: 'verify_information',
+      primaryRank: 1,
+      verificationSubtype: 'accessibility',
+    }),
+    reads,
+    'accessibility',
+  );
+  const hoursOne = withOnceProperties(
+    intervention('hours-one', {
+      action: 'verify',
+      actionClass: 'verify_information',
+      primaryRank: 1,
+      verificationSubtype: 'hours',
+    }),
+    reads,
+    'hours-one',
+  );
+  const interventions = collectionWithOnceFeatures(
+    [hoursTwo, accessibility, hoursOne],
+    reads,
+    'interventions',
+  );
+  let actual;
+
+  assert.doesNotThrow(() => {
+    actual = results.deriveFg03Results({
+      facilities: collection([]),
+      interventions,
+      state: {
+        time: '2200',
+        access: 'public',
+        walk: 400,
+        action: 'verify',
+        place: 'hours-one',
+      },
+      search: 'verify',
+    });
+  });
+  assert.deepEqual(
+    actual.groups.map((group) => [
+      group.id,
+      group.items.map((feature) => (
+        feature === hoursOne
+          ? 'hours-one'
+          : feature === hoursTwo
+            ? 'hours-two'
+            : 'accessibility-one'
+      )),
+    ]),
+    [
+      ['verify-hours', ['hours-one', 'hours-two']],
+      ['verify-accessibility', ['accessibility-one']],
+    ],
+  );
+  assert.equal(actual.selectedId, 'hours-one');
+  assert.deepEqual(reads, {
+    accessibility: 1,
+    'hours-one': 1,
+    'hours-two': 1,
+    interventions: 1,
+  });
+});
+
+test('global ID collection snapshots each collection and feature properties once', () => {
+  const reads = {};
+  const facilities = collectionWithOnceFeatures(
+    [
+      withOnceProperties(facility('facility:a'), reads, 'facility'),
+    ],
+    reads,
+    'facilities',
+  );
+  const interventions = collectionWithOnceFeatures(
+    [
+      withOnceProperties(
+        intervention('intervention:a'),
+        reads,
+        'intervention',
+      ),
+    ],
+    reads,
+    'interventions',
+  );
+  let ids;
+
+  assert.doesNotThrow(() => {
+    ids = results.collectFg03ResultIds(facilities, interventions);
+  });
+  assert.deepEqual([...ids], ['facility:a', 'intervention:a']);
+  assert.deepEqual(reads, {
+    facilities: 1,
+    facility: 1,
+    interventions: 1,
+    intervention: 1,
   });
 });
 
