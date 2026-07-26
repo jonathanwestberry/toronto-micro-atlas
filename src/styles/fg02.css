@@ -68,10 +68,13 @@ body:has(.fg2) .site-header .site-nav a[aria-current] {
   position: relative;
 }
 
+/* Parks itself exactly in the space the sticky header leaves, at every scroll
+   position. Previously `top: 0; height: 100svh`, which overhung the viewport
+   by the header's height until the reader scrolled past it. */
 .fg2-stage {
   position: sticky;
-  top: 0;
-  height: 100svh;
+  top: var(--header-h);
+  height: calc(100svh - var(--header-h));
   width: 100%;
   overflow: hidden;
   background-color: var(--n-ground);
@@ -100,15 +103,10 @@ body:has(.fg2) .site-header .site-nav a[aria-current] {
   border-radius: 0;
 }
 
-/* The sticky stage is a full 100svh but starts below the site header, so until
-   the reader has scrolled past the header its last 67px sit under the fold and
-   the expand control cannot be seen or reached. Insetting the chrome by the
-   header height keeps every control on screen at any scroll position.
-   Phase 5's header extraction should replace this with a sticky header and a
-   measured offset, which removes the overhang instead of dodging it. */
-.fg2-stage .map-stage__chrome {
-  bottom: var(--header-h);
-}
+/* The Phase 4 chrome inset that lived here is gone. It compensated for the
+   stage overhanging the viewport by the header's height; the sticky header and
+   the measured --header-h above mean there is no overhang left to compensate
+   for, so the chrome sits on the stage's real edges again. */
 
 /* Paper grain, kept from the atlas system but subtler on dark */
 .fg2-stage::after {

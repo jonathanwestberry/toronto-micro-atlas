@@ -8,9 +8,35 @@
    Site header
    ============================================================ */
 
+/*
+ * Sticky, and that is load-bearing rather than fashionable.
+ *
+ * FG02's map stage is `position: sticky; top: 0; height: 100svh`. With a
+ * header in normal flow the stage starts below it and therefore overhangs the
+ * viewport by the header's height until the reader has scrolled past it, which
+ * is why Phase 4 had to inset the stage chrome to keep the expand control on
+ * screen. A sticky header lets the stage sit at `top: var(--header-h)` with a
+ * height of `100svh - var(--header-h)` and occupy exactly the space below the
+ * header at every scroll position. The overhang stops existing instead of
+ * being dodged.
+ *
+ * It also means a reader part-way through a long scrollytelling guide always
+ * has a way back out.
+ */
 .site-header {
+  position: sticky;
+  top: 0;
+  z-index: 200;
   padding: var(--space-6) var(--space-6) 0;
   border-bottom: 1px solid var(--ink);
+  /* Opaque: content scrolls underneath now. */
+  background-color: var(--paper);
+}
+
+/* On the expanded map routes the page cannot scroll, so sticky has nothing to
+   do and the header is simply the first flex item. */
+body[data-full-height] .site-header {
+  position: static;
 }
 
 .site-header-inner {

@@ -30,13 +30,14 @@ const chips = categories.filter((c) => chipKeys.includes(c.key));
   <div class="fg2">
     <div class="fg2-scrolly" data-mode="story">
 
-      <!-- Sticky map stage -->
+      <!-- Sticky map stage. Help sits top-right because the story cards
+           scroll over the map's left edge. -->
       <div class="fg2-stage">
         <MapStage
           id="fg02-map-stage"
           label="Map of every street tree in Toronto's inventory"
           expandPath={`${base}/guides/sidewalk-forest/map`}
-          helpCorner="top-left"
+          helpCorner="top-right"
         >
           <div class="fg2-map" id="fg2-map" data-map-canvas role="region" aria-label="Map of all 688,335 street trees in Toronto's inventory">
             <div class="fg2-map-placeholder" aria-hidden="true">
