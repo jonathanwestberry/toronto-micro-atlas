@@ -20,6 +20,7 @@ class ActiveStopEvent:
     event_minute: int
     lon: float
     lat: float
+    parent_station_name: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,6 +109,11 @@ def active_stop_events_for_windows(
             if row["service_id"] in active_services
         }
         stop_by_id = {row["stop_id"]: row for row in stops}
+        parent_station_names = {
+            row["stop_id"]: row["stop_name"]
+            for row in stops
+            if row.get("location_type") == "1"
+        }
         if "stop_times.txt" not in archive.namelist():
             raise ValueError("GTFS archive missing required member: stop_times.txt")
         with archive.open("stop_times.txt") as raw:
@@ -143,6 +149,9 @@ def active_stop_events_for_windows(
                     event_minute=event_seconds // 60,
                     lon=float(stop["stop_lon"]),
                     lat=float(stop["stop_lat"]),
+                    parent_station_name=parent_station_names.get(
+                        stop.get("parent_station") or "", ""
+                    ),
                 )
                 for key in matching_windows:
                     events_by_window[key].append(event)

@@ -1,6 +1,7 @@
 import json
 import runpy
 import unittest
+from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from unittest.mock import patch
 
@@ -16,6 +17,16 @@ from fg03_proof import (
     multi_source_distances,
 )
 from fg03_schedule import Availability, parse_weekly_hours
+
+
+BUILD_PROOF_PATH = Path(__file__).parents[1] / "21_build_washroom_proof.py"
+
+
+def load_proof_builder():
+    spec = spec_from_file_location("fg03_phase1_builder", BUILD_PROOF_PATH)
+    module = module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def crem_row(
@@ -41,6 +52,51 @@ def crem_row(
 
 
 class SourceConsolidationTests(unittest.TestCase):
+    def test_city_hours_placeholder_pairs_close_only_affected_days(self):
+        # Replacing Location/Closed or Permits/Only with an apparent interval
+        # would manufacture publicly open hours for City facility records.
+        builder = load_proof_builder()
+        hours = builder.city_hours_as_text(
+            {
+                "hours": [
+                    {
+                        "ohmoo": "8 a.m.",
+                        "ohmoc": "4 p.m.",
+                        "ohtuo": "Location",
+                        "ohtuc": "Closed",
+                        "ohwo": "Permits",
+                        "ohwc": "Only",
+                        "ohtho": "9 a.m.",
+                        "ohthc": "5 p.m.",
+                    }
+                ]
+            }
+        )
+
+        self.assertEqual(
+            hours,
+            "Mon 8 a.m. to 4 p.m.; Tue Closed; Wed Closed; Thu 9 a.m. to 5 p.m.; "
+            "Fri Closed; Sat Closed; Sun Closed",
+        )
+
+    def test_city_hours_join_split_interval_without_inventing_a_time(self):
+        # Adding "to" between two complete ranges makes the source schedule
+        # unparsable and turns explicit hours into a false information gap.
+        builder = load_proof_builder()
+        hours = builder.city_hours_as_text(
+            {
+                "hours": [
+                    {
+                        "ohtuo": "8:30 a.m. - 4 p.m. and",
+                        "ohtuc": "6:30 p.m. - 9 p.m.",
+                    }
+                ]
+            }
+        )
+
+        self.assertIn("Tue 8:30 a.m. - 4 p.m. & 6:30 p.m. - 9 p.m.", hours)
+        self.assertNotIn("4 p.m. and to 6:30", hours)
+
     def test_source_access_conditions_distinguish_ttc_from_public_sources(self):
         # A mistaken public default for TTC (or fare-paid default elsewhere) would
         # overstate access in the published proof.

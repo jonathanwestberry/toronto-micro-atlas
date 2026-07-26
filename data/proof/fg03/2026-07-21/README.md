@@ -4,24 +4,24 @@ Snapshot date: 2026-07-21 (Tuesday service day)
 
 ## Result
 
-Documented unrestricted open access points fall from 301 at noon to 6 at 10 p.m., a 98.0% contraction. At 12:30 a.m., 7,885 TTC stops still show scheduled activity within the 30-minute observation window, while only 1 unrestricted public washroom access point remains reliably open. Fare-paid TTC washrooms are reported separately and do not seed public walking coverage.
+Documented unrestricted open access points fall from 324 at noon to 6 at 10 p.m., a 98.1% contraction. At 12:30 a.m., 7,885 TTC stops still show scheduled activity within the 30-minute observation window, while only 1 unrestricted public washroom access point remains reliably open. Fare-paid TTC washrooms are reported separately and do not seed public walking coverage.
 
-This passes the temporal-pattern part of the proof. It does not yet rank priority areas or test 300 m and 500 m sensitivity. Those remain Phase 2 work before the full product build is committed.
+This is the temporal-pattern layer of the proof. It deliberately does not rank priority areas or test 300 m and 500 m sensitivity. The audited Phase 2 package in `phase2/` performs those analyses without changing these headline counts.
 
 ## Snapshot summary
 
 | Time | Unrestricted open access points | Unrestricted open records | Fare-paid open records | Unknown unrestricted hours | Active TTC stops | TTC stops covered by unrestricted facilities |
 |---|---:|---:|---:|---:|---:|---:|
-| Noon | 301 | 308 | 13 | 80 | 8,142 | 922 (11.3%) |
-| 8:30 p.m. | 231 | 236 | 13 | 80 | 8,007 | 585 (7.3%) |
-| 10 p.m. | 6 | 6 | 13 | 80 | 7,994 | 18 (0.2%) |
-| 12:30 a.m. next day | 1 | 1 | 13 | 80 | 7,885 | 8 (0.1%) |
+| Noon | 324 | 332 | 13 | 56 | 8,142 | 987 (12.1%) |
+| 8:30 p.m. | 242 | 247 | 13 | 56 | 8,007 | 623 (7.8%) |
+| 10 p.m. | 6 | 6 | 13 | 56 | 7,994 | 18 (0.2%) |
+| 12:30 a.m. next day | 1 | 1 | 13 | 56 | 7,885 | 8 (0.1%) |
 
 ## Facility audit
 
 - 475 in-boundary facility locations after source-specific consolidation.
 - 582 underlying source records.
-- 1 facility locations excluded outside the Toronto boundary.
+- Out-of-boundary facility locations excluded: 1.
 - 6 cross-source pairs within 50 m are listed in `nearby-cross-source-pairs.csv`.
 - Manual decisions for those pairs are recorded in `data/fg03/nearby-pair-audit.csv`.
 - Same-address records within 100 m share one access-point cluster. Distinct addresses remain separate even when nearby.

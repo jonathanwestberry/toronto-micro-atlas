@@ -83,8 +83,17 @@ def city_hours_as_text(info: dict) -> str:
     for code, label in DAY_CODES:
         opening = str(hours.get(f"oh{code}o") or "").strip()
         closing = str(hours.get(f"oh{code}c") or "").strip()
-        if not opening or not closing or opening.lower() == "closed":
+        pair = (opening.casefold(), closing.casefold())
+        if (
+            not opening
+            or not closing
+            or opening.casefold() == "closed"
+            or closing.casefold() == "closed"
+            or pair in {("location", "closed"), ("permits", "only")}
+        ):
             segments.append(f"{label} Closed")
+        elif opening.casefold().endswith(" and"):
+            segments.append(f"{label} {opening[:-4].rstrip()} & {closing}")
         else:
             segments.append(f"{label} {opening} to {closing}")
     return "; ".join(segments)
@@ -526,7 +535,11 @@ def write_csv(path: Path, rows: list[dict]) -> None:
     if not rows:
         return
     with path.open("w", encoding="utf-8", newline="") as destination:
-        writer = csv.DictWriter(destination, fieldnames=list(rows[0]))
+        writer = csv.DictWriter(
+            destination,
+            fieldnames=list(rows[0]),
+            lineterminator="\n",
+        )
         writer.writeheader()
         writer.writerows(rows)
 
@@ -567,9 +580,9 @@ def write_readme(
             f"are reported separately and do not seed public walking coverage."
         ),
         "",
-        "This passes the temporal-pattern part of the proof. It does not yet rank priority "
-        "areas or test 300 m and 500 m sensitivity. Those remain Phase 2 work before the "
-        "full product build is committed.",
+        "This is the temporal-pattern layer of the proof. It deliberately does not rank "
+        "priority areas or test 300 m and 500 m sensitivity. The audited Phase 2 package "
+        "in `phase2/` performs those analyses without changing these headline counts.",
         "",
         "## Snapshot summary",
         "",
@@ -592,7 +605,7 @@ def write_readme(
             "",
             f"- {len(facilities)} in-boundary facility locations after source-specific consolidation.",
             f"- {sum(f.record_count for f in facilities)} underlying source records.",
-            f"- {len(outside)} facility locations excluded outside the Toronto boundary.",
+            f"- Out-of-boundary facility locations excluded: {len(outside)}.",
             f"- {len(nearby_pairs)} cross-source pairs within 50 m are listed in `nearby-cross-source-pairs.csv`.",
             "- Manual decisions for those pairs are recorded in `data/fg03/nearby-pair-audit.csv`.",
             "- Same-address records within 100 m share one access-point cluster. Distinct addresses remain separate even when nearby.",

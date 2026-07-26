@@ -233,6 +233,7 @@ class TransitActivityTests(unittest.TestCase):
 
         self.assertEqual(event.stop_id, "stop-a")
         self.assertEqual(event.parent_station, "station-a")
+        self.assertEqual(event.parent_station_name, "Station A")
         self.assertEqual(event.stop_name, "Platform A")
         self.assertEqual(event.trip_id, "trip-one")
         self.assertEqual(event.route_id, "501")
