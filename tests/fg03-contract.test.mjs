@@ -384,15 +384,21 @@ test('production headers preserve indexing, caching, and browser security', () =
   assert.match(headers, /X-Frame-Options: DENY/);
   assert.match(headers, /Referrer-Policy: strict-origin-when-cross-origin/);
   assert.match(headers, /Content-Security-Policy:/);
+  assert.match(
+    headers,
+    /script-src 'self' 'unsafe-inline' https:\/\/static\.cloudflareinsights\.com/,
+  );
+  assert.match(headers, /connect-src 'self'/);
   assert.match(headers, /worker-src 'self' blob:/);
 });
 
 test('CI tests data and web output before the final Cloudflare deployment step', () => {
   const workflow = readText(workflowPath);
   const expectedInOrder = [
-    'actions/setup-node@v4',
+    'actions/checkout@v7',
+    'actions/setup-node@v7',
     'node-version: 22.12.0',
-    'actions/setup-python@v5',
+    'actions/setup-python@v7',
     'requirements-fg03.txt',
     'unittest discover',
     'npm run test:web',
@@ -400,7 +406,7 @@ test('CI tests data and web output before the final Cloudflare deployment step',
     'npm run build',
     'npm run test:web:contract',
     'run: npm audit --omit=dev\n',
-    'cloudflare/wrangler-action@v3',
+    'cloudflare/wrangler-action@v4',
   ];
 
   let cursor = -1;
