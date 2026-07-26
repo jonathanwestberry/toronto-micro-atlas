@@ -6,18 +6,30 @@
 
 .fg2 {
   /* Nocturne palette */
-  --n-ground: hsl(211, 42%, 9%);
-  --n-ground-2: hsl(210, 38%, 13%);
-  --n-card: hsl(209, 34%, 15%);
-  --n-card-solid: hsl(209, 34%, 15%);
-  --n-line: hsl(210, 26%, 26%);
-  --n-line-soft: hsl(210, 30%, 20%);
-  --n-text: hsl(43, 55%, 93%);
-  --n-text-2: hsl(214, 22%, 76%);
-  --n-text-3: hsl(214, 14%, 62%);
-  --n-gold: hsl(48, 90%, 64%);
-  --n-gold-active: hsl(45, 96%, 56%);
+  --n-ground: hsl(150, 44%, 7%);
+  --n-ground-2: hsl(150, 36%, 12%);
+  --n-card: hsl(150, 30%, 14%);
+  --n-card-solid: hsl(150, 30%, 14%);
+  --n-line: hsl(150, 22%, 24%);
+  --n-line-soft: hsl(150, 26%, 18%);
+  --n-text: hsl(48, 42%, 93%);
+  --n-text-2: hsl(150, 14%, 76%);
+  --n-text-3: hsl(150, 11%, 62%);
+  --n-gold: hsl(72, 62%, 62%);
+  --n-gold-active: hsl(76, 66%, 52%);
   --n-focus: 2px solid var(--n-gold);
+
+  /* Map the nocturne onto the shared theme contract. Guide theme "Sidewalk
+     Forest": near-black forest ground, Lime as the glowing accent. */
+  --atlas-ground: var(--n-ground);
+  --atlas-surface: var(--n-card);
+  --atlas-ink: var(--n-text);
+  --atlas-ink-muted: var(--n-text-2);
+  --atlas-ink-faint: var(--n-text-3);
+  --atlas-line: var(--n-line);
+  --atlas-accent: var(--n-gold);
+  --atlas-accent-2: var(--n-gold-active);
+  --atlas-focus: var(--n-gold);
 
   background-color: var(--n-ground);
   color: var(--n-text);
@@ -26,25 +38,25 @@
 /* Dark header treatment for this page only: the site header sits on the
    nocturne ground, so its paper tokens flip. */
 body:has(.fg2) {
-  background-color: var(--fg2-ground, hsl(211, 42%, 9%));
+  background-color: var(--fg2-ground, hsl(150, 44%, 7%));
 }
 body:has(.fg2) .site-header {
-  background-color: hsl(211, 42%, 9%);
-  border-bottom-color: hsl(210, 26%, 26%);
+  background-color: hsl(150, 44%, 7%);
+  border-bottom-color: hsl(150, 22%, 24%);
 }
 body:has(.fg2) .site-header .site-masthead {
-  color: hsl(43, 55%, 93%);
+  color: hsl(48, 42%, 93%);
 }
 body:has(.fg2) .site-header .site-nav a {
-  color: hsl(214, 22%, 76%);
+  color: hsl(150, 14%, 76%);
 }
 body:has(.fg2) .site-header .site-masthead:hover,
 body:has(.fg2) .site-header .site-nav a:hover {
-  color: hsl(48, 90%, 64%);
+  color: hsl(72, 62%, 62%);
 }
 body:has(.fg2) .site-header .site-nav a[aria-current] {
-  color: hsl(43, 55%, 93%);
-  box-shadow: inset 0 -2px 0 hsl(48, 90%, 64%);
+  color: hsl(48, 42%, 93%);
+  box-shadow: inset 0 -2px 0 hsl(72, 62%, 62%);
 }
 
 /* ============================================================
@@ -439,16 +451,16 @@ body:has(.fg2) .site-header .site-nav a[aria-current] {
   font-size: 11px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: hsl(214, 16%, 48%);
+  color: hsl(150, 12%, 46%);
   pointer-events: none;
-  text-shadow: 0 1px 6px hsl(211, 42%, 6%);
+  text-shadow: 0 1px 6px hsl(150, 44%, 5%);
   white-space: nowrap;
 }
 
 .fg2-olabel--water {
   font-style: italic;
   letter-spacing: 0.22em;
-  color: hsl(212, 30%, 38%);
+  color: hsl(150, 18%, 36%);
 }
 
 /* Marker layers show/hide with chapter state. MapLibre writes an inline

@@ -16,12 +16,12 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 // ---------------------------------------------------------------------------
 
 // Nocturne map paints
-const GROUND = 'hsl(211, 42%, 9%)';
-const LAKE = 'hsl(213, 55%, 6%)';
-const LAKE_SHORE = 'hsl(210, 32%, 18%)';
-const STREET_MINOR = 'hsl(211, 26%, 16%)';
-const STREET_MAJOR = 'hsl(211, 24%, 21%)';
-const BOUNDARY = 'hsl(210, 18%, 34%)';
+const GROUND = 'hsl(150, 44%, 7%)';
+const LAKE = 'hsl(188, 42%, 6%)';
+const LAKE_SHORE = 'hsl(180, 24%, 17%)';
+const STREET_MINOR = 'hsl(150, 20%, 14%)';
+const STREET_MAJOR = 'hsl(150, 20%, 19%)';
+const BOUNDARY = 'hsl(150, 16%, 32%)';
 
 const CITY_BOUNDS: maplibregl.LngLatBoundsLike = [
   [-79.6393, 43.581],
@@ -253,7 +253,7 @@ class SidewalkForest {
       id: 'ward-lines-casing', type: 'line', source: 'wards',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': 'hsl(212, 45%, 5%)',
+        'line-color': 'hsl(150, 45%, 4%)',
         'line-width': 4,
         'line-opacity': 0,
       },
@@ -261,7 +261,7 @@ class SidewalkForest {
     this.map.addLayer({
       id: 'ward-lines', type: 'line', source: 'wards',
       paint: {
-        'line-color': 'hsl(210, 30%, 78%)',
+        'line-color': 'hsl(150, 12%, 78%)',
         'line-width': 1.5,
         'line-dasharray': [3, 2.5],
         'line-opacity': 0,
@@ -364,7 +364,7 @@ class SidewalkForest {
       type: 'circle',
       source: 'sel',
       paint: {
-        'circle-color': 'hsl(48, 90%, 64%)',
+        'circle-color': 'hsl(72, 62%, 62%)',
         'circle-radius': 0,
         'circle-opacity': 0,
         'circle-blur': 0.6,
@@ -377,7 +377,7 @@ class SidewalkForest {
       paint: {
         'circle-color': 'transparent',
         'circle-radius': radius(1, 5),
-        'circle-stroke-color': 'hsl(48, 90%, 64%)',
+        'circle-stroke-color': 'hsl(72, 62%, 62%)',
         'circle-stroke-width': 2,
       },
     });
