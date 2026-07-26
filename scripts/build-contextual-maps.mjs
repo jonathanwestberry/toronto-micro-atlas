@@ -71,16 +71,6 @@ function indexCollection(fc) {
 
 function computeFullBbox(geom) {
   let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
-  function visit(coords) {
-    if (!Array.isArray(coords)) return;
-    if (typeof coords[0] === 'number') {
-      const [lng, lat] = coords;
-      if (lng < minLng) minLng = lng; if (lng > maxLng) maxLng = lng;
-      if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
-      return;
-    }
-    for (const c of coords) visit(c);
-  }
   // For efficiency on massive MultiPolygons, sample every Nth coord
   const SAMPLE = 10;
   function visitSampled(coords, depth = 0) {
@@ -162,7 +152,6 @@ function clipLine(coords, bb) {
 
   const segments = [];
   let current = null;
-  let prevIn = false;
 
   const inBox = p => p[0] >= bMinLng && p[0] <= bMaxLng && p[1] >= bMinLat && p[1] <= bMaxLat;
 
@@ -181,7 +170,6 @@ function clipLine(coords, bb) {
       if (current.length >= 2) segments.push(current);
       current = null;
     }
-    prevIn = curIn;
   }
   if (current && current.length >= 2) segments.push(current);
   return segments;

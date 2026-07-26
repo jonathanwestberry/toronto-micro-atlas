@@ -1,5 +1,6 @@
-import { defineCollection, z } from 'astro:content';
+import { defineCollection } from 'astro:content';
 import { glob } from 'astro/loaders';
+import { z } from 'astro/zod';
 
 const guides = defineCollection({
   loader: glob({ pattern: '**/*.md', base: './src/content/guides' }),
@@ -7,8 +8,8 @@ const guides = defineCollection({
     title: z.string(),
     slug: z.string(),
     description: z.string(),
-    published: z.date(),
-    updated: z.date(),
+    published: z.coerce.date(),
+    updated: z.coerce.date(),
     status: z.enum(['live', 'under-observation']),
   }),
 });

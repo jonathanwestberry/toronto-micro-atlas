@@ -281,6 +281,9 @@ const config = JSON.stringify({
   title="When Toronto Has to Go"
   description={guideDescription}
   ogImage="/social/og-when-toronto-has-to-go.jpg"
+  articlePublished="2026-07-25"
+  articleUpdated="2026-07-25"
+  articleAuthor="Jonathan Westberry"
 >
   <article
     class="fg03"
@@ -833,9 +836,11 @@ const config = JSON.stringify({
                             type="button"
                             class="fg03-result-map-button"
                             data-fg03-select-place={properties.id}
-                            aria-label={`Show ${properties.name} on the map`}
+                            aria-label={`Map loading before ${properties.name} can be shown`}
+                            aria-disabled="true"
+                            disabled
                           >
-                            Show on map
+                            Map loading
                           </button>
                         </div>
                         <details data-fg03-result-evidence>

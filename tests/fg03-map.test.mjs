@@ -509,6 +509,70 @@ test('failed gate replacement removes the explorer and marks the runtime withhel
   ]);
 });
 
+test('controls and map become interactive only when their backing data is ready', () => {
+  const makeSurface = () => ({
+    attributes: new Map(),
+    inert: false,
+    tabIndex: 0,
+    setAttribute(name, value) {
+      this.attributes.set(name, String(value));
+    },
+    removeAttribute(name) {
+      this.attributes.delete(name);
+    },
+  });
+  const controls = makeSurface();
+  const mapElement = makeSurface();
+  const applyReadiness = mapModule.applyFg03InteractiveReadiness;
+
+  assert.equal(typeof applyReadiness, 'function');
+  applyReadiness({
+    controls,
+    dataReady: false,
+    gateWithheld: false,
+    mapElement,
+    mapReady: false,
+  });
+  assert.equal(controls.inert, true);
+  assert.equal(controls.attributes.get('aria-disabled'), 'true');
+  assert.equal(mapElement.inert, true);
+  assert.equal(mapElement.tabIndex, -1);
+
+  applyReadiness({
+    controls,
+    dataReady: true,
+    gateWithheld: false,
+    mapElement,
+    mapReady: false,
+  });
+  assert.equal(controls.inert, false);
+  assert.equal(controls.attributes.has('aria-disabled'), false);
+  assert.equal(mapElement.inert, true);
+  assert.equal(mapElement.tabIndex, -1);
+
+  applyReadiness({
+    controls,
+    dataReady: true,
+    gateWithheld: false,
+    mapElement,
+    mapReady: true,
+  });
+  assert.equal(mapElement.inert, false);
+  assert.equal(mapElement.attributes.has('aria-disabled'), false);
+  assert.equal(mapElement.tabIndex, 0);
+
+  applyReadiness({
+    controls,
+    dataReady: true,
+    gateWithheld: true,
+    mapElement,
+    mapReady: true,
+  });
+  assert.equal(controls.inert, true);
+  assert.equal(mapElement.inert, true);
+  assert.equal(mapElement.tabIndex, -1);
+});
+
 test('close focus prefers the connected opener and falls back only after replacement', () => {
   const mapOpener = { isConnected: true, kind: 'map' };
   const detachedListOpener = { isConnected: false, kind: 'old-list-button' };

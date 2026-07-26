@@ -449,6 +449,30 @@ function withholdFg03Explorer({
   destroyMap();
   explorer.replaceWith(template.content.cloneNode(true));
 }
+function applyFg03InteractiveReadiness({
+  controls,
+  dataReady,
+  gateWithheld,
+  mapElement,
+  mapReady
+}) {
+  const controlsReady = Boolean(dataReady) && !gateWithheld;
+  const interactiveMapReady = controlsReady && Boolean(mapReady);
+  controls.inert = !controlsReady;
+  if (controlsReady) {
+    controls.removeAttribute("aria-disabled");
+  } else {
+    controls.setAttribute("aria-disabled", "true");
+  }
+  mapElement.inert = !interactiveMapReady;
+  mapElement.tabIndex = interactiveMapReady ? 0 : -1;
+  if (interactiveMapReady) {
+    mapElement.removeAttribute("aria-disabled");
+  } else {
+    mapElement.setAttribute("aria-disabled", "true");
+  }
+  return { controlsReady, mapReady: interactiveMapReady };
+}
 function chooseFg03CloseFocus(opener, replacement) {
   if (opener?.isConnected) {
     return opener;
@@ -770,6 +794,7 @@ function createFg03LifecycleController({
 export {
   FG03_SYMBOL_RECIPES,
   FG03_CONTEXT_FILES,
+  applyFg03InteractiveReadiness,
   createFg03Cleanup,
   createFg03DeferredLoader,
   createFg03LifecycleController,

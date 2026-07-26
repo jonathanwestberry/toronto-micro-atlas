@@ -10,6 +10,7 @@ import {
   getMatchingQueryCell,
 } from './fg03-results.mjs';
 import {
+  applyFg03InteractiveReadiness,
   chooseFg03CloseFocus,
   createFg03Cleanup,
   createFg03DeferredLoader,
@@ -31,6 +32,7 @@ import {
 } from './fg03-map-core.mjs';
 
 export {
+  applyFg03InteractiveReadiness,
   chooseFg03CloseFocus,
   createFg03Cleanup,
   createFg03DeferredLoader,
@@ -940,6 +942,16 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
     delete mapElement.dataset.ready;
   };
 
+  const syncInteractiveReadiness = (): void => {
+    applyFg03InteractiveReadiness({
+      controls,
+      dataReady,
+      gateWithheld,
+      mapElement,
+      mapReady: map !== null && mapStyleReady,
+    });
+  };
+
   const updateControls = (): void => {
     for (const input of controls.querySelectorAll<HTMLInputElement>(
       'input[type="radio"]',
@@ -1635,11 +1647,13 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
       if (!stopsByTime.has(currentState.time)) {
         void ensureStops(currentState.time);
       }
+      syncInteractiveReadiness();
     })()
       .catch((error) => {
         if (controller.signal.aborted || disposed) {
           return;
         }
+        dataReady = false;
         showState('loading', false);
         showState('offline', !navigator.onLine);
         showState('error', navigator.onLine);
@@ -1650,6 +1664,7 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
             : 'You appear to be offline. The proof and default server-rendered ranking remain available.',
         );
         reportError('manifest', error);
+        syncInteractiveReadiness();
       })
       .finally(() => {
         dataLoadPromise = null;
@@ -1875,6 +1890,7 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
     mapElement.dataset.ready = 'true';
     delete mapElement.dataset.failed;
     delete mapElement.dataset.loading;
+    syncInteractiveReadiness();
   };
 
   const mapStarter = makeMapStartController({
@@ -1903,6 +1919,7 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
         'The interactive map is unavailable. The synchronized result list remains fully usable.',
       );
       reportError('map', error);
+      syncInteractiveReadiness();
     }
   };
 
@@ -1961,11 +1978,7 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
     trackAtlasEvent('fg03_engage', { surface });
   };
 
-  controls.inert = false;
-  controls.removeAttribute('aria-disabled');
-  mapElement.inert = false;
-  mapElement.removeAttribute('aria-disabled');
-  mapElement.tabIndex = 0;
+  syncInteractiveReadiness();
   root.dataset.fg03RuntimeMounted = 'true';
   updateControls();
 

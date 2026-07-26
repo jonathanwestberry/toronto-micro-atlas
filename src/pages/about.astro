@@ -27,9 +27,33 @@ const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
           </div>
         </div>
 
+        <section class="about-guides" aria-labelledby="about-guides-title" data-reveal>
+          <p class="about-guides-kicker">Published field guides</p>
+          <h2 id="about-guides-title">Three ways to read the city</h2>
+          <ol>
+            <li>
+              <a href={`${base}/guides/hidden-landscapes/`} data-astro-reload>
+                <span>01</span>
+                <strong>Hidden Landscapes</strong>
+              </a>
+            </li>
+            <li>
+              <a href={`${base}/guides/sidewalk-forest/`} data-astro-reload>
+                <span>02</span>
+                <strong>Sidewalk Forest</strong>
+              </a>
+            </li>
+            <li>
+              <a href={`${base}/guides/when-toronto-has-to-go/`} data-astro-reload>
+                <span>03</span>
+                <strong>When Toronto Has to Go</strong>
+              </a>
+            </li>
+          </ol>
+        </section>
+
         <nav class="about-nav" aria-label="Site navigation" data-reveal>
           <a href={`${base}/`} class="about-back">Toronto Micro-Atlas</a>
-          <a href={`${base}/guides/hidden-landscapes/`} class="about-guide-link" data-astro-reload>Hidden Landscapes</a>
         </nav>
 
       </article>
@@ -101,6 +125,71 @@ const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
   /* Remaining prose via global .prose classes */
   .about-prose {
     max-width: var(--measure);
+  }
+
+  .about-guides {
+    margin-bottom: var(--space-12);
+    border-top: 1px solid var(--street-minor);
+    padding-top: var(--space-8);
+  }
+
+  .about-guides-kicker {
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: var(--space-3);
+  }
+
+  .about-guides h2 {
+    font-family: var(--font-heading);
+    font-size: var(--text-2xl);
+    line-height: 1.2;
+    color: var(--ink);
+    margin-bottom: var(--space-6);
+  }
+
+  .about-guides ol {
+    list-style: none;
+    border-top: 1px solid var(--street-minor);
+  }
+
+  .about-guides li {
+    border-bottom: 1px solid var(--street-minor);
+  }
+
+  .about-guides a {
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    gap: var(--space-4);
+    align-items: baseline;
+    min-height: 3rem;
+    padding-block: var(--space-3);
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .about-guides a:hover {
+    color: var(--threshold);
+  }
+
+  .about-guides a:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  .about-guides span {
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    letter-spacing: 0.1em;
+    color: var(--ink-3);
+  }
+
+  .about-guides strong {
+    font-family: var(--font-heading);
+    font-size: var(--text-lg);
   }
 
   /* ============================================================

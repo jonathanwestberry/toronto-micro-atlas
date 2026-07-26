@@ -6,8 +6,23 @@ const routePath = new URL(
   '../dist/guides/when-toronto-has-to-go/index.html',
   import.meta.url,
 );
+const homePath = new URL('../dist/index.html', import.meta.url);
+const aboutPath = new URL('../dist/about/index.html', import.meta.url);
+const socialPath = new URL(
+  '../public/social/og-when-toronto-has-to-go.jpg',
+  import.meta.url,
+);
+const headersPath = new URL('../public/_headers', import.meta.url);
+const workflowPath = new URL('../.github/workflows/deploy.yml', import.meta.url);
+const packagePath = new URL('../package.json', import.meta.url);
+const nvmrcPath = new URL('../.nvmrc', import.meta.url);
+const contentConfigPath = new URL('../src/content.config.ts', import.meta.url);
+const fg03StylesPath = new URL('../src/styles/fg03.css', import.meta.url);
+const readmePath = new URL('../README.md', import.meta.url);
+const maintenancePath = new URL('../docs/fg03-maintenance.md', import.meta.url);
 
 const readRoute = () => (existsSync(routePath) ? readFileSync(routePath, 'utf8') : '');
+const readText = (path) => (existsSync(path) ? readFileSync(path, 'utf8') : '');
 const normalize = (value) =>
   value
     .replaceAll('&amp;', '&')
@@ -15,6 +30,27 @@ const normalize = (value) =>
     .replaceAll('&quot;', '"')
     .replace(/\s+/g, ' ')
     .trim();
+
+const jpegDimensions = (path) => {
+  const bytes = readFileSync(path);
+  assert.equal(bytes[0], 0xff);
+  assert.equal(bytes[1], 0xd8);
+
+  const startOfFrameMarkers = new Set([
+    0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7,
+    0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf,
+  ]);
+  for (let offset = 2; offset < bytes.length - 8; offset += 1) {
+    if (bytes[offset] !== 0xff || !startOfFrameMarkers.has(bytes[offset + 1])) {
+      continue;
+    }
+    return {
+      height: bytes.readUInt16BE(offset + 5),
+      width: bytes.readUInt16BE(offset + 7),
+    };
+  }
+  throw new Error('JPEG is missing a start-of-frame marker');
+};
 
 test('build publishes the exact FG03 route', () => {
   assert.equal(
@@ -126,6 +162,7 @@ test('native controls expose the complete shareable state contract before the ma
 
 test('map shell explains keyboard use, symbol shapes, date, and attribution', () => {
   const html = normalize(readRoute());
+  const styles = readText(fg03StylesPath);
   assert.match(html, /data-fg03-map[^>]*role="region"/);
   assert.match(html, /Focus the map and use arrow keys to pan/);
   assert.match(html, /data-fg03-legend/);
@@ -143,6 +180,12 @@ test('map shell explains keyboard use, symbol shapes, date, and attribution', ()
   assert.match(html, /Snapshot: July 21, 2026/);
   assert.match(html, /OpenStreetMap contributors/);
   assert.match(html, /Open Government Licence - Toronto/);
+  assert.match(styles, /\.maplibregl-ctrl-group button/);
+  assert.match(styles, /\.maplibregl-ctrl-attrib-button/);
+  assert.match(
+    styles,
+    /maplibregl[\s\S]*?min-height:\s*2\.75rem[\s\S]*?min-width:\s*2\.75rem/,
+  );
 });
 
 test('access-point proof and facility-record explorer use explicit counting grains', () => {
@@ -161,7 +204,15 @@ test('access-point proof and facility-record explorer use explicit counting grai
 test('default recommendation list is complete, ranked, and useful without JavaScript', () => {
   const html = normalize(readRoute());
   const items = html.match(/<li[^>]*data-fg03-result-item[^>]*>/g) ?? [];
+  const mapButtons =
+    html.match(/<button[^>]*data-fg03-select-place[^>]*>/g) ?? [];
   assert.equal(items.length, 10);
+  assert.equal(mapButtons.length, 10);
+  assert.equal(
+    mapButtons.filter((button) => /\bdisabled(?:\s|>|="")/.test(button)).length,
+    10,
+    'Server-rendered map controls must stay disabled until the runtime replaces them',
+  );
   assert.deepEqual(
     items.map((item) => Number(item.match(/data-rank="(\d+)"/)?.[1])),
     [1, 2, 3, 4, 5, 6, 8, 9, 10, 11],
@@ -265,4 +316,133 @@ test('method, definitions, limitations, sources, downloads, credits, and series 
   assert.match(html, /Hidden Landscapes/);
   assert.match(html, /Sidewalk Forest/);
   assert.match(html, /All field guides/);
+});
+
+test('shared discovery surfaces publish all three guides with FG03 newest', () => {
+  const route = normalize(readRoute());
+  const home = normalize(readText(homePath));
+  const about = normalize(readText(aboutPath));
+  const homeMain = home.match(/<main\b[\s\S]*?<\/main>/)?.[0] ?? '';
+  const guideLinks = [
+    ['/guides/hidden-landscapes/', 'Hidden Landscapes'],
+    ['/guides/sidewalk-forest/', 'Sidewalk Forest'],
+    ['/guides/when-toronto-has-to-go/', 'When Toronto Has to Go'],
+  ];
+
+  const header = route.match(/<header\b[\s\S]*?<\/header>/)?.[0] ?? '';
+  const footer = route.match(/<footer\b[\s\S]*?<\/footer>/)?.[0] ?? '';
+  for (const [href, title] of guideLinks) {
+    const escapedHref = href.replaceAll('/', '\\/');
+    assert.match(header, new RegExp(`href="${escapedHref}".*?${title}`));
+    assert.match(footer, new RegExp(`href="${escapedHref}".*?${title}`));
+    assert.match(homeMain, new RegExp(`href="${escapedHref}"`));
+    assert.match(homeMain, new RegExp(`>${title}<`));
+    assert.match(about, new RegExp(`href="${escapedHref}".*?${title}`));
+  }
+
+  assert.equal((homeMain.match(/<h1\b/g) ?? []).length, 1);
+  assert.match(homeMain, /<h1[^>]*>When Toronto Has to Go<\/h1>/);
+  assert.equal(
+    (homeMain.match(/Guide(?:\s+\d+)? · New/g) ?? []).length,
+    1,
+    'Only the newest guide may carry the New label',
+  );
+  assert.ok(
+    homeMain.indexOf('When Toronto Has to Go') < homeMain.indexOf('Sidewalk Forest'),
+    'FG03 must appear before the older guides on the homepage',
+  );
+  assert.match(
+    homeMain,
+    /href="\/guides\/when-toronto-has-to-go\/"[^>]*>Open the Guide<\/a>/,
+  );
+});
+
+test('FG03 publishes article metadata and the verified social card', () => {
+  const html = normalize(readRoute());
+  assert.equal(existsSync(socialPath), true);
+  assert.deepEqual(jpegDimensions(socialPath), { height: 630, width: 1200 });
+  assert.match(html, /property="og:type" content="article"/);
+  assert.match(html, /property="article:published_time" content="2026-07-25"/);
+  assert.match(html, /property="article:modified_time" content="2026-07-25"/);
+  assert.match(html, /type="application\/ld\+json"/);
+  assert.match(html, /"@type":"Article"/);
+  assert.match(html, /"author":\{"@type":"Person","name":"Jonathan Westberry"\}/);
+});
+
+test('production headers preserve indexing, caching, and browser security', () => {
+  const headers = readText(headersPath);
+  assert.match(headers, /https:\/\/toronto-micro-atlas\.pages\.dev\/\*/);
+  assert.match(headers, /https:\/\/:version\.toronto-micro-atlas\.pages\.dev\/\*/);
+  assert.match(headers, /X-Robots-Tag: noindex, nofollow/);
+  assert.match(headers, /\/data\/fg03\/2026-07-21\/manifest\.json[\s\S]*?no-cache/);
+  assert.match(
+    headers,
+    /\/data\/fg03\/2026-07-21\/\*\.geojson[\s\S]*?max-age=31536000, immutable/,
+  );
+  assert.match(headers, /\/_astro\/\*[\s\S]*?max-age=31536000, immutable/);
+  assert.match(headers, /X-Content-Type-Options: nosniff/);
+  assert.match(headers, /X-Frame-Options: DENY/);
+  assert.match(headers, /Referrer-Policy: strict-origin-when-cross-origin/);
+  assert.match(headers, /Content-Security-Policy:/);
+  assert.match(headers, /worker-src 'self' blob:/);
+});
+
+test('CI tests data and web output before the final Cloudflare deployment step', () => {
+  const workflow = readText(workflowPath);
+  const expectedInOrder = [
+    'actions/setup-node@v4',
+    'node-version: 22.12.0',
+    'actions/setup-python@v5',
+    'requirements-fg03.txt',
+    'unittest discover',
+    'npm run test:web',
+    'npm run check',
+    'npm run build',
+    'npm run test:web:contract',
+    'run: npm audit --omit=dev\n',
+    'cloudflare/wrangler-action@v3',
+  ];
+
+  let cursor = -1;
+  for (const fragment of expectedInOrder) {
+    const next = workflow.indexOf(fragment);
+    assert.ok(next > cursor, `Expected CI fragment in release order: ${fragment}`);
+    cursor = next;
+  }
+  assert.match(workflow, /contents: read/);
+  assert.match(
+    workflow,
+    /jobs:\s+deploy:\s+if: github\.ref == 'refs\/heads\/main' && github\.ref_type == 'branch'\s+concurrency:\s+group: production-cloudflare-pages\s+cancel-in-progress: true/,
+  );
+});
+
+test('the supported runtime and Astro release are exact and migration-safe', () => {
+  const packageJson = JSON.parse(readText(packagePath));
+  const contentConfig = readText(contentConfigPath);
+  assert.equal(packageJson.dependencies.astro, '7.1.3');
+  assert.equal(packageJson.engines.node, '>=22.12.0');
+  assert.equal(readText(nvmrcPath).trim(), '22.12.0');
+  assert.match(contentConfig, /from 'astro:zod'|from 'astro\/zod'/);
+  assert.equal((contentConfig.match(/\bglob\(/g) ?? []).length, 2);
+});
+
+test('release and maintenance docs describe the real production workflow', () => {
+  const readme = readText(readmePath);
+  const maintenance = readText(maintenancePath);
+  assert.match(readme, /Cloudflare Pages/);
+  assert.doesNotMatch(readme, /Deployment target is GitHub Pages/);
+  for (const topic of [
+    'Architecture',
+    'Data refresh',
+    'Public schema',
+    'URL state',
+    'Analytics',
+    'Accessibility',
+    'Local development',
+    'Cloudflare',
+    'Production verification',
+    'Limitations',
+  ]) {
+    assert.match(maintenance, new RegExp(topic, 'i'), `Missing maintenance topic: ${topic}`);
+  }
 });

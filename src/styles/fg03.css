@@ -87,6 +87,11 @@
   color: var(--fg03-ink);
 }
 
+.fg03 :is(.maplibregl-ctrl-group button, .maplibregl-ctrl-attrib-button) {
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+}
+
 .fg03 .fg03-button--primary {
   background: var(--fg03-ink);
   color: var(--fg03-paper);
