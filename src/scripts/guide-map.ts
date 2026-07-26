@@ -396,7 +396,7 @@ export class GuideMap {
       type: 'fill',
       source: 'rnfp',
       paint: {
-        'fill-color': '#147D64',
+        'fill-color': '#45A26A',
         'fill-opacity': 0.95,
       },
     });
@@ -407,7 +407,7 @@ export class GuideMap {
       type: 'fill',
       source: 'esa',
       paint: {
-        'fill-color': '#147D64',
+        'fill-color': '#45A26A',
         'fill-opacity': 0.95,
       },
     });
@@ -419,7 +419,7 @@ export class GuideMap {
       type: 'line',
       source: 'esa',
       paint: {
-        'line-color': '#0C6B58',
+        'line-color': '#1F4F30',
         'line-width': 1.25,
       },
     });
@@ -429,7 +429,7 @@ export class GuideMap {
       type: 'line',
       source: 'rnfp',
       paint: {
-        'line-color': '#0C6B58',
+        'line-color': '#1F4F30',
         'line-width': 1.25,
       },
     });
