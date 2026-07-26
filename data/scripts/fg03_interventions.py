@@ -302,7 +302,10 @@ def simulate_hours_extensions(
             inputs.scenario,
             accepted_states=frozenset({"scheduled_closed"}),
         )
-        if not active or facility.facility_id not in footprints:
+        if (
+            active != frozenset(inputs.scenario.snapshot_ids)
+            or facility.facility_id not in footprints
+        ):
             continue
         metrics = _scenario_metrics(
             inputs,
@@ -355,7 +358,7 @@ def _validate_new_zone_primary(scenario: Scenario) -> None:
         and scenario.walking_distance == 400
         and scenario.closure_mode == "observed"
         and scenario.information_mode == "unknown_unavailable"
-        and len(scenario.snapshot_ids) == 2
+        and scenario.snapshot_ids == ("2200", "0030")
     )
     if not is_primary:
         raise ValueError(

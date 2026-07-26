@@ -104,6 +104,26 @@ class InterventionSimulationTests(unittest.TestCase):
         )
         self.assertEqual(excluded, ())
 
+    def test_hours_extension_excludes_mixed_seasonal_closure(self):
+        # Protected break: one scheduled closure must not hide a seasonal closure.
+        self._assert_mixed_hours_state_excluded("open", "seasonal_closed")
+
+    def test_hours_extension_excludes_mixed_temporary_closure(self):
+        # Protected break: one scheduled closure must not turn a service outage into an hours action.
+        self._assert_mixed_hours_state_excluded("open", "temporary_closed")
+
+    def test_hours_extension_excludes_mixed_construction_closure(self):
+        # Protected break: one scheduled closure must not turn construction into an hours action.
+        self._assert_mixed_hours_state_excluded("open", "construction_closed")
+
+    def test_hours_extension_excludes_mixed_unknown_hours(self):
+        # Protected break: one scheduled closure must not turn missing hours into an hours action.
+        self._assert_mixed_hours_state_excluded("unknown", "unknown_hours")
+
+    def test_hours_extension_excludes_mixed_open_state(self):
+        # Protected break: all relevant late snapshots must be unavailable through schedule alone.
+        self._assert_mixed_hours_state_excluded("open", "open")
+
     def test_hours_extension_keeps_fare_paid_gain_out_of_public_mode(self):
         # Protected break: a public scenario must not claim station-only gains.
         fare_paid = FacilityEvidence(
@@ -267,6 +287,52 @@ class InterventionSimulationTests(unittest.TestCase):
                 self._inputs("other-tuesday", service_date=date(2026, 7, 28)),
                 seeds=(seed,),
             )
+
+    def test_new_zone_primary_rejects_wrong_two_snapshot_ids(self):
+        # Protected break: checking only tuple length accepts unrelated observation windows.
+        inputs, seed = self._zone_snapshot_fixture(("1200", "2030"))
+
+        with self.assertRaisesRegex(ValueError, "primary"):
+            simulate_new_facility_zones(inputs, seeds=(seed,))
+
+    def test_new_zone_primary_rejects_duplicate_snapshot_ids(self):
+        # Protected break: duplicate late IDs can double-count one observation window.
+        inputs, seed = self._zone_snapshot_fixture(("2200", "2200"))
+
+        with self.assertRaisesRegex(ValueError, "primary"):
+            simulate_new_facility_zones(inputs, seeds=(seed,))
+
+    def test_new_zone_primary_rejects_reversed_snapshot_order(self):
+        # Protected break: accepting reversed IDs breaks the published snapshot ordering contract.
+        inputs, seed = self._zone_snapshot_fixture(("0030", "2200"))
+
+        with self.assertRaisesRegex(ValueError, "primary"):
+            simulate_new_facility_zones(inputs, seeds=(seed,))
+
+    def test_new_zone_primary_rejects_missing_snapshot_id(self):
+        # Protected break: a one-window effect cannot define the two-window primary universe.
+        inputs, seed = self._zone_snapshot_fixture(("2200",))
+
+        with self.assertRaisesRegex(ValueError, "primary"):
+            simulate_new_facility_zones(inputs, seeds=(seed,))
+
+    def test_new_zone_primary_rejects_extra_snapshot_id(self):
+        # Protected break: an extra context window must not alter primary effect deduplication.
+        inputs, seed = self._zone_snapshot_fixture(("2200", "0030", "1200"))
+
+        with self.assertRaisesRegex(ValueError, "primary"):
+            simulate_new_facility_zones(inputs, seeds=(seed,))
+
+    def test_new_zone_primary_accepts_exact_late_snapshot_tuple(self):
+        # Protected break: tightening validation must preserve the exact published primary tuple.
+        inputs, seed = self._zone_snapshot_fixture(("2200", "0030"))
+
+        candidates = simulate_new_facility_zones(inputs, seeds=(seed,))
+
+        self.assertEqual(
+            [candidate.candidate_id for candidate in candidates],
+            ["new-facility-zone:candidate-stop"],
+        )
 
     def test_new_zone_sensitivities_rerun_only_frozen_primary_ids(self):
         # Protected break: rededuplicating a sensitivity can add a primary-rejected zone.
@@ -519,6 +585,72 @@ class InterventionSimulationTests(unittest.TestCase):
 
     def _footprint(self, source_id, at_2200, at_0030):
         return CoverageFootprint(source_id, f"node-{source_id}", {"2200": frozenset(at_2200), "0030": frozenset(at_0030)})
+
+    def _assert_mixed_hours_state_excluded(self, scheduled_state, observed_state):
+        candidates = simulate_hours_extensions(
+            self.inputs,
+            facilities=(self.facility,),
+            snapshots=(
+                FacilitySnapshot(
+                    "library:1", "2200", "closed", "scheduled_closed"
+                ),
+                FacilitySnapshot(
+                    "library:1", "0030", scheduled_state, observed_state
+                ),
+            ),
+            footprints={"library:1": self.footprint},
+        )
+
+        self.assertEqual(candidates, ())
+
+    def _zone_snapshot_fixture(self, snapshot_ids):
+        unique_snapshot_ids = tuple(dict.fromkeys(snapshot_ids))
+        snapshot_events = tuple(
+            SnapshotEvents(
+                snapshot_id,
+                (
+                    self._event(
+                        "candidate-stop",
+                        f"trip-{snapshot_id}",
+                        "route",
+                    ),
+                ),
+            )
+            for snapshot_id in unique_snapshot_ids
+        )
+        baseline = tuple(
+            SnapshotStops(snapshot_id, frozenset())
+            for snapshot_id in unique_snapshot_ids
+        )
+        inputs = ScenarioInputs(
+            scenario=Scenario(
+                scenario_id="primary-snapshot-contract",
+                service_date=date(2026, 7, 21),
+                snapshot_ids=snapshot_ids,
+                access_mode="public",
+                walking_distance=400,
+                closure_mode="observed",
+                information_mode="unknown_unavailable",
+            ),
+            snapshot_events=snapshot_events,
+            baseline_covered=baseline,
+        )
+        seed = NewFacilitySeed(
+            "candidate-stop",
+            "Candidate stop",
+            -79.4,
+            43.7,
+            "candidate-node",
+            CoverageFootprint(
+                source_id="candidate-stop",
+                node_id="candidate-node",
+                stops_by_snapshot={
+                    snapshot_id: frozenset({"candidate-stop"})
+                    for snapshot_id in unique_snapshot_ids
+                },
+            ),
+        )
+        return inputs, seed
 
     def _inputs(
         self,
