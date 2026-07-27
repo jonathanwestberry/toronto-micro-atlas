@@ -545,13 +545,26 @@
 }
 
 /* How many places an option holds, so an empty one says so before it is
-   chosen. Sits under the option name, quieter than it. */
+   chosen. Sits under the option name, quieter than it.
+
+   The option box is a centred flex row, so a block-level child still lands
+   beside the label rather than beneath it: "Extend hours10 places". The box
+   stacks when it carries a count. */
+.fg03-choice-label--stacked {
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
 .fg03-choice-count {
-  display: block;
   font-size: 0.6875rem;
+  font-weight: 500;
   letter-spacing: 0.02em;
   text-transform: none;
   color: var(--fg03-ink-muted);
+}
+
+.fg03-choice-row input:checked + .fg03-choice-label--stacked .fg03-choice-count {
+  color: var(--fg03-paper);
 }
 
 .fg03-control-tools {

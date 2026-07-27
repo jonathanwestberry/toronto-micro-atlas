@@ -130,7 +130,7 @@ const proposalCount = (action: string): number =>
             value="extend"
             checked={defaultAction === 'extend'}
           />
-          <span>
+          <span class="fg03-choice-label--stacked">
             Extend hours
             <small class="fg03-choice-count">
               {proposalCount('extend') === 0
@@ -146,7 +146,7 @@ const proposalCount = (action: string): number =>
             value="new"
             checked={defaultAction === 'new'}
           />
-          <span>
+          <span class="fg03-choice-label--stacked">
             New facility zones
             <small class="fg03-choice-count">
               {proposalCount('new') === 0
@@ -162,7 +162,7 @@ const proposalCount = (action: string): number =>
             value="verify"
             checked={defaultAction === 'verify'}
           />
-          <span>
+          <span class="fg03-choice-label--stacked">
             Verify published information
             <small class="fg03-choice-count">
               {proposalCount('verify') === 0
@@ -178,7 +178,7 @@ const proposalCount = (action: string): number =>
             value="retrofit"
             checked={defaultAction === 'retrofit'}
           />
-          <span>
+          <span class="fg03-choice-label--stacked">
             Retrofit accessibility
             <small class="fg03-choice-count">
               {proposalCount('retrofit') === 0
