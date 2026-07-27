@@ -7,6 +7,7 @@
  * full-viewport route (which offers "Back to the guide").
  */
 import MapStage from './MapStage.astro';
+import Fg03Legend from './Fg03Legend.astro';
 import { base, snapshotDate } from '../data/fg03';
 
 interface Props {
@@ -65,15 +66,74 @@ const guideHref = `${base}/guides/when-toronto-has-to-go/`;
       <p class="fg03-map-loading-label" aria-hidden="true">
         Dated Toronto evidence is ready. The interactive layers load near this map.
       </p>
+
+      <!--
+        What you are looking at, inside the frame that is showing it. The only
+        state readout used to be the grey sentence under the controls, which on
+        the map route sits below the fold and on a phone is 1,600px above the
+        map: by the time a reader is looking at dots, nothing on screen says
+        which hour, which fare rule, or how many. Aria-hidden because the
+        role="status" sentence already announces the same change, and two live
+        regions saying it twice is worse than one saying it once.
+      -->
+      <div class="fg03-map-title" data-fg03-map-title aria-hidden="true" hidden>
+        <p class="fg03-map-title-count" data-fg03-map-title-count></p>
+        <p class="fg03-map-title-filters" data-fg03-map-title-filters></p>
+      </div>
+
+      <!--
+        A search that matches nothing emptied the map and said so 205px below
+        the fold, so the map read as broken while the filters still claimed a
+        time and a category. The card says it on the canvas the reader is
+        looking at, and carries the way out with it.
+      -->
+      <div class="fg03-map-veil" data-fg03-map-veil hidden>
+        <p data-fg03-map-veil-message></p>
+        <button type="button" data-fg03-map-veil-action hidden>Clear search</button>
+      </div>
+
+      <!--
+        The phone version of the detail panel. Scrolling to the real panel is
+        right on a desktop, where it is a column away; at 390px it is roughly
+        2,600px down, so a tap on a marker threw the map off screen with no way
+        back. Below 900px the record docks here instead, and the link is what
+        takes a reader to the full record if they want it.
+      -->
+      <div
+        class="fg03-map-card"
+        data-fg03-map-card
+        role="group"
+        aria-label="Selected place"
+        hidden
+      >
+        <div class="fg03-map-card-head">
+          <h4 data-fg03-map-card-title></h4>
+          <button
+            type="button"
+            data-fg03-map-card-close
+            aria-label="Clear the selected place"
+          >Close</button>
+        </div>
+        <dl data-fg03-map-card-body></dl>
+        <button type="button" data-fg03-map-card-more>Read the full record</button>
+      </div>
     </div>
 
       <Fragment slot="howto">
+        {/*
+          This was a sentence naming six shapes and no swatches, which asked a
+          reader to hold a description in their head and go hunting for a match.
+          Two of the names were also wrong: the diamond was called a record
+          needing verification when the solid one is a fare-paid facility, and
+          the cross was called an accessibility retrofit when the amber one
+          means the data is missing. Showing the drawn marks removes both the
+          translation and the chance of mislabelling one.
+        */}
         <p>
-          Each shape is a different kind of place, so the map reads without relying on
-          colour: a ring is a covered transit stop, a circle a facility open right now,
-          a square an extend-hours candidate, a triangle a new-facility zone, a diamond
-          a record needing verification, and a cross an accessibility retrofit.
+          Each shape is a different kind of place, so the map reads without relying
+          on colour.
         </p>
+        <Fg03Legend id="fg03-howto-legend" heading={false} />
         <p>
           The filters above the map set the hour, the fare condition, and how far you
           are willing to walk. Everything shown on the map is also in the ranked list
@@ -98,94 +158,11 @@ const guideHref = `${base}/guides/when-toronto-has-to-go/`;
       is also available in the ranked list.
     </p>
 
-    <div class="fg03-legend" data-fg03-legend role="group" aria-label="Map legend">
-      <h3>Legend</h3>
-      <p><b>Transit and selection</b></p>
-      <ul>
-        <li>
-          <span
-            class="fg03-symbol fg03-symbol--circle"
-            aria-hidden="true"
-            style="border-color: var(--fg03-mauve);"
-          />
-          <span><b class="fg03-shape-name">Ring</b> Covered transit stop</span>
-        </li>
-        <li>
-          <span
-            class="fg03-symbol fg03-symbol--circle"
-            aria-hidden="true"
-            style="background: var(--fg03-ink-muted); border-color: var(--fg03-ink-muted); opacity: 0.55;"
-          />
-          <span><b class="fg03-shape-name">Dot</b> Uncovered transit stop</span>
-        </li>
-        <li>
-          <span
-            class="fg03-symbol fg03-symbol--circle"
-            aria-hidden="true"
-            style="border-color: #9C8023;"
-          />
-          <span><b class="fg03-shape-name">Amber ring</b> Unknown or missing coverage</span>
-        </li>
-        <li>
-          <span
-            aria-hidden="true"
-            style="border-top: 2px dashed var(--fg03-mauve); display: block; width: 1rem;"
-          />
-          <span><b class="fg03-shape-name">Dashed line</b> Selected walking reach</span>
-        </li>
-        <li>
-          <span
-            class="fg03-symbol fg03-symbol--circle"
-            aria-hidden="true"
-            style="border-color: #F37E2A; box-shadow: 0 0 0 2px var(--fg03-paper-raised);"
-          />
-          <span><b class="fg03-shape-name">Orange halo</b> Selected place halo</span>
-        </li>
-      </ul>
-      <p><b>Facilities and actions</b></p>
-      <ul>
-        <li>
-          <span class="fg03-symbol fg03-symbol--circle" aria-hidden="true" />
-          <span><b class="fg03-shape-name">Circle</b> Current open facility record</span>
-        </li>
-        <li>
-          <span
-            class="fg03-symbol fg03-symbol--diamond"
-            aria-hidden="true"
-            style="background: var(--fg03-ink); border-color: var(--fg03-paper-raised);"
-          />
-          <span><b class="fg03-shape-name">Filled diamond</b> Fare-paid facility</span>
-        </li>
-        <li>
-          <span class="fg03-symbol fg03-symbol--square" aria-hidden="true" />
-          <span><b class="fg03-shape-name">Square</b> Extend hours</span>
-        </li>
-        <li>
-          <span class="fg03-symbol fg03-symbol--triangle" aria-hidden="true" />
-          <span><b class="fg03-shape-name">Triangle</b> New facility zone</span>
-        </li>
-        <li>
-          <span class="fg03-symbol fg03-symbol--diamond" aria-hidden="true" />
-          <span><b class="fg03-shape-name">Outline diamond</b> Verify information</span>
-        </li>
-        <li>
-          <span
-            class="fg03-symbol fg03-symbol--cross"
-            aria-hidden="true"
-            style="border-color: #9C8023; color: #9C8023;"
-          >×</span>
-          <span><b class="fg03-shape-name">Amber cross</b> Unknown or missing facility data</span>
-        </li>
-        <li>
-          <span class="fg03-symbol fg03-symbol--cross" aria-hidden="true">+</span>
-          <span><b class="fg03-shape-name">Cross</b> Accessibility retrofit</span>
-        </li>
-      </ul>
-    </div>
+    <Fg03Legend />
 
     <figcaption>
-      <span>Snapshot: {snapshotDate}</span>
-      <span>
+      <span data-fg03-caption-snapshot>Snapshot: {snapshotDate}</span>
+      <span data-fg03-caption-attribution>
         Map data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>.
         City data under the{' '}
         <a href="https://open.toronto.ca/open-data-license/">

@@ -285,6 +285,11 @@ test('operational layers expose complete, ordered, non-color-only map semantics'
   const layers = buildLayers();
   const ids = layers.map((layer) => layer.id);
 
+  // Three layers were added above the halo. The hover ring is what tells a
+  // reader which of a dozen crowded dots the cursor is actually on; the two
+  // hit layers are invisible 14px circles that give the 7px markers a 28px
+  // target, because 18px fails WCAG 2.5.8. All three have to sit on top: a hit
+  // target under the drawn symbols would be shadowed by them.
   assert.deepEqual(ids, [
     'fg03-reach',
     'fg03-stops-uncovered',
@@ -295,8 +300,18 @@ test('operational layers expose complete, ordered, non-color-only map semantics'
     'fg03-facilities-unknown',
     'fg03-interventions',
     'fg03-selected-halo',
+    'fg03-hover-halo',
+    'fg03-facilities-hit',
+    'fg03-interventions-hit',
   ]);
-  assert.equal(layers.at(-1).id, 'fg03-selected-halo');
+  for (const id of ['fg03-facilities-hit', 'fg03-interventions-hit']) {
+    const layer = layers.find((candidate) => candidate.id === id);
+    assert.equal(layer.paint['circle-opacity'], 0, `${id} must stay invisible`);
+    assert.ok(
+      layer.paint['circle-radius'] >= 12,
+      `${id} must clear the 24px minimum target size`,
+    );
+  }
   assert.notDeepEqual(
     layers.find((layer) => layer.id === 'fg03-stops-covered').paint,
     layers.find((layer) => layer.id === 'fg03-stops-uncovered').paint,
@@ -598,6 +613,28 @@ test('status and result-label helpers name the counting grain and zoom threshold
     status,
     'Showing 332 current open facility records for Noon, public access, and a 400 m walk.',
   );
+  // The plural used to be baked into the label, so one result read "Showing 1
+  // current open facility records". The count chip beside it already branched.
+  assert.equal(
+    mapModule.formatFg03Status({
+      action: 'open',
+      access: 'public',
+      count: 1,
+      time: '0030',
+      walk: 400,
+    }),
+    'Showing 1 current open facility record for 12:30 a.m., public access, and a 400 m walk.',
+  );
+  assert.equal(
+    mapModule.formatFg03Status({
+      action: 'extend',
+      access: 'rider',
+      count: 1,
+      time: '2200',
+      walk: 500,
+    }),
+    'Showing 1 audited extend-hours opportunity for 10 p.m., TTC rider access, and a 500 m walk.',
+  );
   assert.equal(mapModule.shouldShowFg03ResultLabels(13.49), false);
   assert.equal(mapModule.shouldShowFg03ResultLabels(13.5), true);
   assert.equal(mapModule.shouldShowFg03ResultLabels(Number.NaN), false);
@@ -737,13 +774,36 @@ test('public data renders as text and unsafe source links never become hrefs', (
   });
 
   assert.match(unsafeRow.textContent, /<img src=x onerror=alert\(1\)>/);
-  assert.match(unsafeRow.textContent, /Fare-paid area/);
   assert.match(unsafeRow.textContent, /Daily until 2 a\.m\./);
-  assert.match(unsafeRow.textContent, /scheduled/i);
-  assert.match(unsafeRow.textContent, /robust/i);
-  assert.match(unsafeRow.textContent, /valid/i);
   assert.match(unsafeRow.textContent, /21/);
   assert.equal(unsafeRow.findAll('a').length, 0);
+
+  // The row disclosure and the detail panel beside it now read one label table,
+  // so these are the panel's exact words rather than the raw GeoJSON tokens the
+  // row used to print. "Accessibility: unknown" read as *this washroom may not
+  // be step-free*, next to a panel saying "Not published", which reads as *the
+  // city never said*. Two different claims, same building, same screen.
+  assert.match(
+    unsafeRow.textContent,
+    /Access condition: Inside the fare gates, valid fare required/,
+  );
+  assert.match(
+    unsafeRow.textContent,
+    /Accessibility: Step-free access recorded/,
+  );
+  assert.match(
+    unsafeRow.textContent,
+    /Stability: Holds up under the robustness rules/,
+  );
+  assert.match(
+    unsafeRow.textContent,
+    /Audit status: Checked by hand against the source/,
+  );
+  // An unrecognised token falls back to a reader phrasing rather than leaking.
+  // This fixture's closureCategory is not one the published snapshot uses.
+  assert.match(unsafeRow.textContent, /Closure evidence: Not classified/);
+  assert.doesNotMatch(unsafeRow.textContent, /Stability: robust\b/);
+  assert.doesNotMatch(unsafeRow.textContent, /Audit status: valid\b/);
 
   const safeRow = mapModule.renderFg03ResultItem({
     document,
@@ -758,6 +818,26 @@ test('public data renders as text and unsafe source links never become hrefs', (
     safeRow.findAll('a')[0]?.getAttribute('href'),
     'https://www.ttc.ca/example',
   );
+  // The slot is called rank, the server fallback fills it with one, and the
+  // ordering genuinely is the audit ranking, but the runtime used to overwrite
+  // it with the action label alone: a "ranked list" that stopped showing ranks
+  // the moment JavaScript ran. Open washrooms are exempt, because a washroom
+  // that happens to be open is not competing with anything.
+  const rankedRow = mapModule.renderFg03ResultItem({
+    document,
+    feature: facilityFeature({
+      action: 'extend',
+      id: 'extend-hours:library:MD',
+      name: 'Maria A. Shchuka',
+      primaryRank: 3,
+    }),
+    metrics: null,
+  });
+  assert.match(rankedRow.textContent, /Rank 3 · Extend hours/);
+  assert.equal(rankedRow.getAttribute('data-rank'), '3');
+  assert.doesNotMatch(safeRow.textContent, /Rank /);
+  assert.equal(safeRow.getAttribute('data-rank'), null);
+
   assert.equal(mapModule.safeFg03Href('/data/fg03/file.geojson'), '/data/fg03/file.geojson');
   assert.equal(mapModule.safeFg03Href('//evil.example/file'), null);
   assert.equal(mapModule.safeFg03Href('http://example.com/file'), null);

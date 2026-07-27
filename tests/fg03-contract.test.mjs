@@ -7,6 +7,10 @@ const routePath = new URL(
   '../dist/guides/when-toronto-has-to-go/index.html',
   import.meta.url,
 );
+const mapRoutePath = new URL(
+  '../dist/guides/when-toronto-has-to-go/map/index.html',
+  import.meta.url,
+);
 const homePath = new URL('../dist/index.html', import.meta.url);
 const aboutPath = new URL('../dist/about/index.html', import.meta.url);
 const socialPath = new URL(
@@ -168,12 +172,22 @@ test('map shell explains keyboard use, symbol shapes, date, and attribution', ()
   assert.match(html, /data-fg03-map[^>]*role="region"/);
   assert.match(html, /Focus the map and use arrow keys to pan/);
   assert.match(html, /data-fg03-legend/);
-  assert.match(html, /circle[\s\S]*Current open facility/);
-  assert.match(html, /square[\s\S]*Extend hours/);
-  assert.match(html, /triangle[\s\S]*New facility zone/);
-  assert.match(html, /outline diamond[\s\S]*Verify information/i);
-  assert.match(html, /filled diamond[\s\S]*Fare-paid facility/i);
-  assert.match(html, /cross[\s\S]*Accessibility retrofit/);
+  assert.match(html, /circle[\s\S]*current open facility/i);
+  assert.match(html, /square[\s\S]*extend hours/i);
+  assert.match(html, /triangle[\s\S]*new facility zone/i);
+  // Two of the seven facility marks were named for the wrong symbol: "diamond,
+  // a record needing verification" was true of the hollow one and false of the
+  // solid one, which is fare-paid; "cross, accessibility retrofit" was true of
+  // the blue plus and false of the amber cross, which means data is missing.
+  // The names now carry fill and colour, so they survive being read aloud.
+  assert.match(html, /hollow diamond[\s\S]*needs verification/i);
+  assert.match(html, /solid diamond[\s\S]*fare-paid facility/i);
+  assert.match(html, /amber cross[\s\S]*data missing/i);
+  assert.match(html, /blue plus[\s\S]*accessibility retrofit/i);
+  assert.doesNotMatch(html, /a record needing verification/i);
+  // The prose that named six shapes and showed none of them is replaced by the
+  // drawn swatches, so "How to read this map" and the map agree by construction.
+  assert.match(html, /id="fg03-howto-legend"/);
   assert.match(html, /covered transit stop/i);
   assert.match(html, /uncovered transit stop/i);
   assert.match(html, /unknown or missing coverage/i);
@@ -192,6 +206,55 @@ test('map shell explains keyboard use, symbol shapes, date, and attribution', ()
     styles,
     /\.fg03-legend > p,\s*\.fg03-legend > ul\s*\{[^}]*grid-column:\s*2;/,
     'Desktop legend groups must stay out of the narrow heading column',
+  );
+});
+
+test('the map frame carries its own title, empty state, and way back out', () => {
+  const html = normalize(readRoute());
+  // Everything here draws inside the map frame. The only state readout used to
+  // be the grey status sentence outside it, which sits below the fold on the
+  // map route and about 1,600px above the map on a phone: a caption for
+  // something the reader cannot see at the same time as the caption.
+  assert.match(html, /data-fg03-map-title/);
+  assert.match(html, /data-fg03-map-title-count/);
+  assert.match(html, /data-fg03-map-title-filters/);
+  // A search matching nothing emptied the map and explained itself 205px below
+  // the fold, so the map read as broken. The card says it on the canvas.
+  assert.match(html, /data-fg03-map-veil/);
+  assert.match(html, /data-fg03-map-veil-action[^>]*>Clear search/);
+  // The phone's detail surface. Scrolling to the real panel is right on a
+  // desktop and wrong at 390px, where the panel is a screen and a half away.
+  assert.match(html, /data-fg03-map-card/);
+  assert.match(html, /data-fg03-map-card-more[^>]*>Read the full record/);
+  // "Clear selected place" named the data operation. The button also restores
+  // the camera the selection took away, so it now names the outcome.
+  assert.match(html, /data-fg03-close-detail[^>]*>\s*Back to all results/);
+  assert.doesNotMatch(html, /Clear selected place/);
+  // The eyebrow is the only line that says whether the rows are facilities or
+  // arguments, so it is a hook the runtime rewrites, not a build-time constant.
+  assert.match(html, /data-fg03-results-eyebrow[^>]*>\s*What Toronto has/);
+  assert.match(
+    html,
+    /data-fg03-rank-basis[^>]*hidden[^>]*>\s*Ranked by transit served within the selected walk/,
+  );
+});
+
+test('the expanded map route keeps a legend, a snapshot date, and control advice', () => {
+  const html = normalize(readText(mapRoutePath));
+  // This route has the largest map and used to be the only one with no key at
+  // all: the figure's legend was hidden by a rule whose comment claimed it had
+  // moved in with the controls, a move never made. Now it has.
+  assert.match(html, /id="fg03-rail-legend"[^>]*open/);
+  assert.match(html, /<summary>Legend: 12 map marks<\/summary>/);
+  assert.match(html, /hollow diamond[\s\S]*needs verification/i);
+  // Hiding the whole figcaption also hid the snapshot date, which is the one
+  // thing a dated map cannot publish without.
+  assert.match(html, /data-fg03-caption-snapshot[^>]*>Snapshot: July 21, 2026/);
+  // The controls help line reads as a caption for the map when it lands at the
+  // top of the rail, and as advice about a control when it sits beside Share.
+  assert.ok(
+    html.indexOf('id="fg03-controls-help"') > html.indexOf('data-fg03-share'),
+    'Control advice belongs at the foot of the rail, beside Share this view',
   );
 });
 

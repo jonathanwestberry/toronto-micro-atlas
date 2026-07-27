@@ -16,6 +16,21 @@ import {
   number,
 } from '../data/fg03';
 
+interface Props {
+  /**
+   * Put the "results update after each choice" line at the foot of the form.
+   *
+   * On the guide the sentence sits above a map that is right there, so it reads
+   * as an introduction. On the map route the same sentence lands at the top of
+   * a scrolling rail, a screen away from anything it describes, where it reads
+   * as a caption for the map instead of advice about a control. At the foot it
+   * sits beside Share this view, which is the other thing it is about.
+   */
+  helpAtFoot?: boolean;
+}
+
+const { helpAtFoot = false } = Astro.props as Props;
+
 // Each proposal option carries how many places it holds in this snapshot, so a
 // reader can see an option is empty before spending a click on it. Retrofit is
 // the one that is empty today.
@@ -30,10 +45,12 @@ const proposalCount = (action: string): number =>
   aria-disabled="true"
   inert
 >
-  <p id="fg03-controls-help" class="fg03-controls-help">
-    Results update after each choice. The URL stores time, access, walk,
-    action, selected place, and map view for sharing.
-  </p>
+  {!helpAtFoot && (
+    <p id="fg03-controls-help" class="fg03-controls-help">
+      Results update after each choice. The URL stores time, access, walk,
+      action, selected place, and map view for sharing.
+    </p>
+  )}
 
   <div class="fg03-control-grid">
     <fieldset data-fg03-filter="time">
@@ -212,5 +229,11 @@ const proposalCount = (action: string): number =>
         Share this view
       </button>
     </div>
+    {helpAtFoot && (
+      <p id="fg03-controls-help" class="fg03-controls-help">
+        Results update after each choice. The URL stores time, access, walk,
+        action, selected place, and map view for sharing.
+      </p>
+    )}
   </div>
 </form>

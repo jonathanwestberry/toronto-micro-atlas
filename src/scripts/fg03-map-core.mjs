@@ -3,7 +3,6 @@ import {
   serializeFg03State
 } from "./fg03-state.mjs";
 import {
-  getAccessDisclosure,
   getActionLabel,
   getFg03HistoryEffect,
   getMatchingQueryCell,
@@ -23,6 +22,60 @@ const ACTION_STATUS_LABELS = Object.freeze({
   verify: "audited information checks",
   retrofit: "audited accessibility retrofits"
 });
+/* One result still read "Showing 1 current open facility records", because the
+   plural was baked into the label. The count chip already got this right, so
+   the status sentence now has the same two forms to choose between. */
+const ACTION_STATUS_LABELS_ONE = Object.freeze({
+  open: "current open facility record",
+  extend: "audited extend-hours opportunity",
+  new: "audited new-facility zone",
+  verify: "audited information check",
+  retrofit: "audited accessibility retrofit"
+});
+/**
+ * Dataset values written for a reader.
+ *
+ * These used to live in fg03-map.ts and cover only the detail panel, so the row
+ * disclosure printed "Accessibility: unknown" a few centimetres from a panel
+ * saying "Not published". Those are different claims about the same washroom:
+ * "unknown" reads as *this one may not be step-free*, "Not published" reads as
+ * *the city never said*. Both surfaces now read this one table. Every value
+ * below appears in the published snapshot; anything unrecognised falls back to
+ * a "not published" phrasing rather than leaking the raw token.
+ */
+const FG03_READER_LABELS = Object.freeze({
+  access: Object.freeze({
+    unrestricted: "Open to anyone, no fare required",
+    fare_paid: "Inside the fare gates, valid fare required",
+    unknown: "Access condition not published"
+  }),
+  closure: Object.freeze({
+    none: "No closure recorded",
+    construction: "Closed for construction",
+    temporary: "Temporarily closed",
+    seasonal: "Closed for the season"
+  }),
+  accessibility: Object.freeze({
+    accessible: "Step-free access recorded",
+    inaccessible: "No step-free access recorded",
+    not_accessible: "No step-free access recorded",
+    unknown: "Not published"
+  }),
+  stability: Object.freeze({
+    robust: "Holds up under the robustness rules",
+    sensitive: "Sensitive to the robustness rules",
+    unstable: "Fails the robustness rules"
+  }),
+  audit: Object.freeze({
+    valid: "Checked by hand against the source"
+  })
+});
+/** Reads one field through the shared table, never past it. */
+function readerLabel(field, value, fallback) {
+  const table = FG03_READER_LABELS[field];
+  const label = table === void 0 ? void 0 : table[String(value)];
+  return typeof label === "string" ? label : fallback;
+}
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const LOCAL_DATA_PATH = /^\/data\/[A-Za-z0-9._~!$&'()*+,;=:@%/?#-]+$/;
 const FG03_CONTEXT_FILES = Object.freeze({
@@ -380,6 +433,47 @@ function createFg03OperationalLayers() {
         "circle-stroke-width": 3,
         "circle-opacity": 0.98
       }
+    },
+    /* The pointer follows the cursor rather than the marker, so the marker gets
+       a halo the moment the cursor is over its hit target. Without it the only
+       feedback was the cursor changing to a pointer, which says "something here"
+       without saying which thing, and on a dense block of stops that is the
+       whole question. */
+    {
+      id: "fg03-hover-halo",
+      type: "circle",
+      source: "fg03-hover",
+      paint: {
+        "circle-color": "rgba(0,0,0,0)",
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 8, 16, 14],
+        "circle-stroke-color": "#1A2F66",
+        "circle-stroke-width": 2.5,
+        "circle-opacity": 0.98
+      }
+    },
+    /* Invisible, and last, so it catches the pointer before anything under it.
+       The drawn markers interpolate from 3.5px to 7px, which is a 9px hit
+       radius at best and an 18px target: WCAG 2.5.8 asks for 24. Fourteen
+       pixels of radius is a 28px target at every zoom, and because opacity is
+       zero the map still looks like a 7px dot. Both layers are queried before
+       the drawn ones in the click and hover handlers. */
+    {
+      id: "fg03-facilities-hit",
+      type: "circle",
+      source: "fg03-facilities",
+      paint: {
+        "circle-radius": 14,
+        "circle-opacity": 0
+      }
+    },
+    {
+      id: "fg03-interventions-hit",
+      type: "circle",
+      source: "fg03-interventions",
+      paint: {
+        "circle-radius": 14,
+        "circle-opacity": 0
+      }
     }
   ];
 }
@@ -494,7 +588,8 @@ function formatFg03Status({
 }) {
   const safeCount = typeof count === "number" && Number.isFinite(count) && count >= 0 ? Math.floor(count) : 0;
   const accessLabel = access === "rider" ? "TTC rider access" : "public access";
-  const actionLabel = ACTION_STATUS_LABELS[action] ?? ACTION_STATUS_LABELS.extend;
+  const labels = safeCount === 1 ? ACTION_STATUS_LABELS_ONE : ACTION_STATUS_LABELS;
+  const actionLabel = labels[action] ?? labels.extend;
   const timeLabel = TIME_LABELS[time] ?? TIME_LABELS["2200"];
   const walkDistance = [300, 400, 500].includes(walk) ? walk : 400;
   return `Showing ${safeCount.toLocaleString("en-CA")} ${actionLabel} for ${timeLabel}, ${accessLabel}, and a ${walkDistance} m walk.`;
@@ -622,7 +717,22 @@ function renderFg03ResultItem({
   summary.className = "fg03-result-summary";
   const action = document.createElement("p");
   action.className = "fg03-result-rank";
-  action.textContent = getActionLabel(feature) || "Current open washroom";
+  /* The slot is called rank and the server fallback fills it with one, but the
+     runtime wrote only the action label into it, so the moment JavaScript ran a
+     list described as ranked stopped showing where anything ranked. The order
+     really is the audit ranking, so say so. Open washrooms are exempt: they are
+     facts with addresses, not a ranking, and printing "Rank 1" over one would
+     invent a competition the data does not hold. */
+  const actionLabel = getActionLabel(feature) || "Current open washroom";
+  const rank = properties.primaryRank;
+  const ranked = typeof properties.action === "string"
+    && properties.action !== "open"
+    && typeof rank === "number"
+    && Number.isFinite(rank);
+  action.textContent = ranked ? `Rank ${rank} · ${actionLabel}` : actionLabel;
+  if (ranked) {
+    item.setAttribute("data-rank", String(rank));
+  }
   const title = document.createElement("h4");
   title.textContent = textValue(properties.name, "Unnamed place");
   summary.append(action, title);
@@ -666,16 +776,38 @@ function renderFg03ResultItem({
   const detailsSummary = document.createElement("summary");
   detailsSummary.textContent = "Read the evidence";
   const evidence = document.createElement("div");
-  const access = getAccessDisclosure(feature);
   const sourceLabel = getSourceLabel(feature);
+  /* Every value a reader can see now comes from FG03_READER_LABELS, the same
+     table the detail panel reads. The two sit side by side on a wide screen, so
+     any wording that differs between them reads as two different findings about
+     one washroom rather than one finding printed twice. */
   const evidenceRows = [
-    ["Action", getActionLabel(feature) || "Current open washroom"],
-    ["Access condition", access?.label ?? textValue(properties.accessCondition)],
+    ["Action", actionLabel],
+    [
+      "Access condition",
+      readerLabel(
+        "access",
+        properties.accessCondition,
+        "Access condition not published"
+      )
+    ],
     ["Published hours", textValue(properties.hours, "Not published")],
-    ["Closure evidence", textValue(properties.closureCategory, "Not classified")],
-    ["Accessibility", textValue(properties.accessibility, "Not published")],
-    ["Stability", textValue(properties.stability, "Not evaluated")],
-    ["Audit status", textValue(properties.auditStatus, "Not applicable")],
+    [
+      "Closure evidence",
+      readerLabel("closure", properties.closureCategory, "Not classified")
+    ],
+    [
+      "Accessibility",
+      readerLabel("accessibility", properties.accessibility, "Not published")
+    ],
+    [
+      "Stability",
+      readerLabel("stability", properties.stability, "Not evaluated")
+    ],
+    [
+      "Audit status",
+      readerLabel("audit", properties.auditStatus, "Not applicable")
+    ],
     ["Source", sourceLabel || textValue(properties.source, "Official source")]
   ];
   for (const [label, value] of evidenceRows) {
@@ -798,6 +930,7 @@ function createFg03LifecycleController({
   };
 }
 export {
+  FG03_READER_LABELS,
   FG03_SYMBOL_RECIPES,
   FG03_CONTEXT_FILES,
   applyFg03InteractiveReadiness,
@@ -811,6 +944,7 @@ export {
   getFg03InvalidationCause,
   initializeFg03RuntimeState,
   loadFg03Data,
+  readerLabel,
   reduceFg03Transition,
   renderFg03ResultItem,
   safeFg03Href,

@@ -32,8 +32,16 @@ const showingOpenFacilities = defaultAction === 'open';
 <div class="fg03-results" data-fg03-results>
   <header class="fg03-results-header">
     <div>
-      <p class="fg03-eyebrow">
-        {showingOpenFacilities ? 'What Toronto has' : 'Default ranking'}
+      {/*
+        Computed here at build time and then rewritten by renderResults, because
+        this eyebrow is the only thing on the page that says whether the rows
+        below are facilities or arguments. It used to be fixed at build time
+        while the heading under it changed, so picking "Extend hours" produced
+        "WHAT TORONTO HAS" over ten proposals: exactly the confusion the radio
+        group was rewritten to prevent, reintroduced two lines lower.
+      */}
+      <p class="fg03-eyebrow" data-fg03-results-eyebrow>
+        {showingOpenFacilities ? 'What Toronto has' : 'What I would change'}
       </p>
       <h3>{actionLabels[defaultAction]} at {defaultSnapshotLabel}</h3>
     </div>
@@ -49,6 +57,17 @@ const showingOpenFacilities = defaultAction === 'open';
     <h4 id="fg03-standard-results" class="visually-hidden">
       {showingOpenFacilities ? 'Open washroom results' : 'Ranked intervention results'}
     </h4>
+    {/*
+      Rows carry a rank number but nothing said what the number is a rank of.
+      Stated once above the list rather than repeated per row.
+    */}
+    <p
+      class="fg03-rank-basis"
+      data-fg03-rank-basis
+      hidden={showingOpenFacilities}
+    >
+      Ranked by transit served within the selected walk.
+    </p>
     <ol class="fg03-result-list" data-fg03-result-list>
       {showingOpenFacilities && defaultOpenResults.map((feature) => {
         const { properties } = feature;
@@ -237,8 +256,13 @@ const showingOpenFacilities = defaultAction === 'open';
         the map.
       </p>
     </div>
+    {/*
+      "Clear selected place" named the data operation. What a reader wants at
+      that moment is the city back, and the button also now restores the camera
+      it took away, so the label says the outcome instead of the mechanism.
+    */}
     <button type="button" data-fg03-close-detail disabled>
-      Clear selected place
+      Back to all results
     </button>
   </aside>
 </div>
