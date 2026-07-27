@@ -3,6 +3,7 @@ import Base from '../../../layouts/Base.astro';
 import Fg03Controls from '../../../components/Fg03Controls.astro';
 import Fg03Status from '../../../components/Fg03Status.astro';
 import Fg03MapFigure from '../../../components/Fg03MapFigure.astro';
+import Fg03Legend from '../../../components/Fg03Legend.astro';
 import Fg03Results from '../../../components/Fg03Results.astro';
 import '../../../styles/fg03.css';
 import { base, config, gatePassed, guideDescription, manifest } from '../../../data/fg03';
@@ -46,7 +47,16 @@ const guideHref = `${base}/guides/when-toronto-has-to-go/`;
           */}
           <aside class="fg03-map-route-rail" aria-labelledby="fg03-rail-title">
             <h2 id="fg03-rail-title" class="visually-hidden">Filters and ranked results</h2>
-            <Fg03Controls />
+            <Fg03Controls helpAtFoot />
+            {/*
+              The key, on the route with the biggest map. The figure's own copy
+              is hidden here because a full-height map leaves no room under it,
+              and the CSS that hid it once claimed the legend had moved in with
+              the controls, which it never had. Now it has: folded by default
+              after the first visit, directly under the last thing the reader
+              chose to show on the map.
+            */}
+            <Fg03Legend collapsible id="fg03-rail-legend" />
             <Fg03Status />
             <Fg03Results />
           </aside>
@@ -145,11 +155,25 @@ const guideHref = `${base}/guides/when-toronto-has-to-go/`;
     min-height: 0;
   }
 
-  /* The legend and the keyboard instructions belong with the controls on this
-     route, not stacked under a full-height map where they would be unreachable. */
-  .fg03-map-route-layout .fg03-legend,
-  .fg03-map-route-layout .fg03-map-instructions,
+  /* The figure's own legend copy and the keyboard instructions are hidden here
+     because the rail now carries both: the legend as a disclosure above the
+     status line, the keys inside "How to read this map". The howto legend is
+     exempt, or the disclosure would open on an empty box. */
+  .fg03-map-route-layout .fg03-map-frame > .fg03-legend,
+  .fg03-map-route-layout .fg03-map-instructions {
+    display: none;
+  }
+
+  /* The caption stays. Hiding the whole figcaption also took the snapshot date
+     with it, which is the one thing a dated map cannot be published without.
+     The attribution half goes, because MapLibre's own attribution control is
+     already in the bottom-left corner of this map saying the same thing. */
   .fg03-map-route-layout .fg03-map-figure figcaption {
+    border-top: 0;
+    padding: 0.5rem var(--space-4);
+  }
+
+  .fg03-map-route-layout .fg03-map-figure figcaption [data-fg03-caption-attribution] {
     display: none;
   }
 

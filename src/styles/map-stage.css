@@ -224,6 +224,14 @@
   top: calc(var(--space-3) + 2.25rem);
   left: var(--space-3);
   width: min(30ch, calc(100% - 2 * var(--space-3)));
+  /* The panel had no ceiling, so a guide that put real content in it (seven
+     glyph specimens on fg01, twelve legend rows on fg03) ran off the bottom
+     of the frame and the overflow was simply unreachable, worst on a phone
+     where the frame is shortest. Two guides hit this independently. Scroll
+     inside the panel rather than off the map. */
+  max-height: calc(100% - 2 * var(--space-3) - 2.25rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: var(--space-4);
   border: 1px solid var(--atlas-line-strong);
   border-radius: var(--radius-2);
@@ -450,9 +458,22 @@
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 2px 6px rgb(0 0 0 / 0.06);
 }
 
+/* Square by default, because MapLibre's own controls are icons. A guide that
+   adds a *labelled* control to the group (fg03's "Fit all results") needs the
+   width to follow the text instead, or the label is clipped to 32px. Height
+   stays the floor so the group keeps one rhythm. */
 .map-stage .maplibregl-ctrl-group button {
   width: 32px;
   height: 32px;
+}
+
+.map-stage .maplibregl-ctrl-group button.map-stage-ctrl--labelled {
+  width: auto;
+  min-width: 32px;
+  height: auto;
+  min-height: 32px;
+  padding: 0 var(--space-2);
+  white-space: nowrap;
 }
 
 /* MapLibre's own #ddd divider is the only thing saying the zoom group holds
@@ -574,8 +595,18 @@
     width: auto;
   }
 
+  /* An embedded map on a phone is a few hundred pixels tall with attribution
+     already claiming the bottom-left, so the scale bar is the thing that goes.
+     The expanded route is a different situation: the map owns the viewport,
+     and that is exactly where a reader zoomed in far enough to tap one tree
+     most needs to know how far across the view is. Measured at 390x844 on the
+     explorer: scale 647 to 668, attribution 682 to 726, panel top 748. Room. */
   .map-stage .maplibregl-ctrl-scale {
     display: none;
+  }
+
+  .map-stage--expanded .maplibregl-ctrl-scale {
+    display: block;
   }
 }
 

@@ -15,6 +15,10 @@ import { readdirSync, readFileSync } from 'node:fs';
 // server-rendered list and the first client render cannot disagree about which
 // washrooms count as open at the default snapshot.
 import { filterOpenFacilities } from '../scripts/fg03-results.mjs';
+// The reader wording, from the one table the runtime detail panel and the row
+// disclosure both read. Two of these labels used to be copied here by hand with
+// a comment asking future edits to keep them in step, which is not a mechanism.
+import { readerLabel } from '../scripts/fg03-map-core.mjs';
 
 export type SnapshotId = '1200' | '2030' | '2200' | '0030';
 export type ActionId = 'open' | 'extend' | 'new' | 'verify' | 'retrofit';
@@ -233,19 +237,9 @@ export const sourceLabelFor = (properties: InterventionProperties): string => {
 export const facilitySourceLabelFor = (properties: FacilityProperties): string =>
   sourceLabels[properties.source] ?? 'Official facility source';
 export const accessLabelFor = (access: InterventionProperties['accessCondition']): string =>
-  access === 'fare_paid'
-    ? 'Inside the fare gates, valid fare required'
-    : access === 'unrestricted'
-      ? 'Open to anyone, no fare required'
-      : 'Access condition not published';
-// Matches READER_LABELS in fg03-map.ts. The server list and the runtime detail
-// panel describe the same facility, so they must not word it two ways.
-export const closureLabelFor = (category: string): string => ({
-  none: 'No closure recorded',
-  construction: 'Closed for construction',
-  temporary: 'Temporarily closed',
-  seasonal: 'Closed for the season',
-}[category] ?? 'Not classified');
+  readerLabel('access', access, 'Access condition not published');
+export const closureLabelFor = (category: string): string =>
+  readerLabel('closure', category, 'Not classified');
 export const guideDescription = gatePassed
   ? `At ${defaultSnapshotLabel}, Toronto has ${number.format(
       defaultPhase1.activeTransitPointCount,

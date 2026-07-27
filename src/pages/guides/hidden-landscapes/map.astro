@@ -2,6 +2,8 @@
 import { getCollection } from 'astro:content';
 import Base from '../../../layouts/Base.astro';
 import MapStage from '../../../components/MapStage.astro';
+import GuidePanel from './_GuidePanel.astro';
+import HowToRead from './_HowToRead.astro';
 
 const base = import.meta.env.BASE_URL.replace(/\/+$/, '');
 
@@ -58,18 +60,22 @@ const guideHref = `${base}/guides/hidden-landscapes/`;
         </noscript>
       </div>
 
-      <Fragment slot="howto">
-        <p>
-          Symbols mark thresholds, the points where city fabric gives way to hidden landscape.
-          The shaded layer is the connected valley and ravine system. Select a symbol to preview
-          a location, then open the entry to read it in full.
-        </p>
-        <p>
-          Every symbol has its own shape as well as its own colour, so the map stays readable
-          without relying on colour alone. Tab moves between symbols; Enter opens the one you
-          are on. Escape returns to the guide.
-        </p>
-      </Fragment>
+      <!--
+        This route shipped with no panel at all, so collectPanelRefs() returned
+        null and populatePanel, showSelectedPanel and announce all early-returned.
+        Clicking a pin flew the camera and then said nothing: no name, no legend,
+        no way into the entry. The panel floats here rather than sitting in flow,
+        because on this route the map is the whole page and there is no "below".
+      -->
+      <GuidePanel count={locations.length} floating titleAs="p">
+        <Fragment slot="welcome">
+          <p class="guide-panel-welcome">
+            Eight thresholds. Select a symbol to preview it.
+          </p>
+        </Fragment>
+      </GuidePanel>
+
+      <HowToRead slot="howto" expanded />
 
       <Fragment slot="status-fallback">
         <a class="map-stage__btn" href={guideHref}>Read the entries instead</a>
@@ -82,10 +88,13 @@ const guideHref = `${base}/guides/hidden-landscapes/`;
 
   <script>
     import { initGuideMap } from '../../../scripts/guide-map';
+    import { wirePanelScrollStop } from './_panel-scroll-stop';
 
     // No backHref needed: the Back link is already in the DOM as
     // [data-map-back], and MapStage reads it from there for Escape.
     const boot = () => initGuideMap({ expanded: true });
+
+    wirePanelScrollStop();
 
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', boot, { once: true });

@@ -1,0 +1,195 @@
+---
+/**
+ * FG03 map legend, written once and rendered three times.
+ *
+ * It used to exist only inside Fg03MapFigure, which the map route then hid with
+ * a `display: none` and a comment promising the legend had moved in with the
+ * controls. It never had, so the route with the largest map was the only one
+ * with no key at all. Making it a component is what lets the rail carry it as a
+ * disclosure, the figure carry it as a block, and "How to read this map" show
+ * the same swatches the map draws, without three copies drifting apart.
+ *
+ * The rows are data rather than markup so the summary can count them instead of
+ * asserting a number that goes stale the first time a symbol is added.
+ */
+interface Row {
+  /** Inline styles that make the swatch match the drawn symbol exactly. */
+  style?: string;
+  /** Extra class after `fg03-symbol`. */
+  variant: string;
+  /** Glyph drawn inside the swatch, for the marks that are strokes. */
+  glyph?: string;
+  /** Spoken first, so it has to survive being read aloud on its own. */
+  name: string;
+  meaning: string;
+}
+
+interface Props {
+  /**
+   * Wrap in a disclosure. The map route's rail is a scrolling column with the
+   * filters and the whole ranked list already in it, so the legend earns its
+   * place there only if it can be folded away.
+   */
+  collapsible?: boolean;
+  /** Distinguishes the instances so two can coexist on one route. */
+  id?: string;
+  /** Drop the heading where a summary or a dialog title already names it. */
+  heading?: boolean;
+}
+
+const {
+  collapsible = false,
+  id = 'fg03-legend',
+  heading = true,
+} = Astro.props as Props;
+
+const transitRows: Row[] = [
+  {
+    variant: 'fg03-symbol--circle',
+    style: 'border-color: var(--fg03-mauve);',
+    name: 'Ring',
+    meaning: 'covered transit stop',
+  },
+  {
+    variant: 'fg03-symbol--circle',
+    style:
+      'background: var(--fg03-ink-muted); border-color: var(--fg03-ink-muted); opacity: 0.55;',
+    name: 'Dot',
+    meaning: 'uncovered transit stop',
+  },
+  {
+    variant: 'fg03-symbol--circle',
+    style: 'border-color: #9C8023;',
+    name: 'Amber ring',
+    meaning: 'unknown or missing coverage',
+  },
+  {
+    variant: 'fg03-symbol--rule',
+    name: 'Dashed line',
+    meaning: 'selected walking reach',
+  },
+  {
+    variant: 'fg03-symbol--circle',
+    style: 'border-color: #F37E2A; box-shadow: 0 0 0 2px var(--fg03-paper-raised);',
+    name: 'Orange halo',
+    meaning: 'selected place halo',
+  },
+];
+
+/*
+  Two of these seven used to be named for the wrong thing. "Diamond, a record
+  needing verification" was true of the hollow one and false of the solid one,
+  which is a fare-paid facility; "cross, accessibility retrofit" was true of the
+  blue plus and false of the amber cross, which means the data is missing. The
+  names now carry the fill and the colour, because a reader matching a shape on
+  the map has only the drawn thing to go on, and because a name has to still
+  work when someone reads it out loud to someone else.
+*/
+const facilityRows: Row[] = [
+  {
+    variant: 'fg03-symbol--circle',
+    name: 'Circle',
+    meaning: 'current open facility record',
+  },
+  {
+    variant: 'fg03-symbol--diamond',
+    style: 'background: var(--fg03-ink); border-color: var(--fg03-paper-raised);',
+    name: 'Solid diamond',
+    meaning: 'fare-paid facility',
+  },
+  {
+    variant: 'fg03-symbol--square',
+    name: 'Square',
+    meaning: 'extend hours',
+  },
+  {
+    variant: 'fg03-symbol--triangle',
+    name: 'Triangle',
+    meaning: 'new facility zone',
+  },
+  {
+    variant: 'fg03-symbol--diamond',
+    name: 'Hollow diamond',
+    meaning: 'needs verification',
+  },
+  {
+    variant: 'fg03-symbol--cross',
+    style: 'color: #9C8023;',
+    glyph: '×',
+    name: 'Amber cross',
+    meaning: 'data missing',
+  },
+  {
+    variant: 'fg03-symbol--cross',
+    style: 'color: var(--fg03-mauve);',
+    glyph: '+',
+    name: 'Blue plus',
+    meaning: 'accessibility retrofit',
+  },
+];
+
+const markCount = transitRows.length + facilityRows.length;
+const groups: Array<[string, Row[]]> = [
+  ['Transit and selection', transitRows],
+  ['Facilities and actions', facilityRows],
+];
+---
+
+{
+  collapsible ? (
+    <details class="fg03-legend-disclosure" data-fg03-legend-disclosure id={id} open>
+      <summary>Legend: {markCount} map marks</summary>
+      <div
+        class="fg03-legend fg03-legend--headless"
+        data-fg03-legend
+        role="group"
+        aria-label="Map legend"
+      >
+        {groups.map(([title, rows]) => (
+          <Fragment>
+            <p><b>{title}</b></p>
+            <ul>
+              {rows.map((row) => (
+                <li>
+                  <span
+                    class:list={['fg03-symbol', row.variant]}
+                    aria-hidden="true"
+                    style={row.style}
+                  >{row.glyph}</span>
+                  <span><b class="fg03-shape-name">{row.name}</b>, {row.meaning}</span>
+                </li>
+              ))}
+            </ul>
+          </Fragment>
+        ))}
+      </div>
+    </details>
+  ) : (
+    <div
+      class:list={['fg03-legend', { 'fg03-legend--headless': !heading }]}
+      data-fg03-legend
+      role="group"
+      aria-label="Map legend"
+      id={id}
+    >
+      {heading && <h3>Legend</h3>}
+      {groups.map(([title, rows]) => (
+        <Fragment>
+          <p><b>{title}</b></p>
+          <ul>
+            {rows.map((row) => (
+              <li>
+                <span
+                  class:list={['fg03-symbol', row.variant]}
+                  aria-hidden="true"
+                  style={row.style}
+                >{row.glyph}</span>
+                <span><b class="fg03-shape-name">{row.name}</b>, {row.meaning}</span>
+              </li>
+            ))}
+          </ul>
+        </Fragment>
+      ))}
+    </div>
+  )
+}

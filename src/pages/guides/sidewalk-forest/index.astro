@@ -150,6 +150,14 @@ const chips = categories.filter((c) => chipKeys.includes(c.key));
               six to one by its European cousin.
             </p>
             <button type="button" class="fg2-card-btn" id="fg2-maple-toggle">Show the sugar maples</button>
+            <!--
+              The button names the other state, which is what a toggle label
+              should do, and left nothing at all naming the current one. The
+              caption is the present tense the map was missing.
+            -->
+            <p class="fg2-toggle-state" id="fg2-maple-state" aria-live="polite">
+              On the map: Norway maples, 69,474
+            </p>
           </div>
         </section>
 

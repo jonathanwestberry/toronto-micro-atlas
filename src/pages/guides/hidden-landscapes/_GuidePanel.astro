@@ -1,0 +1,524 @@
+---
+/**
+ * The fg01 reader panel, shared by the guide page and the full map route.
+ *
+ * It exists as one component because the two routes used to disagree: the
+ * guide page had a panel and the /map route had none at all, so on /map
+ * collectPanelRefs() returned null and every pin click flew the camera to a
+ * place the reader was never told the name of. One source, two placements.
+ *
+ * The shell is deliberately three parts, not two. The head (kicker plus title)
+ * and the key (count plus legend) are always in the DOM; only the middle band
+ * swaps between the resting copy and the selected location. The previous
+ * version hung the legend and the guide title inside the welcome panel, so
+ * selecting a place deleted both, and the reader lost the map's key at the
+ * exact moment they had started reading the map.
+ *
+ * The ids are the contract with src/scripts/guide-map.ts (collectPanelRefs).
+ * Renaming one here without renaming it there silently turns the panel off.
+ */
+interface Props {
+  /** How many locations the guide holds. Drives the count line and the reset control's label. */
+  count: number;
+  /**
+   * True on /map, where the panel floats over a full-bleed canvas instead of
+   * sitting in page flow below the map at narrow widths.
+   */
+  floating?: boolean;
+  /**
+   * The guide page continues into a card list, so its count line says so. The
+   * map route has nothing below it and would be pointing at a scroll that does
+   * not exist.
+   */
+  scrollHint?: boolean;
+  /**
+   * The map route already carries the route's own h1, so its panel title is a
+   * paragraph. Two h1s describing the same page is a heading outline that lies.
+   */
+  titleAs?: 'h1' | 'p';
+}
+
+const {
+  count,
+  floating = false,
+  scrollHint = false,
+  titleAs = 'h1',
+} = Astro.props as Props;
+
+const Title = titleAs;
+---
+
+<aside
+  class:list={['guide-panel', floating && 'guide-panel--floating']}
+  id="guide-panel"
+  aria-label="Hidden Landscapes guide panel"
+>
+  <div class="guide-panel-inner">
+    <div class="guide-panel-head">
+      <span class="guide-panel-kicker">Guide</span>
+      <Title class="guide-panel-title">Hidden Landscapes</Title>
+    </div>
+
+    <!-- Resting state. Hidden by JS while a location is selected. -->
+    <div class="guide-panel-state" id="guide-welcome-panel" aria-live="polite">
+      <slot name="welcome" />
+    </div>
+
+    <!-- Selected state. JS populates and unhides it; see populatePanel(). -->
+    <div
+      class="guide-panel-state guide-selected"
+      id="guide-selected-panel"
+      role="group"
+      aria-label="Selected location"
+      aria-hidden="true"
+      hidden
+    >
+      <div class="guide-selected-head">
+        <span class="guide-selected-eyebrow">Selected</span>
+        <!--
+          A bare × asked the reader to guess what it closed, and it was the only
+          way out once a background click stopped clearing the selection. The
+          word carries the meaning; the glyph just makes it findable.
+        -->
+        <button class="guide-panel-close" id="guide-panel-close" type="button">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+          <span>Close preview</span>
+        </button>
+      </div>
+
+      <div class="guide-selected-vignette" id="guide-selected-vignette" aria-hidden="true" hidden></div>
+
+      <div class="guide-selected-chip" id="guide-selected-chip"></div>
+      <h2 class="guide-selected-name" id="guide-selected-name"></h2>
+      <p class="guide-selected-preview" id="guide-selected-preview"></p>
+
+      <div class="guide-selected-actions">
+        <a
+          class="guide-selected-view-btn"
+          id="guide-selected-view-btn"
+          href="#"
+          data-href-template="{base}/guides/hidden-landscapes/{slug}/"
+        >
+          View entry
+        </a>
+        <a
+          class="guide-selected-maps-link"
+          id="guide-selected-maps-link"
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Open in Maps
+        </a>
+      </div>
+    </div>
+
+    <!--
+      Persistent key. Never hidden, in either state.
+      The count line is the cheap half of the marker-overlap fix: five marker
+      pairs overlap at 390px wide, so the reader cannot tell by looking whether
+      they are seeing eight pins or six. The number says it instead. JS keeps
+      the "in view" half current on every camera move.
+    -->
+    <div class="guide-panel-key">
+      <p
+        class="guide-panel-count"
+        id="guide-panel-count"
+        data-count-total={String(count)}
+        data-count-hint={scrollHint ? 'true' : 'false'}
+      >
+        {count} locations{scrollHint ? ' · scroll for the full list' : ''}
+      </p>
+
+      <h2 class="guide-panel-key-heading">Map key</h2>
+
+      <div class="guide-panel-legend" role="group" aria-label="Map legend">
+        <!--
+          The markers were the one layer the legend never explained, which left
+          the only clickable thing on the map as the only thing unlabelled.
+          It leads the group because it is the layer the reader can act on.
+        -->
+        <div class="legend-item legend-item--marker">
+          <span class="gm-chip-marker legend-marker" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
+              <circle cx="12" cy="12" r="4" fill="currentColor"></circle>
+            </svg>
+          </span>
+          <span class="legend-label">Threshold location, select to preview</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-swatch" style="background-color: var(--landscape);" aria-hidden="true"></span>
+          <span class="legend-label">Valley and ravine system</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-swatch legend-swatch--line" style="background-color: var(--water);" aria-hidden="true"></span>
+          <span class="legend-label">Watercourses</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-swatch legend-swatch--line" style="background-image: repeating-linear-gradient(90deg, var(--water) 0 5px, transparent 5px 9px);" aria-hidden="true"></span>
+          <span class="legend-label">Buried watercourses</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-swatch legend-swatch--line" style="background-color: #57513F;" aria-hidden="true"></span>
+          <span class="legend-label">City of Toronto boundary</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<style>
+  /* ============================================================
+     Panel shell
+     Mobile and tablet: a normal flow block under the map on the
+     guide page. Desktop, and the map route at every width, float
+     it over the canvas (see the modifiers below).
+     ============================================================ */
+
+  .guide-panel {
+    background-color: var(--card);
+    border-top: 1px solid var(--street-minor);
+    padding: var(--space-8) var(--space-6);
+  }
+
+  .guide-panel-inner {
+    max-width: var(--measure);
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+  }
+
+  .guide-panel-head {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .guide-panel-kicker {
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    /* Kelly is a fill colour; at 13px bold on the panel it measured 3.12:1.
+       --atlas-accent-2-text is the same hue, darkened to 4.81:1. */
+    color: var(--atlas-accent-2-text);
+  }
+
+  .guide-panel-title {
+    font-family: var(--font-heading);
+    font-weight: 900;
+    font-size: var(--text-3xl);
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    text-transform: uppercase;
+  }
+
+  .guide-panel-state {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .guide-panel-state[hidden] {
+    display: none;
+  }
+
+  /* ============================================================
+     Resting copy
+     ============================================================ */
+
+  .guide-panel-state :global(.guide-panel-welcome) {
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    line-height: 1.65;
+    color: var(--ink);
+  }
+
+  /* ============================================================
+     Persistent key: count line, then legend
+     ============================================================ */
+
+  .guide-panel-key {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--street-minor);
+  }
+
+  .guide-panel-count {
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    letter-spacing: 0.06em;
+    color: var(--ink-2);
+  }
+
+  .guide-panel-key-heading {
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+  }
+
+  .guide-panel-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3) var(--space-6);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  /* The marker row is the only actionable one, so it gets its own line rather
+     than wrapping into the middle of the colour swatches. */
+  .legend-item--marker {
+    flex-basis: 100%;
+  }
+
+  .legend-marker {
+    width: 22px;
+    height: 22px;
+  }
+
+  .legend-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .legend-swatch--line {
+    width: 20px;
+    height: 3px;
+    border-radius: 1.5px;
+  }
+
+  .legend-label {
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    color: var(--ink-2);
+    letter-spacing: 0.02em;
+  }
+
+  /* ============================================================
+     Selected state
+     ============================================================ */
+
+  .guide-selected-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .guide-selected-eyebrow {
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .guide-panel-close {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: transparent;
+    border: 1px solid var(--street-minor);
+    border-radius: 2px;
+    cursor: pointer;
+    color: var(--ink-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    letter-spacing: 0.04em;
+    transition: border-color 0.1s ease, color 0.1s ease;
+  }
+
+  .guide-panel-close:hover {
+    border-color: var(--ink);
+    color: var(--ink);
+  }
+
+  .guide-panel-close:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .guide-panel-close {
+      transition: none;
+    }
+  }
+
+  .guide-selected-vignette {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background-color: var(--street-minor);
+    overflow: hidden;
+  }
+
+  .guide-selected-vignette[hidden] {
+    display: none;
+  }
+
+  .guide-selected-chip {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .guide-selected-name {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: var(--text-2xl);
+    line-height: 1.2;
+    color: var(--ink);
+  }
+
+  .guide-selected-preview {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+
+  .guide-selected-actions {
+    display: flex;
+    gap: var(--space-4);
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .guide-selected-view-btn {
+    display: inline-block;
+    background-color: var(--threshold);
+    color: var(--paper);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    padding: var(--space-3) var(--space-6);
+    transition: background-color 0.1s ease;
+  }
+
+  .guide-selected-view-btn:hover {
+    background-color: var(--threshold-active);
+    color: var(--paper);
+  }
+
+  .guide-selected-view-btn:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .guide-selected-view-btn {
+      transition: none;
+    }
+  }
+
+  .guide-selected-maps-link {
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    color: var(--ink-2);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .guide-selected-maps-link:hover {
+    color: var(--ink);
+  }
+
+  .guide-selected-maps-link:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  /* ============================================================
+     Docked placement (the guide page)
+     Below 1024px the panel is a flow block under the map. From
+     1024px it floats over the map's top-left, which is why
+     fitPadding() in guide-map.ts pads the marker fit by 486px on
+     the left. --fg01-map-peek is set by index.astro; the fallback
+     keeps this honest if the panel is ever docked somewhere that
+     does not set it.
+     ============================================================ */
+
+  @media (min-width: 1024px) {
+    .guide-panel:not(.guide-panel--floating) {
+      position: absolute;
+      top: var(--space-8);
+      left: var(--space-8);
+      width: 380px;
+      max-height: calc(
+        100vh - var(--header-h) - var(--fg01-map-peek, 0px) - var(--space-16)
+      );
+      overflow-y: auto;
+      border: 1px solid var(--street-minor);
+      border-top: none;
+      box-shadow: 4px 4px 0 rgba(39, 36, 29, 0.08);
+      z-index: 10;
+    }
+  }
+
+  /* ============================================================
+     Floating placement (the /map route, every width)
+     The map owns the whole viewport there, so the panel has
+     nowhere to sit below it. Top offset clears the stage's top
+     chrome row, which on the expanded route carries "Back to the
+     guide" on the left, exactly where the panel starts.
+     ============================================================ */
+
+  .guide-panel--floating {
+    position: absolute;
+    z-index: 4;
+    top: calc(var(--space-3) + 2.75rem);
+    left: var(--space-3);
+    width: min(380px, calc(100% - 2 * var(--space-3)));
+    max-height: calc(100% - var(--space-3) - 2.75rem - 3.5rem);
+    overflow-y: auto;
+    padding: var(--space-6);
+    border: 1px solid var(--street-minor);
+    border-top: 1px solid var(--street-minor);
+    box-shadow: 4px 4px 0 rgba(39, 36, 29, 0.08);
+  }
+
+  /* On a phone the panel moves to the bottom.
+     Measured at 390x844: anchored to the top it is 366px wide and covers the
+     whole control row (Back, How to read this map, zoom, Show all 8) plus the
+     markers in the north half of the city, because it sits above MapLibre's
+     control layer. Down here it clears every control, leaves the attribution
+     strip visible below it, and lands where the thumb already is. It still
+     scrolls, and the tab stop follows (see _panel-scroll-stop.ts). */
+  @media (max-width: 639px) {
+    .guide-panel--floating {
+      top: auto;
+      bottom: calc(var(--space-3) + 3.5rem);
+      max-height: 40%;
+      padding: var(--space-4);
+    }
+
+    .guide-panel--floating .guide-panel-inner {
+      gap: var(--space-4);
+    }
+
+    .guide-panel--floating .guide-panel-title {
+      font-size: var(--text-xl);
+    }
+  }
+</style>

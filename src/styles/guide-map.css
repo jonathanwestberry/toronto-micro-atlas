@@ -148,6 +148,81 @@
 }
 
 /* ------------------------------------------------------------
+   Marker tooltip
+   The name on hover and on focus, so comparing places does not
+   cost a camera flight each. Built in guide-map.ts from the same
+   string as the marker's aria-label.
+   ------------------------------------------------------------ */
+
+.gm-marker-tip {
+  position: absolute;
+  /* The wrap is MapLibre's positioned marker element and the badge is 32px,
+     so this sits clear above it and centred on the pin. */
+  bottom: calc(100% + 8px);
+  left: 50%;
+  /* --gm-tip-shift is set by guide-map.ts when a marker sits close enough to
+     an edge that a centred label would be cut off by the frame. */
+  transform: translateX(calc(-50% + var(--gm-tip-shift, 0px))) translateY(2px);
+  padding: 0.3rem 0.5rem;
+  border-radius: var(--radius-1);
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  line-height: 1.25;
+  letter-spacing: 0.02em;
+  /* Wraps rather than running on. "Mast Trail, Rouge National Urban Park,
+     Trailhead" is 412px on one line, which is wider than a phone and would be
+     cut off by the frame's overflow: hidden well before it was readable. */
+  white-space: normal;
+  /* width, not just max-width. The containing block is the 32px marker wrap,
+     so an auto-width absolute box shrinks to about 32px and the label comes
+     out as a six-line ribbon. max-content sizes it to the text, and max-width
+     then wraps it at a readable measure. */
+  width: max-content;
+  max-width: min(26ch, 60vw);
+  text-align: center;
+  /* Never eats the click that was aimed at the marker underneath it. */
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out);
+}
+
+/* Markers near the top of the frame get their label underneath instead, for
+   the same reason as the horizontal shift. */
+.gm-marker-tip--below {
+  bottom: auto;
+  top: calc(100% + 8px);
+  transform: translateX(calc(-50% + var(--gm-tip-shift, 0px))) translateY(-2px);
+}
+
+.gm-marker:hover ~ .gm-marker-tip,
+.gm-marker:focus-visible ~ .gm-marker-tip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(calc(-50% + var(--gm-tip-shift, 0px))) translateY(0);
+}
+
+/* Markers are siblings in the map's overlay, painted in source order, so a
+   tooltip on an early marker would otherwise slide under a later one. The pair
+   that overlap most (Nordheimer and Baldwin) are exactly this case. */
+.gm-marker-wrap:hover,
+.gm-marker-wrap:focus-within {
+  z-index: 5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gm-marker-tip,
+  .gm-marker-tip--below,
+  .gm-marker:hover ~ .gm-marker-tip,
+  .gm-marker:focus-visible ~ .gm-marker-tip {
+    transition: none;
+    transform: translateX(calc(-50% + var(--gm-tip-shift, 0px)));
+  }
+}
+
+/* ------------------------------------------------------------
    Orientation labels (non-interactive HTML markers)
    ------------------------------------------------------------ */
 
@@ -213,25 +288,67 @@
 }
 
 /* ------------------------------------------------------------
-   Reset control button
+   "Show all N" control
+   A labelled stage button living inside MapLibre's control stack,
+   so it has to shrug off MapLibre's own button chrome without
+   losing .map-stage__btn's look.
    ------------------------------------------------------------ */
 
-/* Specificity must beat MapLibre's `.maplibregl-ctrl button { display: block }`
-   (0,1,1), or the flex centering is ignored and the icon sits top-left. */
+/* MapLibre floats its controls, and a text button is wider than the 29px icon
+   buttons above it, so it has to hang off the right edge to stay aligned with
+   the zoom group rather than pushing it around. */
+.gm-reset-ctrl {
+  clear: both;
+}
+
+/* Specificity must beat MapLibre's `.maplibregl-ctrl button` (0,1,1), which
+   sets display:block and its own background and border. */
 .maplibregl-ctrl button.gm-reset-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  color: #333333;
+  gap: var(--space-2);
+  width: auto;
+  height: auto;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--atlas-control-line);
+  border-radius: var(--radius-1);
+  background: var(--atlas-surface);
+  color: var(--atlas-ink);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 2px 6px rgb(0 0 0 / 0.06);
+}
+
+.maplibregl-ctrl button.gm-reset-btn:hover {
+  border-color: var(--atlas-line-strong);
+  background: var(--atlas-hover);
+  color: var(--atlas-surface);
 }
 
 .gm-reset-btn svg {
   display: block;
+  flex: none;
 }
 
 .gm-reset-btn:focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: -2px;
+  outline: 2px solid var(--atlas-focus);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------
+   fg01 disclosure height
+   Seven glyph specimens make "How to read this map" taller than
+   the embedded map is on a phone. The stage sizes the panel to
+   its content, which is right for every other guide, so fg01
+   caps it here rather than changing the shared rule.
+   ------------------------------------------------------------ */
+
+.fg01 .map-stage__howto {
+  max-height: calc(100% - var(--space-3) - var(--space-3) - 2.25rem);
+  overflow-y: auto;
 }
 
 /* ------------------------------------------------------------

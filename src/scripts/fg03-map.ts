@@ -24,6 +24,7 @@ import {
   getFg03InvalidationCause,
   initializeFg03RuntimeState,
   loadFg03Data,
+  readerLabel,
   reduceFg03Transition,
   renderFg03ResultItem,
   safeFg03Href,
@@ -41,11 +42,13 @@ export {
   createFg03MapStartController,
   createFg03OperationalLayers,
   FG03_CONTEXT_FILES,
+  FG03_READER_LABELS,
   FG03_SYMBOL_RECIPES,
   formatFg03Status,
   getFg03InvalidationCause,
   initializeFg03RuntimeState,
   loadFg03Data,
+  readerLabel,
   reduceFg03Transition,
   renderFg03ResultItem,
   safeFg03Href,
@@ -159,44 +162,38 @@ const ACTION_LABELS_ONE: Record<Action, string> = {
   retrofit: 'Accessibility retrofit',
 };
 /**
- * Dataset values written for a reader.
+ * The reader wording for every dataset value, shared with the row disclosure.
  *
- * The detail panel used to print these straight out of the GeoJSON, so a
- * reader got "unrestricted", "none" and "unknown" as answers to questions
- * they had asked in English. Every value below appears in the published
- * snapshot; anything unrecognised falls back to a "not published" phrasing
- * rather than leaking the raw token.
+ * The table itself lives in fg03-map-core.mjs so that the detail panel here and
+ * the "Read the evidence" rows there cannot drift into two vocabularies for one
+ * washroom. See FG03_READER_LABELS for why that mattered.
  */
-const READER_LABELS: Record<string, Record<string, string>> = {
-  access: {
-    unrestricted: 'Open to anyone, no fare required',
-    fare_paid: 'Inside the fare gates, valid fare required',
-    unknown: 'Access condition not published',
-  },
-  closure: {
-    none: 'No closure recorded',
-    construction: 'Closed for construction',
-    temporary: 'Temporarily closed',
-    seasonal: 'Closed for the season',
-  },
-  accessibility: {
-    accessible: 'Step-free access recorded',
-    inaccessible: 'No step-free access recorded',
-    unknown: 'Not published',
-  },
-  stability: {
-    robust: 'Holds up under the robustness rules',
-  },
-  audit: {
-    valid: 'Checked by hand against the source',
-  },
+const readValue = readerLabel as (
+  field: string,
+  value: unknown,
+  fallback: string,
+) => string;
+/** Line one of the in-frame title block, by what the reader asked to see. */
+const FRAME_TITLE: Record<Action, (count: string, plural: boolean) => string> = {
+  open: (count, plural) => `${count} washroom${plural ? 's' : ''} open`,
+  extend: (count, plural) => `${count} place${plural ? 's' : ''} to extend hours`,
+  new: (count, plural) => `${count} new-facility zone${plural ? 's' : ''}`,
+  verify: (count, plural) => `${count} record${plural ? 's' : ''} to verify`,
+  retrofit: (count, plural) => `${count} accessibility retrofit${plural ? 's' : ''}`,
 };
+/** Below this width the detail panel is a screen or more away from the map. */
+const NARROW_VIEWPORT = 900;
 const MAP_MAX_ZOOM = 18.5;
 const STALE_AFTER_DAYS = 45;
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 
 type MlMap = import('maplibre-gl').Map;
 type MlModule = typeof import('maplibre-gl');
+/** A camera this guide can hand back to the map whole, centre and zoom together. */
+type Camera = {
+  center: import('maplibre-gl').LngLatLike;
+  zoom: number;
+};
 const deriveResults = deriveFg03Results as unknown as (options: {
   facilities: GeoJsonCollection;
   interventions: GeoJsonCollection;
@@ -605,6 +602,7 @@ function addOperationalLayers(map: MlMap): void {
     'fg03-facilities',
     'fg03-interventions',
     'fg03-selected',
+    'fg03-hover',
   ]) {
     ensureGeoJsonSource(map, source, EMPTY_COLLECTION);
   }
@@ -884,6 +882,36 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
   const reachCache = new Map<string, GeoJsonCollection>();
   const orientationMarkers: import('maplibre-gl').Marker[] = [];
   const resultLabelMarkers: import('maplibre-gl').Marker[] = [];
+  /**
+   * Where the camera was before the reader picked a place.
+   *
+   * Selecting anything zooms to at least 14, which is a 300 m scale bar and
+   * five of six results off screen. Clearing the selection used to leave the
+   * reader there: the only control that brought the city back was "Reset
+   * explorer", which also threw away the time, access, walk and action they had
+   * chosen to get there. Remembering one camera makes clearing reversible.
+   */
+  let cameraBeforeSelection: Camera | null = null;
+  /**
+   * The "Fit all results" control, built before the map exists.
+   *
+   * renderResults can run before MapLibre has loaded, and the count in this
+   * button's tooltip has to be right whenever it becomes visible, so the DOM is
+   * made here and only handed to the map in buildMap.
+   */
+  const fitControlRoot = document.createElement('div');
+  fitControlRoot.className =
+    'maplibregl-ctrl maplibregl-ctrl-group fg03-fit-control';
+  const fitControlButton = document.createElement('button');
+  fitControlButton.type = 'button';
+  fitControlButton.textContent = 'Fit all results';
+  fitControlRoot.append(fitControlButton);
+  /** Name near the cursor, so a hover says which place, not just that there is one. */
+  const hoverLabel = document.createElement('p');
+  hoverLabel.className = 'fg03-map-hover-label';
+  hoverLabel.setAttribute('aria-hidden', 'true');
+  hoverLabel.hidden = true;
+  mapElement.append(hoverLabel);
 
   const explorer = root.querySelector<HTMLElement>('[data-fg03-gate="passed"]');
   const failedGateTemplate = root.querySelector<HTMLTemplateElement>(
@@ -926,6 +954,50 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
   const closeDetail = root.querySelector<HTMLButtonElement>(
     '[data-fg03-close-detail]',
   );
+  const resultsEyebrow = resultsRoot?.querySelector<HTMLElement>(
+    '[data-fg03-results-eyebrow]',
+  ) ?? null;
+  const rankBasis = root.querySelector<HTMLElement>('[data-fg03-rank-basis]');
+  const railLegend = root.querySelector<HTMLDetailsElement>(
+    '[data-fg03-legend-disclosure]',
+  );
+  const mapTitle = root.querySelector<HTMLElement>('[data-fg03-map-title]');
+  const mapTitleCount = root.querySelector<HTMLElement>(
+    '[data-fg03-map-title-count]',
+  );
+  const mapTitleFilters = root.querySelector<HTMLElement>(
+    '[data-fg03-map-title-filters]',
+  );
+  const mapVeil = root.querySelector<HTMLElement>('[data-fg03-map-veil]');
+  const mapVeilMessage = root.querySelector<HTMLElement>(
+    '[data-fg03-map-veil-message]',
+  );
+  const mapVeilAction = root.querySelector<HTMLButtonElement>(
+    '[data-fg03-map-veil-action]',
+  );
+  const mapCard = root.querySelector<HTMLElement>('[data-fg03-map-card]');
+  const mapCardTitle = root.querySelector<HTMLElement>(
+    '[data-fg03-map-card-title]',
+  );
+  const mapCardBody = root.querySelector<HTMLElement>(
+    '[data-fg03-map-card-body]',
+  );
+  const mapCardClose = root.querySelector<HTMLButtonElement>(
+    '[data-fg03-map-card-close]',
+  );
+  const mapCardMore = root.querySelector<HTMLButtonElement>(
+    '[data-fg03-map-card-more]',
+  );
+
+  /**
+   * True where the detail panel is a screenful away rather than a column away.
+   *
+   * Measured at 390px: the panel starts about 2,600px below the map, so the
+   * scroll that helps on a desktop leaves a phone reader looking at a results
+   * list with the map entirely off screen and nothing linking back.
+   */
+  const isNarrowViewport = (): boolean =>
+    window.matchMedia(`(max-width: ${NARROW_VIEWPORT - 1}px)`).matches;
 
   const showState = (name: string, visible: boolean): void => {
     const element = root.querySelector<HTMLElement>(
@@ -1071,10 +1143,160 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
     safeFg03Href(featureProperties(feature).sourceUrl)
   );
 
+  const pointOf = (feature: GeoJsonFeature): [number, number] | null => {
+    const coordinates = feature.geometry.coordinates;
+    return Array.isArray(coordinates)
+      && typeof coordinates[0] === 'number'
+      && typeof coordinates[1] === 'number'
+      ? [coordinates[0], coordinates[1]]
+      : null;
+  };
+
+  const moveCamera = (camera: Camera, animate: boolean): void => {
+    if (!map) {
+      return;
+    }
+    if (animate && !isReducedMotion()) {
+      map.easeTo({ ...camera, duration: 700, essential: false });
+    } else {
+      map.jumpTo(camera);
+    }
+  };
+
+  /** cameraForBounds leaves both halves optional; only a whole camera is usable. */
+  const asCamera = (
+    result: import('maplibre-gl').CenterZoomBearing | undefined,
+  ): Camera | null => (
+    result && result.center !== undefined && typeof result.zoom === 'number'
+      ? { center: result.center, zoom: result.zoom }
+      : null
+  );
+
+  /** The whole visible result set, or the city when there is nothing to frame. */
+  const cameraForAllResults = (): Camera | null => {
+    if (!map || !maplibre) {
+      return null;
+    }
+    const points = currentFeatures
+      .map(pointOf)
+      .filter((point): point is [number, number] => point !== null);
+    const cityCamera = asCamera(map.cameraForBounds(CITY_BOUNDS, { padding: 24 }));
+    if (points.length === 0) {
+      return cityCamera;
+    }
+    const bounds = new maplibre.LngLatBounds(points[0], points[0]);
+    for (const point of points) {
+      bounds.extend(point);
+    }
+    // maxZoom keeps a single result from becoming a rooftop view, which is the
+    // same trap the selection zoom fell into.
+    return asCamera(map.cameraForBounds(bounds, { padding: 56, maxZoom: 15 }))
+      ?? cityCamera;
+  };
+
+  const fitAllResults = (): void => {
+    const camera = cameraForAllResults();
+    if (camera) {
+      moveCamera(camera, true);
+    }
+  };
+
+  const updateFitControl = (count: number): void => {
+    const label = `Zoom out to show all ${count.toLocaleString('en-CA')}`;
+    fitControlButton.title = label;
+    fitControlButton.setAttribute('aria-label', label);
+    fitControlButton.disabled = count === 0;
+  };
+
+  /**
+   * The one-line answer to "what am I looking at", drawn on the map itself.
+   *
+   * The status sentence outside the frame says the same thing, but it is below
+   * the fold on the map route and 1,600px above the map on a phone, which makes
+   * it a caption for something the reader cannot see at the same time.
+   */
+  const updateMapTitle = (count: number): void => {
+    if (!mapTitle || !mapTitleCount || !mapTitleFilters) {
+      return;
+    }
+    const build = FRAME_TITLE[currentState.action] ?? FRAME_TITLE.open;
+    mapTitleCount.textContent = `${
+      build(count.toLocaleString('en-CA'), count !== 1)
+    } at ${TIME_LABELS[currentState.time]}`;
+    mapTitleFilters.textContent = `${
+      currentState.access === 'rider' ? 'TTC rider access' : 'Public access'
+    } · ${currentState.walk} m walk`;
+    mapTitle.hidden = !dataReady;
+  };
+
+  const updateMapVeil = (count: number): void => {
+    if (!mapVeil || !mapVeilMessage || !mapVeilAction) {
+      return;
+    }
+    if (!dataReady || count > 0) {
+      mapVeil.hidden = true;
+      return;
+    }
+    const searching = currentSearch !== '';
+    mapVeilMessage.textContent = searching
+      ? 'No places match this search and these filters.'
+      : 'This snapshot publishes nothing for that choice.';
+    mapVeilAction.hidden = !searching;
+    mapVeil.hidden = false;
+  };
+
+  /**
+   * The phone's version of the detail panel, docked to the bottom of the map.
+   *
+   * Deliberately short: the name, what kind of thing it is, and the two facts a
+   * reader standing outside actually needs. Anything longer would cover the map
+   * it is describing. "Read the full record" is the way to the real panel, and
+   * it is a link the reader chooses rather than a scroll done to them.
+   */
+  const renderMapCard = (feature: GeoJsonFeature | null): void => {
+    if (!mapCard || !mapCardTitle || !mapCardBody) {
+      return;
+    }
+    mapCardBody.replaceChildren();
+    if (!feature || !isNarrowViewport()) {
+      mapCard.hidden = true;
+      return;
+    }
+    const properties = featureProperties(feature);
+    mapCardTitle.textContent =
+      typeof properties.name === 'string' ? properties.name : 'Selected place';
+    const isProposal = String(properties.action ?? 'open') !== 'open';
+    const rows: Array<[string, string]> = [
+      [
+        'What this is',
+        isProposal
+          ? 'A change I am proposing here, not an open washroom'
+          : 'A washroom recorded as open at the selected time',
+      ],
+      ['Access', readValue(
+        'access',
+        properties.accessCondition,
+        'Access condition not published',
+      )],
+      ['Hours', String(properties.hours ?? 'Not published')],
+    ];
+    for (const [term, value] of rows) {
+      const wrapper = document.createElement('div');
+      const dt = document.createElement('dt');
+      const dd = document.createElement('dd');
+      dt.textContent = term;
+      dd.textContent = value;
+      wrapper.append(dt, dd);
+      mapCardBody.append(wrapper);
+    }
+    mapCard.hidden = false;
+  };
+
   const renderDetail = (
     feature: GeoJsonFeature | null,
     focus: boolean,
   ): void => {
+    renderMapCard(feature);
     if (!detail || !detailTitle || !detailBody || !closeDetail) {
       return;
     }
@@ -1110,17 +1332,28 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
       rows.push(['Proposed change', actionLabel]);
     }
     rows.push(
-      ['Access', READER_LABELS.access[String(properties.accessCondition)]
-        ?? 'Access condition not published'],
+      ['Access', readValue(
+        'access',
+        properties.accessCondition,
+        'Access condition not published',
+      )],
       ['Hours', String(properties.hours ?? 'Not published')],
-      ['Closure', READER_LABELS.closure[String(properties.closureCategory)]
-        ?? 'Not classified'],
-      ['Accessibility', READER_LABELS.accessibility[String(properties.accessibility)]
-        ?? 'Not published'],
-      ['Stability', READER_LABELS.stability[String(properties.stability)]
-        ?? 'Not evaluated'],
-      ['Audit', READER_LABELS.audit[String(properties.auditStatus)]
-        ?? 'Not applicable'],
+      ['Closure', readValue(
+        'closure',
+        properties.closureCategory,
+        'Not classified',
+      )],
+      ['Accessibility', readValue(
+        'accessibility',
+        properties.accessibility,
+        'Not published',
+      )],
+      ['Stability', readValue(
+        'stability',
+        properties.stability,
+        'Not evaluated',
+      )],
+      ['Audit', readValue('audit', properties.auditStatus, 'Not applicable')],
     );
     const metrics = metricsFor(feature);
     if (metrics) {
@@ -1158,7 +1391,12 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
       // click look like it did nothing at all: the record rendered, took focus,
       // and never came into view, so the only way to read a place was to scroll
       // the results column by hand until something looked highlighted.
-      const cameFromMap = lastSelectionSource === 'map';
+      //
+      // Narrow viewports are the opposite case again. There the panel is not a
+      // column away but a screen and a half away, so scrolling to it takes the
+      // map off screen entirely. The docked card carries the record instead and
+      // offers the trip to the panel as a choice.
+      const cameFromMap = lastSelectionSource === 'map' && !isNarrowViewport();
       detailTitle.focus({ preventScroll: true });
       if (cameFromMap) {
         detail.scrollIntoView({
@@ -1280,9 +1518,24 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
         TIME_LABELS[currentState.time]
       }`;
     }
+    if (resultsEyebrow) {
+      // The heading below this changed with every choice while the eyebrow was
+      // frozen at whatever the build-time default happened to be, so ten
+      // proposals could sit under "What Toronto has". The eyebrow is the only
+      // line that names the kind of thing, so it has to move with the rest.
+      resultsEyebrow.textContent = currentState.action === 'open'
+        ? 'What Toronto has'
+        : 'What I would change';
+    }
+    if (rankBasis) {
+      rankBasis.hidden = currentState.action === 'open';
+    }
     if (status) {
       status.textContent = statusText(currentFeatures.length);
     }
+    updateMapTitle(currentFeatures.length);
+    updateMapVeil(currentFeatures.length);
+    updateFitControl(currentFeatures.length);
 
     showState('empty', currentSearch === '' && currentFeatures.length === 0);
     showState('no-results', currentSearch !== '' && currentFeatures.length === 0);
@@ -1523,6 +1776,15 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
     }
 
     const previous = currentState;
+    // Read before anything moves the map: moveMapToSelection runs later in this
+    // same call, and by then the view worth remembering is already gone.
+    if (map && previous.place === null && transition.state.place !== null) {
+      const center = map.getCenter();
+      cameraBeforeSelection = {
+        center: [center.lng, center.lat],
+        zoom: map.getZoom(),
+      };
+    }
     currentState = transition.state;
     updateControls();
     if (result) {
@@ -1546,6 +1808,21 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
       moveMapToSelection(true);
     } else if (input.cause === 'popstate') {
       applyCameraState(currentState);
+    } else if (
+      // Clearing a selection puts the camera back where the reader left it.
+      // popstate replays its own camera and reset fits the city itself, so
+      // neither wants this. The moveend it triggers is deliberately not
+      // suppressed: the restored view is the one the URL should carry.
+      map
+      && previous.place !== null
+      && currentState.place === null
+      && cameraBeforeSelection !== null
+      && input.cause !== 'reset'
+    ) {
+      moveCamera(cameraBeforeSelection, true);
+    }
+    if (currentState.place === null) {
+      cameraBeforeSelection = null;
     }
     if (previous.time !== currentState.time) {
       void ensureStops(currentState.time);
@@ -1831,21 +2108,74 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
       'fg03-facilities-unknown',
       'fg03-interventions',
     ];
+    // The invisible 14px-radius layers, asked first. The drawn markers are 7px
+    // at their largest, an 18px target against the 24px WCAG 2.5.8 asks for, so
+    // hitting one used to take a steady hand. The drawn layers stay in the list
+    // behind them because a symbol icon can extend past its circle.
+    const hitLayers = ['fg03-facilities-hit', 'fg03-interventions-hit'];
+    const present = (ids: string[]): string[] =>
+      ids.filter((id) => Boolean(map?.getLayer(id)));
+    const featureAt = (
+      point: import('maplibre-gl').Point,
+    ): import('maplibre-gl').MapGeoJSONFeature | null => {
+      if (!map) {
+        return null;
+      }
+      const hit = map.queryRenderedFeatures(point, {
+        layers: present(hitLayers),
+      });
+      if (hit.length > 0) {
+        return hit[0];
+      }
+      const drawn = map.queryRenderedFeatures(point, {
+        layers: present(interactiveLayers),
+      });
+      return drawn[0] ?? null;
+    };
+
+    const clearHover = (): void => {
+      hoverLabel.hidden = true;
+      if (map && mapStyleReady) {
+        ensureGeoJsonSource(map, 'fg03-hover', EMPTY_COLLECTION);
+      }
+    };
+
     map.on('click', (event) => {
-      const hits = map?.queryRenderedFeatures(event.point, {
-        layers: interactiveLayers.filter((id) => Boolean(map?.getLayer(id))),
-      }) ?? [];
-      selectMapFeature(hits[0]?.properties?.id, 'map');
+      selectMapFeature(featureAt(event.point)?.properties?.id, 'map');
     });
     map.on('mousemove', (event) => {
       if (!map) {
         return;
       }
-      const hits = map.queryRenderedFeatures(event.point, {
-        layers: interactiveLayers.filter((id) => Boolean(map?.getLayer(id))),
+      const hit = featureAt(event.point);
+      map.getCanvas().style.cursor = hit === null ? '' : 'pointer';
+      if (hit === null) {
+        clearHover();
+        return;
+      }
+      ensureGeoJsonSource(map, 'fg03-hover', {
+        type: 'FeatureCollection',
+        features: [hit as unknown as GeoJsonFeature],
       });
-      map.getCanvas().style.cursor = hits.length > 0 ? 'pointer' : '';
+      // Above 13.5 the map already prints every result's name beside its
+      // marker, so a second copy following the cursor is the same word twice.
+      if (showResultLabels(map.getZoom())) {
+        hoverLabel.hidden = true;
+        return;
+      }
+      const name = hit.properties?.name;
+      hoverLabel.textContent =
+        typeof name === 'string' && name.trim() !== ''
+          ? name.trim()
+          : 'Name unavailable';
+      // Offset up and right of the cursor. Directly under it the label would
+      // sit between the pointer and the marker it names.
+      hoverLabel.style.left = `${event.point.x + 14}px`;
+      hoverLabel.style.top = `${event.point.y - 28}px`;
+      hoverLabel.hidden = false;
     });
+    map.on('mouseout', clearHover);
+    addListener(removeListeners, mapElement, 'pointerleave', clearHover);
     map.on('moveend', () => {
       if (!map || disposed) {
         return;
@@ -1889,7 +2219,7 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
           [point.x + 14, point.y + 14],
         ],
         {
-          layers: interactiveLayers.filter((id) => Boolean(map?.getLayer(id))),
+          layers: present([...hitLayers, ...interactiveLayers]),
         },
       );
       selectMapFeature(hits[0]?.properties?.id, 'map');
@@ -1947,6 +2277,17 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
         showZoom: true,
         visualizePitch: false,
       }),
+      'top-right',
+    );
+    // Directly under the zoom pair, because that is where a reader already
+    // looks for "change how much of the city I can see". Selecting a place
+    // zooms to at least 14 and used to leave no way back short of Reset
+    // explorer, which also discarded the filters.
+    map.addControl(
+      {
+        onAdd: () => fitControlRoot,
+        onRemove: () => fitControlRoot.remove(),
+      } satisfies import('maplibre-gl').IControl,
       'top-right',
     );
     map.addControl(
@@ -2171,6 +2512,58 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
       currentSearch = '';
       applyInput({ cause: 'search' });
       searchInput?.focus();
+    });
+  }
+  addListener(removeListeners, fitControlButton, 'click', () => {
+    engage('map');
+    fitAllResults();
+  });
+  if (mapVeilAction && searchInput) {
+    addListener(removeListeners, mapVeilAction, 'click', () => {
+      currentSearch = '';
+      applyInput({ cause: 'search' });
+      searchInput.focus();
+    });
+  }
+  if (mapCardClose) {
+    addListener(removeListeners, mapCardClose, 'click', () => {
+      engage('detail');
+      applyInput({ cause: 'close', patch: { place: null } });
+    });
+  }
+  if (mapCardMore && detail && detailTitle) {
+    addListener(removeListeners, mapCardMore, 'click', () => {
+      engage('detail');
+      detail.scrollIntoView({
+        block: 'start',
+        behavior: isReducedMotion() ? 'auto' : 'smooth',
+      });
+      detailTitle.focus({ preventScroll: true });
+    });
+  }
+  // Rotating a phone, or dragging a desktop window narrow, changes which of the
+  // two detail surfaces is the right one. Re-deciding on resize is cheaper than
+  // leaving a card stranded over a map that now has a panel beside it.
+  addListener(removeListeners, window, 'resize', () => {
+    renderMapCard(findVisibleFeature(currentState.place));
+  });
+  if (railLegend) {
+    // Open on a first visit, because a reader who has never seen these shapes
+    // needs the key before they need the room. Closed after they close it once.
+    try {
+      railLegend.open = window.localStorage.getItem('fg03-legend') !== 'closed';
+    } catch {
+      // Storage can be denied outright. An always-open legend is the safe miss.
+    }
+    addListener(removeListeners, railLegend, 'toggle', () => {
+      try {
+        window.localStorage.setItem(
+          'fg03-legend',
+          railLegend.open ? 'open' : 'closed',
+        );
+      } catch {
+        // Same again: the disclosure still works, it just will not remember.
+      }
     });
   }
   if (resetButton) {
