@@ -548,15 +548,21 @@
   }
 
   /* Sits below the top row rather than centre-bottom, clearing both the
-     icon-only help button above it and attribution below it. */
+     icon-only help button above it and attribution below it.
+
+     The right edge has to clear the zoom group as well. That group is a
+     vertical stack of buttons at the top-right, not a single row, so a hint
+     stretched to `right: var(--space-2)` ran underneath it and the minus
+     button was drawn on top of the pill. Stopping short of the control
+     column is what the gutter variable is already for. */
   .map-stage__hint {
     left: var(--space-2);
-    right: var(--space-2);
+    right: calc(var(--space-2) + var(--map-ctrl-gutter));
     bottom: auto;
     top: calc(var(--space-2) + 2.75rem);
     transform: none;
     max-width: none;
-    text-align: center;
+    text-align: left;
     white-space: normal;
   }
 

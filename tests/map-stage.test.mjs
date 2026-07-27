@@ -329,6 +329,22 @@ test('Escape on the expanded route follows the back link', () => {
   assert.equal(globalThis.window.location.assigned, '/guides/sidewalk-forest/');
 });
 
+test('Escape inside a text field dismisses that field, it does not leave the page', () => {
+  const f = setup({ withBack: true });
+  build(f, { expanded: true, expandPath: undefined });
+  // fg02's street search lives on the expanded route. Escape there means
+  // "close the suggestion list", and it used to navigate away, taking the
+  // camera, the isolation and the typed query with it.
+  const field = new FakeEl();
+  field.closest = (selector) => (selector.includes('input') ? field : null);
+  f.doc.dispatch('keydown', { key: 'Escape', target: field });
+  assert.equal(
+    globalThis.window.location.assigned,
+    undefined,
+    'a field swallowed its own Escape',
+  );
+});
+
 test('focusMap sends a keyboard reader into the map, not the top of the document', () => {
   const f = setup();
   const stage = build(f, { expanded: true, expandPath: undefined });

@@ -957,10 +957,21 @@ export interface InitGuideMapOptions {
   backHref?: string;
 }
 
+/**
+ * Roots already mounted. See the identical guard in fg02-map.ts: the map
+ * routes boot once directly and once on `astro:page-load`, which fires on a
+ * first load, so every control outside the map element got two listeners and
+ * every click cancelled itself. "How to read this map" was dead on
+ * /guides/hidden-landscapes/map for exactly this reason.
+ */
+const mountedRoots = new WeakSet<HTMLElement>();
+
 export function initGuideMap(options: InitGuideMapOptions = {}): void {
   const container = document.getElementById('guide-map');
   const dataEl = document.getElementById('guide-map-data');
   if (!container || !dataEl) return;
+  if (mountedRoots.has(container)) return;
+  mountedRoots.add(container);
 
   let locations: LocationData[];
   try {

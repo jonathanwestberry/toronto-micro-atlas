@@ -298,6 +298,21 @@ export class MapStage {
   private bindExpandedKeys(): void {
     this.onKeyDown = (event: KeyboardEvent): void => {
       if (event.key !== 'Escape') return;
+      // Escape inside a field means "dismiss what this field opened", never
+      // "leave the page". Typing a street into fg02's search and pressing
+      // Escape to close the suggestion list used to navigate away and take
+      // the camera, the isolation and the query with it.
+      // Duck-typed for the same reason isChrome is: a target crossing a realm
+      // boundary, or a test double, may not carry Element's prototype.
+      const target = event.target as Element | null;
+      if (
+        target
+        && typeof target === 'object'
+        && typeof target.closest === 'function'
+        && target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]')
+      ) {
+        return;
+      }
       if (this.howtoToggle?.getAttribute('aria-expanded') === 'true') {
         this.closeHowTo({ restoreFocus: true });
         return;
@@ -314,7 +329,14 @@ export class MapStage {
    * rather than at the top of a new document.
    */
   focusMap(): void {
-    const region = this.root.querySelector<HTMLElement>('[data-map-canvas]')
+    // The MapLibre canvas first, then the wrapper. `[data-map-canvas]` is the
+    // container div, not the canvas, and the keyboard handlers that matter
+    // (fg02's Enter-to-identify, and the crosshair that appears on canvas
+    // focus) are bound to the canvas itself. Landing on the wrapper meant a
+    // reader arrived, pressed Enter, and nothing happened, with no crosshair
+    // on screen to aim at either.
+    const region = this.root.querySelector<HTMLElement>('.maplibregl-canvas')
+      ?? this.root.querySelector<HTMLElement>('[data-map-canvas]')
       ?? this.root.querySelector<HTMLElement>('[data-map-region]');
     if (!region) return;
     if (!region.hasAttribute('tabindex')) region.setAttribute('tabindex', '-1');

@@ -1057,10 +1057,29 @@ export interface InitSidewalkForestOptions {
   expanded?: boolean;
 }
 
+/**
+ * Roots already mounted.
+ *
+ * The map routes call boot() directly and also register it for
+ * `astro:page-load`, which the ClientRouter fires on a first load too, so this
+ * ran twice on every visit to /guides/sidewalk-forest/map. The second run
+ * rebuilt the map (mapEl is emptied first, so only one canvas ever appeared)
+ * but bound a second listener to every control outside the map element: the
+ * Families legend, the panel toggle and "How to read this map" each fired
+ * twice per click and toggled straight back off. On a phone that left a
+ * sealed panel with no search, no key, no reset and no help.
+ *
+ * Keyed on the element, so a real client-side navigation to a fresh DOM still
+ * mounts. fg03 has guarded this way from the start.
+ */
+const mountedRoots = new WeakSet<HTMLElement>();
+
 export function initSidewalkForest(options: InitSidewalkForestOptions = {}): void {
   const mapEl = document.getElementById('fg2-map');
   const scrollyEl = document.querySelector<HTMLElement>('.fg2-scrolly');
   if (!mapEl || !scrollyEl) return;
+  if (mountedRoots.has(mapEl)) return;
+  mountedRoots.add(mapEl);
 
   const expanded = options.expanded ?? false;
 
