@@ -831,6 +831,9 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
   let gateWithheld = false;
   let suppressCameraHistory = false;
   let lastSelectionOpener: HTMLElement | null = null;
+  /** Where the current selection came from. Decides whether the detail panel
+      has to bring itself into view: see renderDetail. */
+  let lastSelectionSource: 'map' | 'list' | 'search' | null = null;
   let searchAnalyticsTimer = 0;
   let loadSequence = 0;
   let deferredLoader: ReturnType<typeof makeDeferredLoader> | null = null;
@@ -1037,15 +1040,30 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
     detailTitle.textContent =
       typeof properties.name === 'string' ? properties.name : 'Selected place';
     const evidence = document.createElement('dl');
+    // This row used to print the raw action id, so a reader who clicked a
+    // square got the single word "extend": a conclusion, with nothing saying
+    // it was a conclusion. It reads as a property of the washroom when it is
+    // an argument about the washroom. Name the kind of thing first, then the
+    // proposal, and only then the facts underneath it.
+    const rawAction = String(properties.action ?? 'open');
+    const isProposal = rawAction !== 'open';
+    const actionLabel = ACTION_LABELS[rawAction as Action] ?? rawAction;
     const rows: Array<[string, string]> = [
-      ['Action', String(properties.action ?? 'open')],
+      isProposal
+        ? ['What this is', 'A change I am proposing here, not an open washroom']
+        : ['What this is', 'A washroom recorded as open at the selected time'],
+    ];
+    if (isProposal) {
+      rows.push(['Proposed change', actionLabel]);
+    }
+    rows.push(
       ['Access', String(properties.accessCondition ?? 'unknown')],
       ['Hours', String(properties.hours ?? 'Not published')],
       ['Closure', String(properties.closureCategory ?? 'Not classified')],
       ['Accessibility', String(properties.accessibility ?? 'Not published')],
       ['Stability', String(properties.stability ?? 'Not evaluated')],
       ['Audit', String(properties.auditStatus ?? 'Not applicable')],
-    ];
+    );
     const metrics = metricsFor(feature);
     if (metrics) {
       rows.push(
@@ -1075,7 +1093,21 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
     }
     closeDetail.disabled = false;
     if (focus) {
+      // preventScroll is right when the reader picked the place from the list:
+      // the panel is already beside the row they clicked and a jump would be
+      // noise. It is wrong when the click came from the map, because the panel
+      // can be a full column away, off-screen. That combination made a marker
+      // click look like it did nothing at all: the record rendered, took focus,
+      // and never came into view, so the only way to read a place was to scroll
+      // the results column by hand until something looked highlighted.
+      const cameFromMap = lastSelectionSource === 'map';
       detailTitle.focus({ preventScroll: true });
+      if (cameFromMap) {
+        detail.scrollIntoView({
+          block: 'nearest',
+          behavior: isReducedMotion() ? 'auto' : 'smooth',
+        });
+      }
     }
   };
 
@@ -1390,6 +1422,9 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
       source: 'map' | 'list' | 'search';
     };
   }): Fg03State {
+    if (input.selection) {
+      lastSelectionSource = input.selection.source;
+    }
     let transition = reduceTransition(currentState, input);
     let result: DerivedFg03Results | null = null;
     if (dataReady) {

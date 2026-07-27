@@ -238,12 +238,16 @@ test('Escape releases the map', () => {
   assert.equal(f.map.state('scrollZoom'), false);
 });
 
-test('interacting elsewhere on the page releases the map', () => {
+test('interacting elsewhere on the page keeps the map armed', () => {
   const f = setup();
   const stage = build(f);
   f.root.dispatch('pointerdown');
   f.doc.dispatch('pointerdown', { target: new FakeEl() });
-  assert.equal(stage.isActive(), false, 'no live scroll-zoom target left behind the reader');
+  assert.equal(
+    stage.isActive(),
+    true,
+    'fg03 keeps its result list outside this root, so clicking a result must not disarm the map',
+  );
 });
 
 test('a pointer down inside the stage does not release it', () => {
@@ -276,14 +280,21 @@ test('the hint speaks touch on touch devices', () => {
 // The expanded route
 // ---------------------------------------------------------------------------
 
-test('the expanded route gates nothing and hides the hint', () => {
+test('the expanded route arms every gesture up front and hides the hint', () => {
   const f = setup();
   const stage = build(f, { expanded: true, expandPath: undefined });
-  assert.deepEqual(f.map.calls, [], 'the map owns the viewport; every gesture is native');
+  // It used to assert no calls at all and inherit MapLibre's defaults. Silence
+  // is not a contract: it says the route works only as long as nothing upstream
+  // ever disables a gesture. The route now states what it wants.
+  assert.deepEqual(
+    f.map.calls,
+    ['scrollZoom:enable', 'dragPan:enable', 'touchZoomRotate:enable'],
+    'the map owns the viewport, so it asks for the gestures rather than assuming them',
+  );
   assert.equal(f.hint.hasAttribute('hidden'), true);
   assert.equal(f.root.dataset.mapStageMode, 'expanded');
-  stage.activate();
-  assert.equal(stage.isActive(), false, 'there is no inactive state to leave');
+  assert.equal(f.root.dataset.mapActive, 'true');
+  assert.equal(stage.isActive(), true, 'the expanded route is always live');
 });
 
 test('Escape on the expanded route follows the back link', () => {

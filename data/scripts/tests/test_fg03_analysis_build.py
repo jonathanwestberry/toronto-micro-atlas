@@ -1258,7 +1258,7 @@ class Phase2BuildContractTests(unittest.TestCase):
         )
         self.assertEqual(
             manifest["defaultState"],
-            {"time": "2200", "access": "public", "walk": 400, "action": "extend"},
+            {"time": "2200", "access": "public", "walk": 400, "action": "open"},
         )
         self.assertEqual(
             manifest["actions"],

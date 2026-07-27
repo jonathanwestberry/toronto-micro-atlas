@@ -696,7 +696,7 @@ test('history writes preserve Astro state while serializing only FG03 state', ()
     time: '0030',
     access: 'public',
     walk: 400,
-    action: 'extend',
+    action: 'open',
     place: null,
     map: null,
   };

@@ -126,6 +126,13 @@
   min-width: 2.75rem;
 }
 
+/* Raising the buttons above MapLibre's default widens the whole group, and the
+   stage reserves its top-right gutter from this number. 2.75rem of button plus
+   the group's 1px borders. Change one and the other follows. */
+.fg03 .map-stage {
+  --map-ctrl-size: calc(2.75rem + 2px);
+}
+
 .fg03 .fg03-button--primary {
   background: var(--fg03-ink);
   color: var(--fg03-paper);
@@ -519,6 +526,22 @@
 
 .fg03-choice-row--actions label {
   flex-basis: 10rem;
+}
+
+/* Splits the action group into what exists and what is proposed. Sits at the
+   same weight as a legend so it reads as structure rather than as a note. */
+.fg03-choice-group-label {
+  margin: 0.85rem 0 0.4rem;
+  font-family: var(--fg03-ui);
+  font-size: 0.6875rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg03-ink-muted);
+}
+
+.fg03-choice-group-label:first-of-type {
+  margin-top: 0.25rem;
 }
 
 .fg03-control-tools {

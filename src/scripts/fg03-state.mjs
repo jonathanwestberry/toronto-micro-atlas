@@ -14,11 +14,19 @@ const MAP_BOUNDS = Object.freeze({
   maxZoom: 18.5,
 });
 
+/**
+ * The state a bare URL means. This is a second copy of the manifest's
+ * `defaultState`, kept here because URL parsing must work before any manifest
+ * is fetched, and the two silently disagreed: the manifest said one thing, the
+ * page server-rendered it, and then hydration replaced it with whatever this
+ * object said. Keep them equal. The manifest is the source of truth; this is
+ * the offline echo of it.
+ */
 export const DEFAULT_FG03_STATE = Object.freeze({
   time: '2200',
   access: 'public',
   walk: 400,
-  action: 'extend',
+  action: 'open',
   place: null,
   map: null,
 });

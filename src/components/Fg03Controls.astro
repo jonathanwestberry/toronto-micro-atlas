@@ -93,8 +93,16 @@ import {
       </div>
     </fieldset>
 
+    <!--
+      One radio group, two kinds of thing. "Current open washrooms" is what the
+      city has; the other four are what I argue it should do. Reading them as a
+      flat list of five is what let a reader count ten proposal squares and
+      believe they were washrooms, so the group now says which is which before
+      the reader clicks anything.
+    -->
     <fieldset data-fg03-filter="action">
-      <legend>Action</legend>
+      <legend>Show on the map</legend>
+      <p class="fg03-choice-group-label">What Toronto has</p>
       <div class="fg03-choice-row fg03-choice-row--actions">
         <label>
           <input
@@ -105,6 +113,9 @@ import {
           />
           <span>Current open washrooms</span>
         </label>
+      </div>
+      <p class="fg03-choice-group-label">What I would change (proposals, not facilities)</p>
+      <div class="fg03-choice-row fg03-choice-row--actions">
         <label>
           <input
             type="radio"

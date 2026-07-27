@@ -208,40 +208,42 @@ test('access-point proof and facility-record explorer use explicit counting grai
   );
 });
 
-test('default recommendation list is complete, ranked, and useful without JavaScript', () => {
+test('the default list is the six open washrooms, and it is useful without JavaScript', () => {
+  // The guide used to open on the ten extend-hours proposals, which put a set
+  // of arguments where the reader expected the facilities the headline counts.
+  // The landing state is now the six washrooms actually open at 10 p.m., and
+  // this test pins that: the count, the names, and the fact that these rows
+  // carry no rank, because an open washroom is not a ranked recommendation.
   const html = normalize(readRoute());
   const items = html.match(/<li[^>]*data-fg03-result-item[^>]*>/g) ?? [];
   const mapButtons =
     html.match(/<button[^>]*data-fg03-select-place[^>]*>/g) ?? [];
-  assert.equal(items.length, 10);
-  assert.equal(mapButtons.length, 10);
+  assert.equal(items.length, 6);
+  assert.equal(mapButtons.length, 6);
   assert.equal(
     mapButtons.filter((button) => /\bdisabled(?:\s|>|="")/.test(button)).length,
-    10,
+    6,
     'Server-rendered map controls must stay disabled until the runtime replaces them',
   );
-  assert.deepEqual(
-    items.map((item) => Number(item.match(/data-rank="(\d+)"/)?.[1])),
-    [1, 2, 3, 4, 5, 6, 8, 9, 10, 11],
+  assert.equal(
+    items.filter((item) => /data-rank=/.test(item)).length,
+    0,
+    'Open facilities are facts, not a ranking',
   );
 
   for (const name of [
-    'Mount Dennis library',
-    'Spadina Road library',
-    'York Recreation Centre Washroom',
-    'Northern District library',
-    'Riverdale library',
-    'East York Community Centre Washroom',
-    'Scarlett Woods Golf Course Washroom',
-    'Deer Park library',
-    'Locke library',
-    'St. Lawrence library',
+    'Union Station',
+    "L'Amoreaux Community Recreation Centre Washroom",
+    'Ellesmere Community Centre Washroom',
+    'Stephen Leacock Community Recreation Centre Washroom',
+    'Don Montgomery Community Centre Washroom',
+    'Jack Layton Ferry Terminal Washroom',
   ]) {
-    assert.match(html, new RegExp(name));
+    assert.match(html, new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
 
   assert.match(html, /data-fg03-gate="passed"/);
-  assert.match(html, /data-fg03-results-count="10"/);
+  assert.match(html, /data-fg03-results-count="6"/);
   assert.match(html, /data-fg03-detail/);
   assert.match(html, /id="fg03-detail-title"[^>]*tabindex="-1"/);
   assert.match(html, /data-fg03-verify-group="hours"/);
@@ -252,12 +254,7 @@ test('default recommendation list is complete, ranked, and useful without JavaSc
     'Access condition',
     'Published hours',
     'Closure evidence',
-    'Stability',
-    'Audit status',
     'Official source',
-    'GTFS stops and platforms',
-    'Scheduled trips',
-    'Routes',
   ]) {
     assert.match(html, new RegExp(evidence), `Expected SSR result evidence: ${evidence}`);
   }
@@ -272,10 +269,10 @@ test('manifest defaults drive checked controls, status, description, and lifecyc
   assert.match(html, checkedInput('time', '2200'));
   assert.match(html, checkedInput('access', 'public'));
   assert.match(html, checkedInput('walk', '400'));
-  assert.match(html, checkedInput('action', 'extend'));
+  assert.match(html, checkedInput('action', 'open'));
   assert.match(
     html,
-    /Showing 10 audited extend-hours opportunities for 10 p\.m\., public access, and a 400 m walk\./,
+    /Showing 6 current open facility records for 10 p\.m\., public access, and a 400 m walk\./,
   );
   assert.match(
     html,
