@@ -390,18 +390,8 @@ test('production headers preserve indexing, caching, and browser security', () =
   assert.match(headers, /X-Frame-Options: DENY/);
   assert.match(headers, /Referrer-Policy: strict-origin-when-cross-origin/);
   assert.match(headers, /Content-Security-Policy:/);
-  // Cloudflare Web Analytics is ON, deliberately, and the CSP names exactly the
-  // two hosts it needs: the script host it loads from, and the host it reports
-  // to. Verified in a browser against this policy: the beacon loads and POSTs
-  // to https://cloudflareinsights.com/cdn-cgi/rum with no CSP violation.
-  // Nothing else third-party is allowed in.
-  assert.match(headers, /script-src [^;]*https:\/\/static\.cloudflareinsights\.com/);
-  assert.match(headers, /connect-src 'self' https:\/\/cloudflareinsights\.com/);
-  assert.equal(
-    (headers.match(/cloudflareinsights\.com/g) ?? []).length,
-    2,
-    'Only the analytics script host and its reporting host may be allowed',
-  );
+  assert.doesNotMatch(headers, /cloudflareinsights/);
+  assert.match(headers, /connect-src 'self'/);
   assert.match(headers, /worker-src 'self' blob:/);
   for (const route of ['/', '/index.html', '/about/*', '/guides/*', '/404.html']) {
     const escapedRoute = route.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -420,35 +410,15 @@ test('production headers preserve indexing, caching, and browser security', () =
     'Only the five HTML cache rules may disable Cloudflare transformation',
   );
 
-  // no-transform stays, and that is why the beacon is written into the layout
-  // by hand rather than left to Cloudflare's edge injection. no-transform tells
-  // every intermediary not to rewrite our HTML, which is worth keeping, and it
-  // is also the reason auto-injection reached only the 404 route (sent with
-  // no-store) and never a real page. Shipping the tag ourselves means analytics
-  // that work, HTML nobody else edits, and a script host reviewable in git.
   const beaconMarkup = /cloudflareinsights|beacon\.min\.js|data-cf-beacon/i;
   const htmlFiles = readdirSync(distPath, { recursive: true })
     .filter((path) => path.endsWith('.html'));
   assert.ok(htmlFiles.length > 0, 'Expected built HTML files to scan');
   for (const htmlFile of htmlFiles) {
-    const html = readText(new URL(htmlFile, distPath));
-    assert.match(
-      html,
+    assert.doesNotMatch(
+      readText(new URL(htmlFile, distPath)),
       beaconMarkup,
-      `Built HTML must carry the analytics beacon: ${htmlFile}`,
-    );
-    // Astro entity-escapes the quotes inside the attribute, so the built markup
-    // reads data-cf-beacon="{&quot;token&quot;: &quot;...&quot;}". Match either
-    // form rather than the one that happened to be in the source.
-    assert.match(
-      html,
-      /data-cf-beacon=["'][^"']*(?:&quot;|")token(?:&quot;|")\s*:\s*(?:&quot;|")[0-9a-f]{32}(?:&quot;|")/,
-      `Beacon must carry a site token: ${htmlFile}`,
-    );
-    assert.equal(
-      (html.match(/beacon\.min\.js/g) ?? []).length,
-      1,
-      `Exactly one beacon per page, or views get counted twice: ${htmlFile}`,
+      `Built HTML must not contain analytics beacon markup: ${htmlFile}`,
     );
   }
 });
