@@ -53,6 +53,16 @@ const { categories } = Astro.props;
           spellcheck="false"
         />
         <ul class="fg2-search-results" id="fg2-street-results"></ul>
+        <!--
+          What is on the map right now, in words, with the way out attached.
+          Picking a street used to change the view with no visible account of
+          what had changed, so the reader was left comparing the map to a
+          memory of the map.
+        -->
+        <p class="fg2-isolated" id="fg2-isolated" hidden>
+          <span id="fg2-isolated-text"></span>
+          <button type="button" id="fg2-isolated-clear">Show all trees</button>
+        </p>
       </div>
       <div
         class="fg2-legend"

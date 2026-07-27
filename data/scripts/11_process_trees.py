@@ -60,6 +60,10 @@ CATEGORIES = [
 ]
 CAT_INDEX = {key: i for i, (key, _, _) in enumerate(CATEGORIES)}
 
+# Fewer trees than this and a "street" is a fragment of the address data, not
+# somewhere a reader would search for.
+MIN_STREET_TREES = 3
+
 
 def categorize(genus: str) -> int:
     if genus == "Acer":
@@ -133,6 +137,7 @@ def main() -> None:
     # means a true species-level singleton, not merely a unique cultivar name.
     species_counts = Counter()
     species_key_counts = Counter()
+    street_pts = defaultdict(lambda: [0.0, 0.0, 0])
     for ft in feats:
         p = ft["properties"]
         bot = (p.get("BOTANICAL_NAME") or "").strip()
@@ -143,14 +148,47 @@ def main() -> None:
         if bot:
             species_key_counts[species_key(bot)] += 1
 
+        # Street centroids move into this pass so every street has an id
+        # before any tile feature is written. Searching a street used to move
+        # the camera and nothing else, which left the reader looking at an
+        # unchanged field of dots with no way to tell which were the ones
+        # they had asked for. The tiles now carry the street, so the search
+        # can show only that street's trees.
+        street_raw = (p.get("STREETNAME") or "").strip()
+        if street_raw:
+            geom = ft.get("geometry")
+            coords = (geom or {}).get("coordinates") or []
+            if geom and geom.get("type") == "MultiPoint":
+                coords = coords[0] if coords else []
+            if len(coords) >= 2 and isinstance(coords[0], (int, float)) \
+                    and isinstance(coords[1], (int, float)):
+                acc = street_pts[street_raw]
+                acc[0] += coords[0]
+                acc[1] += coords[1]
+                acc[2] += 1
+
     species_order = [s for s, _ in species_counts.most_common()]
     species_index = {s: i for i, s in enumerate(species_order)}
     species_common: dict[str, str] = {}
 
+    # Street search index: [display name, lng, lat, count], name-sorted. A
+    # street's id is its position in this array, so streets.json needs no
+    # extra column and the client can filter on `t` straight from a result.
+    # MIN_STREET_TREES drops fragments too small to be a findable street.
+    streets = []
+    street_id: dict[str, int] = {}
+    for raw_name, (sx, sy, n) in street_pts.items():
+        if n < MIN_STREET_TREES:
+            continue
+        streets.append([title_address(None, raw_name), round(sx / n, 5),
+                        round(sy / n, 5), n, raw_name])
+    streets.sort(key=lambda r: r[0])
+    for index, row in enumerate(streets):
+        street_id[row.pop()] = index
+
     # Pass 2: emit tiling features, gather stats.
     cat_counts = Counter()
     ward_counts = Counter()
-    street_pts = defaultdict(lambda: [0.0, 0.0, 0])
     singleton_feats = []
     n_written = 0
 
@@ -187,16 +225,14 @@ def main() -> None:
             street_raw = (p.get("STREETNAME") or "").strip()
             addr = title_address(p.get("ADDRESS"), street_raw)
 
-            if street_raw:
-                acc = street_pts[street_raw]
-                acc[0] += lng
-                acc[1] += lat
-                acc[2] += 1
-
             props = {"g": cat, "s": species_index[bot], "a": addr}
             d = p.get("DBH_TRUNK")
             if isinstance(d, (int, float)) and 0 < d <= 250:
                 props["d"] = int(d)
+            # Index into streets.json. Omitted for trees on streets too small
+            # to be searchable, which cannot be isolated anyway.
+            if street_raw in street_id:
+                props["t"] = street_id[street_raw]
 
             out.write(json.dumps({
                 "type": "Feature",
@@ -219,19 +255,6 @@ def main() -> None:
                     "lat": round(lat, 6),
                     "address": addr,
                 })
-
-    # Street search index: [display name, lng, lat, count], name-sorted.
-    streets = []
-    for raw_name, (sx, sy, n) in street_pts.items():
-        if n < 3:
-            continue  # skip fragments; too few points to be a findable street
-        streets.append([
-            title_address(None, raw_name),
-            round(sx / n, 5),
-            round(sy / n, 5),
-            n,
-        ])
-    streets.sort(key=lambda r: r[0])
 
     species_arr = [
         [s, species_common.get(s, s), categorize(s.split(" ")[0] if s else "?")]

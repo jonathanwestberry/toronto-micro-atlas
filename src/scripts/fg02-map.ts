@@ -58,6 +58,15 @@ const LABEL_ALLOWLIST = new Set([
   'Humber River',
 ]);
 
+/** A street search hit. `id` is its index in streets.json and its `t` in the tiles. */
+interface StreetHit {
+  id: number;
+  name: string;
+  lng: number;
+  lat: number;
+  count: number;
+}
+
 interface Category {
   key: string;
   label: string;
@@ -155,6 +164,17 @@ class SidewalkForest {
   /** Set by initSidewalkForest so the shared MapStage can report load state. */
   onReady: (() => void) | undefined;
   onDataError: ((error: unknown) => void) | undefined;
+
+  /** Which narrowings are live. Composed into one filter, never overwritten. */
+  private genusFilter: number | null = null;
+  private streetFilter: number | null = null;
+
+  /**
+   * Told when a street is isolated (or cleared), so the panel can say so on
+   * screen. A change the reader can only hear in a live region is a change
+   * most readers never learn about.
+   */
+  onIsolatedStreet: ((name: string | null, count: number) => void) | undefined;
 
   /** Re-run the data load after the stage's Retry. */
   reloadLayers(): void {
@@ -554,10 +574,64 @@ class SidewalkForest {
   }
 
   private setCircleGenus(genus: number | null): void {
-    const filter = genus === null ? null : (['==', ['get', 'g'], genus] as maplibregl.FilterSpecification);
-    if (this.map.getLayer('trees-circles')) {
-      this.map.setFilter('trees-circles', filter);
-    }
+    this.genusFilter = genus;
+    this.applyCircleFilter();
+  }
+
+  /**
+   * Genus and street are two independent ways to narrow the same dots, so the
+   * filter is composed rather than overwritten. Searching a street clears the
+   * genus first (see isolateStreet): two overlapping narrowings leave a reader
+   * unable to attribute what they are seeing to either one.
+   */
+  private applyCircleFilter(): void {
+    if (!this.map.getLayer('trees-circles')) return;
+    const clauses: unknown[] = [];
+    if (this.genusFilter !== null) clauses.push(['==', ['get', 'g'], this.genusFilter]);
+    if (this.streetFilter !== null) clauses.push(['==', ['get', 't'], this.streetFilter]);
+    this.map.setFilter(
+      'trees-circles',
+      clauses.length === 0
+        ? null
+        : (clauses.length === 1
+            ? clauses[0]
+            : ['all', ...clauses]) as maplibregl.FilterSpecification,
+    );
+  }
+
+  /**
+   * Show only the trees on one street.
+   *
+   * Searching a street used to ease the camera and stop there, which left the
+   * reader in front of an unchanged field of dots with no way to tell which of
+   * them were the answer. Now the answer is the only thing drawn in full: the
+   * rest of the inventory drops to the dim base raster for context.
+   */
+  isolateStreet(id: number, name: string, count: number): void {
+    this.clearSelection();
+    this.streetFilter = id;
+    this.genusFilter = null;
+    this.currentBaseOpacity = 0.12;
+    this.map.setPaintProperty('trees-base', 'raster-opacity', this.rasterOpacityExpr(0.12));
+    this.setOverlay(null);
+    this.applyCircleFilter();
+    document.querySelectorAll<HTMLButtonElement>('.fg2-legend button[data-genus]')
+      .forEach((b) => b.setAttribute('aria-pressed', 'false'));
+    this.onIsolatedStreet?.(name, count);
+    this.announce(
+      `Showing only the ${count.toLocaleString('en-CA')} trees on ${name}. Tap any dot to identify it.`,
+    );
+  }
+
+  /** Put every other tree back. */
+  clearStreet(): void {
+    if (this.streetFilter === null) return;
+    this.streetFilter = null;
+    this.currentBaseOpacity = 1;
+    this.map.setPaintProperty('trees-base', 'raster-opacity', this.rasterOpacityExpr(1));
+    this.applyCircleFilter();
+    this.onIsolatedStreet?.(null, 0);
+    this.announce('Showing every street tree again.');
   }
 
   private moveCamera(camera: Chapter['camera'], instant: boolean): void {
@@ -624,6 +698,12 @@ class SidewalkForest {
   isolate(genus: number | null): void {
     if (!this.meta) return;
     this.clearSelection();
+    // Picking a family is a new question, so it drops any street narrowing
+    // rather than silently intersecting with it.
+    if (this.streetFilter !== null) {
+      this.streetFilter = null;
+      this.onIsolatedStreet?.(null, 0);
+    }
     if (genus === null) {
       this.map.setPaintProperty('trees-base', 'raster-opacity', this.rasterOpacityExpr(1));
       this.currentBaseOpacity = 1;
@@ -782,21 +862,25 @@ class SidewalkForest {
 
   // --- Street search ---------------------------------------------------------
 
-  async searchStreets(query: string): Promise<[string, number, number, number][]> {
+  /**
+   * A hit carries its index in streets.json, which is the same id the tiles
+   * store in `t`. That is what lets a search result isolate its own trees.
+   */
+  async searchStreets(query: string): Promise<StreetHit[]> {
     if (!this.streets) {
       const res = await fetch(`${this.base}data/fg02/streets.json`);
       this.streets = (await res.json()) as [string, number, number, number][];
     }
     const q = query.trim().toLowerCase();
     if (q.length < 2) return [];
-    const starts: [string, number, number, number][] = [];
-    const contains: [string, number, number, number][] = [];
-    for (const row of this.streets) {
-      const name = row[0].toLowerCase();
-      if (name.startsWith(q)) starts.push(row);
-      else if (name.includes(q)) contains.push(row);
-      if (starts.length >= 8) break;
-    }
+    const starts: StreetHit[] = [];
+    const contains: StreetHit[] = [];
+    this.streets.forEach(([name, lng, lat, count], id) => {
+      if (starts.length >= 8) return;
+      const lower = name.toLowerCase();
+      if (lower.startsWith(q)) starts.push({ id, name, lng, lat, count });
+      else if (lower.includes(q)) contains.push({ id, name, lng, lat, count });
+    });
     return [...starts, ...contains].slice(0, 8);
   }
 
@@ -1091,7 +1175,7 @@ export function initSidewalkForest(options: InitSidewalkForestOptions = {}): voi
       const rows = await forest.searchStreets(input.value);
       if (mySeq !== seq) return;
       results.replaceChildren(
-        ...rows.map(([name, lng, lat, count]) => {
+        ...rows.map(({ id, name, lng, lat, count }) => {
           const li = document.createElement('li');
           const b = document.createElement('button');
           b.type = 'button';
@@ -1103,6 +1187,7 @@ export function initSidewalkForest(options: InitSidewalkForestOptions = {}): voi
           b.append(label, c);
           b.addEventListener('click', () => {
             forest.goToStreet(lng, lat, name);
+            forest.isolateStreet(id, name, count);
             results.replaceChildren();
             input.value = name;
           });
@@ -1115,6 +1200,24 @@ export function initSidewalkForest(options: InitSidewalkForestOptions = {}): voi
       if (e.key === 'Escape') results.replaceChildren();
     });
   }
+
+  // --- "Showing only ..." chip ---------------------------------------------------
+  const isolated = document.getElementById('fg2-isolated');
+  const isolatedText = document.getElementById('fg2-isolated-text');
+  document.getElementById('fg2-isolated-clear')?.addEventListener('click', () => {
+    forest.clearStreet();
+    input?.focus();
+  });
+  forest.onIsolatedStreet = (name, count) => {
+    if (!isolated || !isolatedText) return;
+    if (name === null) {
+      isolated.hidden = true;
+      isolatedText.textContent = '';
+      return;
+    }
+    isolatedText.textContent = `Showing the ${count.toLocaleString('en-CA')} trees on ${name}.`;
+    isolated.hidden = false;
+  };
 
   // --- Cleanup on view transition ----------------------------------------------
   if (!mapEl.dataset.viewTransitionCleanupRegistered) {

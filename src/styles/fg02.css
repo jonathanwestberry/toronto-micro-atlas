@@ -672,6 +672,44 @@
   white-space: nowrap;
 }
 
+/* The state of the map, said out loud, with the way back attached. Gold
+   because that is this guide's "you did something" colour, and a reader
+   scanning for what changed should land here first. */
+.fg2-isolated {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--n-gold);
+  border-radius: 4px;
+  background-color: color-mix(in srgb, var(--n-gold) 12%, transparent);
+  color: var(--n-text);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+
+.fg2-isolated[hidden] {
+  display: none;
+}
+
+.fg2-isolated button {
+  display: block;
+  margin-top: var(--space-2);
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--n-gold);
+  border-radius: 3px;
+  background-color: transparent;
+  color: var(--n-gold);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+.fg2-isolated button:hover,
+.fg2-isolated button:focus-visible {
+  background-color: var(--n-gold);
+  color: var(--n-ground);
+  outline: none;
+}
+
 /* Legend */
 .fg2-legend {
   display: flex;
