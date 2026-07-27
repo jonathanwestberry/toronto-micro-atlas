@@ -131,7 +131,6 @@ const mapLocations = locations.map((loc) => ({
         class="guide-panel guide-selected-panel"
         id="guide-selected-panel"
         aria-label="Selected location"
-        tabindex="0"
         aria-hidden="true"
         hidden
       >
@@ -220,28 +219,39 @@ const mapLocations = locations.map((loc) => ({
   initGuideMap();
 
   /**
-   * The welcome panel's tab stop, only when it is really a scroll container.
+   * The panels' tab stops, only when they are really scroll containers.
    *
-   * It carried a hardcoded `tabindex="0"`. On a static container that is a
-   * keyboard stop that lands nowhere and explains nothing. But the panel is
-   * `overflow-y: auto` with `max-height: calc(100vh - ...)` on desktop and it
-   * has no focusable children, so when it *does* overflow, removing the stop
-   * would leave content a keyboard user cannot scroll to (SC 2.1.1).
+   * Both panels carried a hardcoded `tabindex="0"`. On a static container that
+   * is a keyboard stop that lands nowhere and explains nothing. But both are
+   * `overflow-y: auto` with `max-height: calc(100vh - ...)` on desktop, and
+   * the welcome panel has no focusable children at all, so when it *does*
+   * overflow, removing the stop would leave content a keyboard user cannot
+   * scroll to (SC 2.1.1).
    *
-   * Measured, not assumed -- same reasoning as --header-h in Phase 5. At
-   * 1280x900 it does not overflow; at 1280x600 it does, by 122px.
+   * Measured, not assumed -- the same reasoning as --header-h in Phase 5. At
+   * 1280x900 the welcome panel does not overflow; at 1280x600 it does, by
+   * 122px. The selected panel gets the same treatment rather than a different
+   * one, because two panels side by side behaving differently is how the next
+   * person learns the wrong rule. Nothing focuses either panel
+   * programmatically, so there is no -1 stop to preserve.
    */
+  const PANEL_IDS = ['guide-welcome-panel', 'guide-selected-panel'];
+
   const wireScrollStop = () => {
-    const panel = document.getElementById('guide-welcome-panel');
-    if (!panel) return () => {};
+    const panels = PANEL_IDS
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => el !== null);
+    if (!panels.length) return () => {};
     const sync = () => {
-      const scrolls = panel.scrollHeight > panel.clientHeight + 1;
-      if (scrolls) panel.setAttribute('tabindex', '0');
-      else panel.removeAttribute('tabindex');
+      for (const panel of panels) {
+        const scrolls = panel.scrollHeight > panel.clientHeight + 1;
+        if (scrolls) panel.setAttribute('tabindex', '0');
+        else panel.removeAttribute('tabindex');
+      }
     };
     sync();
     const observer = new ResizeObserver(sync);
-    observer.observe(panel);
+    panels.forEach((panel) => observer.observe(panel));
     return () => observer.disconnect();
   };
 
@@ -577,6 +587,13 @@ const mapLocations = locations.map((loc) => ({
      ============================================================ */
 
   .guide-cards-section {
+    /* This is a flex item of .guide-layout, and a flex item's default
+       `min-width: auto` refuses to shrink below its own min-content width. So
+       the section held itself at 396px inside a 375px window and pushed the
+       page sideways. It happens to show up under a doubled root font size,
+       but nothing about it is zoom-specific: a long enough location title
+       would do the same at 320px and normal text. */
+    min-width: 0;
     max-width: var(--container);
     margin-inline: auto;
     padding-block: var(--space-12);
@@ -668,7 +685,12 @@ const mapLocations = locations.map((loc) => ({
 
   @media (min-width: 640px) {
     .guide-card-grid {
-      grid-template-columns: repeat(2, 1fr);
+      /* minmax(0, 1fr), not 1fr. A `1fr` track is min-width:auto underneath,
+         so it refuses to shrink below its widest card and the grid pushes the
+         page sideways instead of the cards getting narrower. Same defect as
+         the flex item above, same canonical fix, and a no-op whenever the
+         content already fits. */
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 
@@ -704,7 +726,7 @@ const mapLocations = locations.map((loc) => ({
      shows the hairline-grid background as an empty card. */
   @media (min-width: 1200px) {
     .guide-card-grid {
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
 </style>

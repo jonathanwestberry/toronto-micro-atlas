@@ -195,6 +195,21 @@ body[data-full-height] .site-header {
   z-index: 50;
   list-style: none;
   min-width: 232px;
+  /* Bounded by the viewport, not by its longest guide title. The audit called
+     this out ("dropdown constrained to viewport") and text-scaled to 200% it
+     grew to 444px inside a 375px window. The 24px gutter is deliberately a
+     fixed px value: the whole spacing scale is in rem, so a rem gutter would
+     scale along with the text and stop being a gutter exactly when it is
+     needed.
+
+     `width: max-content` is what keeps this from changing the desktop menu.
+     Dropping `nowrap` alone let the box collapse to the 232px minimum and
+     wrapped "When Toronto Has to Go" onto two lines, 49px -> 62px. max-content
+     sizes to the longest title on one line exactly as nowrap did, and the
+     max-width only bites when the viewport is genuinely too narrow -- at which
+     point wrapping is what you want. One line normally, wrap when bounded. */
+  width: max-content;
+  max-width: calc(100vw - 24px);
   background: var(--atlas-ground);
   border: 1px solid var(--atlas-ink);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
@@ -208,7 +223,12 @@ body[data-full-height] .site-header {
   font-size: var(--text-sm);
   color: var(--atlas-ink-muted);
   text-decoration: none;
-  white-space: nowrap;
+  /* Wrapping is the fallback, not the default. The menu is still sized by its
+     content, and at normal text every guide title fits on one line inside the
+     232px minimum, so nothing moves. `nowrap` only ever mattered once the
+     max-width above started biting, and there a title running off the screen
+     is worse than a title on two lines. */
+  white-space: normal;
 }
 
 .nav-dd-menu a:hover,
@@ -258,7 +278,6 @@ body[data-full-height] .site-header {
   }
 
   .site-header-inner {
-    flex-wrap: nowrap;
     align-items: center;
     justify-content: space-between;
     gap: var(--space-3);
@@ -270,9 +289,16 @@ body[data-full-height] .site-header {
     letter-spacing: 0.08em;
   }
 
+  /* No `flex-wrap: nowrap` here or on .site-header-inner above.
+     The one row is bought by the smaller type and the tighter gap, and it is
+     still one row at 320: `nowrap` was belt-and-braces on top of that. What it
+     actually did was turn a layout that cannot fit into one that overflows
+     instead of one that wraps, and the header ran 128px off a 375px screen
+     once the root font size was doubled. A two-row header is ugly; a header
+     off the side of the screen is broken. Wrapping stays available as the
+     fallback it always was. */
   .site-nav {
     gap: var(--space-4);
-    flex-wrap: nowrap;
   }
 
   .site-nav a,

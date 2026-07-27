@@ -68,7 +68,15 @@
   /* Layout containers */
   --container: 1200px;
   --container-wide: 1280px;
-  --gutter: clamp(1.25rem, 5vw, 4rem);
+  /* The floor is px, not rem, and that is the whole point of the change.
+     A gutter's job is to hold content off the edge of the screen; it is not
+     type, and it has no reason to grow when type does. At a doubled root font
+     size the rem floor became 40px a side, so a 375px phone spent 80px -- 21%
+     of the viewport -- on margin, and pushed fg01's card grid off the screen.
+     1.25rem and 20px are the same number at normal text, so this is a no-op
+     everywhere except the case it fixes. The 5vw and 4rem upper reaches are
+     untouched; those only apply on wide screens where there is room. */
+  --gutter: clamp(20px, 5vw, 4rem);
 
   /* Motion: micro-interactions 150-300ms, exits faster than enters */
   --dur-1: 120ms;
