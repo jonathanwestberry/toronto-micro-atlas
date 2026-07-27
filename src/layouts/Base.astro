@@ -92,6 +92,14 @@ const onAbout = path.includes('/about');
     <link rel="canonical" href={canonicalURL.href} />
 
     <script is:inline>document.documentElement.classList.add('js');</script>
+
+    <script
+      is:inline
+      defer
+      src="https://static.cloudflareinsights.com/beacon.min.js"
+      data-cf-beacon='{"token": "d823217aa6de42519a52baecb3d3fe49"}'
+    ></script>
+
     <ClientRouter />
 
     <!-- Open Graph -->
