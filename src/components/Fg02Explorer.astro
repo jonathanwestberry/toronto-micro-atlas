@@ -16,74 +16,113 @@ const { categories } = Astro.props;
 
 <div class="fg2-explorer-ui">
   <aside class="fg2-panel" id="fg2-panel" aria-label="Explorer controls">
-    <h2 class="fg2-panel-title">
-      <button
-        type="button"
-        class="fg2-panel-toggle"
-        id="fg2-panel-toggle"
-        aria-expanded="true"
-        aria-controls="fg2-panel-body"
-      >
-        The Sidewalk Forest
+    <!--
+      The head is the only part of the panel a collapsed phone reader can see,
+      so everything they need to decide whether to open it has to be here. The
+      handle used to read "The Sidewalk Forest", which named the guide they
+      were already in rather than the drawer's contents, and the one control
+      most readers arrive wanting was sealed behind it. Now the handle names
+      what is inside and search has its own permanent door beside it.
+    -->
+    <div class="fg2-panel-head">
+      <h2 class="fg2-panel-title">
+        <button
+          type="button"
+          class="fg2-panel-toggle"
+          id="fg2-panel-toggle"
+          aria-expanded="true"
+          aria-controls="fg2-panel-body"
+        >
+          <span>Search &amp; tree families</span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            aria-hidden="true"><polyline points="6,15 12,9 18,15" /></svg
+          >
+        </button>
+      </h2>
+      <button type="button" class="fg2-panel-search-jump" id="fg2-panel-search-jump">
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          width="12"
-          height="12"
+          width="14"
+          height="14"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          stroke-width="2.5"
+          stroke-width="2.4"
           stroke-linecap="round"
-          aria-hidden="true"><polyline points="6,15 12,9 18,15" /></svg
+          aria-hidden="true"
+          ><circle cx="10.5" cy="10.5" r="7" /><line x1="15.8" y1="15.8" x2="21" y2="21" /></svg
         >
+        Search
       </button>
-    </h2>
+    </div>
+
     <div id="fg2-panel-body">
-      <p class="fg2-panel-hint">
-        Zoom in until dots separate, then tap a tree to identify it (or focus the map and press
-        Enter to read the tree at the crosshair). Or find your street:
-      </p>
-      <div class="fg2-search">
-        <label class="visually-hidden" for="fg2-street-input">Search streets</label>
-        <input
-          type="search"
-          id="fg2-street-input"
-          placeholder="Search your street…"
-          autocomplete="off"
-          spellcheck="false"
-        />
-        <ul class="fg2-search-results" id="fg2-street-results"></ul>
+      <div class="fg2-panel-scroll">
+        <p class="fg2-panel-hint">
+          Zoom in until dots separate, then tap a tree to identify it (or focus the map and press
+          Enter to read the tree at the crosshair). Or find your street:
+        </p>
+        <div class="fg2-search">
+          <label class="visually-hidden" for="fg2-street-input">Search streets</label>
+          <input
+            type="search"
+            id="fg2-street-input"
+            placeholder="Search your street…"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <ul class="fg2-search-results" id="fg2-street-results"></ul>
+        </div>
         <!--
           What is on the map right now, in words, with the way out attached.
-          Picking a street used to change the view with no visible account of
-          what had changed, so the reader was left comparing the map to a
-          memory of the map.
+          Both narrowings (a family, a street) write here, because a reader who
+          has just dimmed nine tenths of the map should not have to work out
+          which of two different reports applies to them. One element, one
+          sentence, one way back.
         -->
         <p class="fg2-isolated" id="fg2-isolated" hidden>
           <span id="fg2-isolated-text"></span>
           <button type="button" id="fg2-isolated-clear">Show all trees</button>
         </p>
+        <div
+          class="fg2-legend"
+          role="group"
+          aria-label="Tree families. Select one to show only that family."
+        >
+          <span class="fg2-legend-label">Show one family</span>
+          {
+            categories.map((c, i) => (
+              <button type="button" data-genus={i} aria-pressed="false">
+                <span class="fg2-legend-dot" style={`background-color: ${c.color}`} aria-hidden="true" />
+                {c.label}
+                <span class="fg2-legend-count">{c.count.toLocaleString('en-CA')}</span>
+              </button>
+            ))
+          }
+        </div>
       </div>
-      <div
-        class="fg2-legend"
-        role="group"
-        aria-label="Tree families. Select one to show only that family."
-      >
-        <span class="fg2-legend-label">Families</span>
-        {
-          categories.map((c, i) => (
-            <button type="button" data-genus={i} aria-pressed="false">
-              <span class="fg2-legend-dot" style={`background-color: ${c.color}`} aria-hidden="true" />
-              {c.label}
-              <span class="fg2-legend-count">{c.count.toLocaleString('en-CA')}</span>
-            </button>
-          ))
-        }
+
+      <!--
+        The two ways out sit below the scroll, not inside it. Sized against the
+        viewport the panel used to overflow its own container, which put
+        "Citywide view" half off screen at 1440x900 and both resets entirely
+        below the fold at 1280x720. An escape route that scrolls away is not an
+        escape route.
+      -->
+      <div class="fg2-panel-footer">
         <button type="button" class="fg2-card-btn fg2-legend-reset" id="fg2-legend-reset">
           Show all families
         </button>
         <button type="button" class="fg2-card-btn fg2-legend-reset" id="fg2-reset">
-          Citywide view
+          Zoom back out to the whole city
         </button>
       </div>
     </div>
