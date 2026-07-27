@@ -1,0 +1,192 @@
+---
+/**
+ * GuideCard: one guide in the gallery. A real map thumbnail on top, editorial
+ * meta below. Whole card is the link when href is set. Status is a shape + text
+ * pill so it never rides on colour alone. Cover is optional (forthcoming guides
+ * render a muted themed panel instead).
+ */
+interface Props {
+  title: string;
+  description: string;
+  href?: string;
+  tag?: string;
+  status?: 'new' | 'live' | 'forthcoming';
+  theme?: 'fg01' | 'fg02' | 'fg03';
+  cover?: string;
+  level?: 2 | 3;
+}
+
+const { title, description, href, tag, status = 'live', theme, cover, level = 3 } = Astro.props;
+const Wrapper = href ? 'a' : 'div';
+const Heading = `h${level}` as 'h2' | 'h3';
+const statusLabel = status === 'new' ? 'New' : status === 'forthcoming' ? 'Forthcoming' : 'Live';
+---
+
+<Wrapper
+  class:list={['guide-card', theme && `guide-card--${theme}`, !href && 'guide-card--static']}
+  href={href}
+  {...(href ? { 'data-astro-reload': true } : {})}
+>
+  <div class="guide-card-media">
+    {cover
+      ? <img src={cover} alt="" loading="lazy" decoding="async" width="1000" height="620" />
+      : <span class="guide-card-media-empty" aria-hidden="true"></span>}
+    <span class:list={['guide-card-status', `guide-card-status--${status}`]}>
+      <span class="guide-card-status-dot" aria-hidden="true"></span>{statusLabel}
+    </span>
+  </div>
+  <div class="guide-card-body">
+    {tag && <span class="guide-card-tag">{tag}</span>}
+    <Heading class="guide-card-title">{title}</Heading>
+    <p class="guide-card-desc">{description}</p>
+    {href && <span class="guide-card-cta" aria-hidden="true">Open the guide &rarr;</span>}
+  </div>
+</Wrapper>
+
+<style>
+  /* Two accent slots, not one. --card-accent is the FILL: the 3px plate rule
+     and the status chip, which only have to clear 3:1. --card-accent-text is
+     the same hue darkened until it clears 4.8:1 on the card surface, and it is
+     the only one allowed on the 11px tag and 13px CTA. Sharing one value made
+     Kelly 3.12:1 and Tomato 4.38:1 as type. */
+  .guide-card {
+    --card-accent: var(--threshold);
+    --card-accent-text: var(--atlas-accent-text);
+    --plate-bg: var(--ink);
+    display: flex;
+    flex-direction: column;
+    background-color: var(--card);
+    border: 1px solid var(--street-minor);
+    border-radius: 8px;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    height: 100%;
+  }
+  .guide-card--fg01 { --card-accent: #2A5BD0; --card-accent-text: #2A5BD0; --plate-bg: #dbe6f2; }
+  .guide-card--fg02 { --card-accent: #45A26A; --card-accent-text: #347A50; --plate-bg: #12331f; }
+  .guide-card--fg03 { --card-accent: #1A2F66; --card-accent-text: #1A2F66; --plate-bg: #ece4d0; }
+
+  .guide-card-media {
+    position: relative;
+    aspect-ratio: 16 / 10;
+    background-color: var(--plate-bg);
+    overflow: hidden;
+    border-bottom: 3px solid var(--card-accent);
+  }
+  .guide-card-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+    transition: transform var(--dur-3) var(--ease-out);
+  }
+  .guide-card-media-empty { position: absolute; inset: 0; }
+
+  /* Status pill: cream so it stays legible over any map (light or dark); the
+     dot's shape carries status (filled New, ring Live, hollow Forthcoming). */
+  .guide-card-status {
+    position: absolute;
+    top: var(--space-3);
+    left: var(--space-3);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45em;
+    padding: 0.28rem 0.6rem;
+    background-color: var(--paper);
+    border: 1px solid var(--street-minor);
+    border-radius: 999px;
+    font-family: var(--font-ui);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+  .guide-card-status-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    border: 1.5px solid var(--card-accent);
+    background-color: var(--card-accent);
+  }
+  .guide-card-status--live .guide-card-status-dot { background-color: transparent; }
+  .guide-card-status--forthcoming .guide-card-status-dot { background-color: transparent; border-color: var(--ink-3); }
+
+  .guide-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-6);
+    flex: 1;
+  }
+
+  /* The tag is metadata, so it reads in the ink scale, not the accent.
+     Three things on this card were carrying the theme accent at once (the tag,
+     the CTA and the plate rule), which left the title competing with its own
+     supporting cast. De-emphasise the competitors rather than shout louder
+     with the hero: the accent now belongs to the plate rule, the status dot
+     and the CTA, and everything else sits on the ink ramp. 6.44:1 here against
+     the title's 15.23:1, so the gap is visible and both clear AA. */
+  .guide-card-tag {
+    font-family: var(--font-ui);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+  }
+
+  .guide-card-title {
+    font-family: var(--font-heading);
+    font-size: clamp(1.75rem, 3.5vw, 2.25rem);
+    line-height: 0.98;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin: 0;
+  }
+
+  .guide-card-desc {
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    line-height: 1.55;
+    color: var(--ink-2);
+    margin: 0;
+    /* Uniform 3-line block so every card's title, blurb, and CTA align
+       row-to-row regardless of copy length. */
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    overflow: hidden;
+    min-height: calc(3 * 1.55em);
+  }
+
+  .guide-card-cta {
+    margin-top: auto;
+    padding-top: var(--space-2);
+    font-family: var(--font-ui);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--card-accent-text);
+  }
+
+  a.guide-card { transition: border-color var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out); }
+  @media (hover: hover) {
+    a.guide-card:hover { border-color: var(--card-accent); box-shadow: 0 6px 20px -10px rgba(39, 36, 29, 0.35); }
+    a.guide-card:hover .guide-card-media img { transform: scale(1.04); }
+  }
+  a.guide-card:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-ring-offset); }
+
+  .guide-card--static { opacity: 0.92; }
+  .guide-card--static .guide-card-media { filter: saturate(0.6); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .guide-card-media img { transition: none; }
+    a.guide-card:hover .guide-card-media img { transform: none; }
+  }
+</style>

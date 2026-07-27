@@ -6,46 +6,47 @@
 
 .fg2 {
   /* Nocturne palette */
-  --n-ground: hsl(211, 42%, 9%);
-  --n-ground-2: hsl(210, 38%, 13%);
-  --n-card: hsl(209, 34%, 15%);
-  --n-card-solid: hsl(209, 34%, 15%);
-  --n-line: hsl(210, 26%, 26%);
-  --n-line-soft: hsl(210, 30%, 20%);
-  --n-text: hsl(43, 55%, 93%);
-  --n-text-2: hsl(214, 22%, 76%);
-  --n-text-3: hsl(214, 14%, 62%);
-  --n-gold: hsl(48, 90%, 64%);
-  --n-gold-active: hsl(45, 96%, 56%);
+  --n-ground: hsl(150, 44%, 7%);
+  --n-ground-2: hsl(150, 36%, 12%);
+  --n-card: hsl(150, 30%, 14%);
+  --n-card-solid: hsl(150, 30%, 14%);
+  --n-line: hsl(150, 22%, 24%);
+  --n-line-soft: hsl(150, 26%, 18%);
+  --n-text: hsl(48, 42%, 93%);
+  --n-text-2: hsl(150, 14%, 76%);
+  --n-text-3: hsl(150, 11%, 62%);
+  --n-gold: hsl(72, 62%, 62%);
+  --n-gold-active: hsl(76, 66%, 52%);
   --n-focus: 2px solid var(--n-gold);
+
+  /* Map the nocturne onto the shared theme contract. Guide theme "Sidewalk
+     Forest": near-black forest ground, Lime as the glowing accent. */
+  --atlas-ground: var(--n-ground);
+  --atlas-surface: var(--n-card);
+  --atlas-ink: var(--n-text);
+  --atlas-ink-muted: var(--n-text-2);
+  --atlas-ink-faint: var(--n-text-3);
+  --atlas-line: var(--n-line);
+  --atlas-accent: var(--n-gold);
+  --atlas-accent-2: var(--n-gold-active);
+  --atlas-focus: var(--n-gold);
 
   background-color: var(--n-ground);
   color: var(--n-text);
 }
 
-/* Dark header treatment for this page only: the site header sits on the
-   nocturne ground, so its paper tokens flip. */
-body:has(.fg2) {
-  background-color: var(--fg2-ground, hsl(211, 42%, 9%));
-}
-body:has(.fg2) .site-header {
-  background-color: hsl(211, 42%, 9%);
-  border-bottom-color: hsl(210, 26%, 26%);
-}
-body:has(.fg2) .site-header .site-masthead {
-  color: hsl(43, 55%, 93%);
-}
-body:has(.fg2) .site-header .site-nav a {
-  color: hsl(214, 22%, 76%);
-}
-body:has(.fg2) .site-header .site-masthead:hover,
-body:has(.fg2) .site-header .site-nav a:hover {
-  color: hsl(48, 90%, 64%);
-}
-body:has(.fg2) .site-header .site-nav a[aria-current] {
-  color: hsl(43, 55%, 93%);
-  box-shadow: inset 0 -2px 0 hsl(48, 90%, 64%);
-}
+/*
+ * The hand-written dark-header patch that lived here is gone.
+ *
+ * It restyled .site-header, .site-masthead, and .site-nav a with literal
+ * nocturne HSLs, and it is the reason the "Guides" underline stayed shell
+ * Tomato on this page: the patch never listed .nav-dd-summary, so the dropdown
+ * kept the shell's colour while its neighbours went dark.
+ *
+ * <body data-guide-theme="fg02"> now sets the --atlas-* contract for the whole
+ * document, and the header reads that contract, so every part of it themes at
+ * once and nothing can be left off a list.
+ */
 
 /* ============================================================
    Scrolly frame: the map is a sticky full-viewport stage; the
@@ -56,10 +57,13 @@ body:has(.fg2) .site-header .site-nav a[aria-current] {
   position: relative;
 }
 
+/* Parks itself exactly in the space the sticky header leaves, at every scroll
+   position. Previously `top: 0; height: 100svh`, which overhung the viewport
+   by the header's height until the reader scrolled past it. */
 .fg2-stage {
   position: sticky;
-  top: 0;
-  height: 100svh;
+  top: var(--header-h);
+  height: calc(100svh - var(--header-h));
   width: 100%;
   overflow: hidden;
   background-color: var(--n-ground);
@@ -71,6 +75,27 @@ body:has(.fg2) .site-header .site-nav a[aria-current] {
   position: absolute;
   inset: 0;
 }
+
+/* #fg2-map is absolutely positioned, so it needs a sized containing block.
+   That used to be .fg2-stage directly; MapStage now sits between them, and an
+   auto-height frame around an absolute-only child collapses to 0, taking the
+   map with it. Both stage layers are stretched to fill instead. */
+.fg2-stage > .map-stage {
+  position: absolute;
+  inset: 0;
+  gap: 0;
+}
+
+.fg2-stage > .map-stage > .map-stage__frame {
+  position: absolute;
+  inset: 0;
+  border-radius: 0;
+}
+
+/* The Phase 4 chrome inset that lived here is gone. It compensated for the
+   stage overhanging the viewport by the header's height; the sticky header and
+   the measured --header-h above mean there is no overhang left to compensate
+   for, so the chrome sits on the stage's real edges again. */
 
 /* Paper grain, kept from the atlas system but subtler on dark */
 .fg2-stage::after {
@@ -439,16 +464,22 @@ body:has(.fg2) .site-header .site-nav a[aria-current] {
   font-size: 11px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: hsl(214, 16%, 48%);
+  /* These are real text on the map, so SC 1.4.3 applies with no cartographic
+     exemption: they measured 4.36 and the water label 3.09 against the ground
+     their own dark halo matches. Lightness raised until both clear 4.8.
+     They still have to sit *behind* the Lime data dots in the reading order,
+     but that separation is carried by size, weight and letter-spacing, which
+     is where de-emphasis belongs. Contrast is the floor, not the dimmer. */
+  color: hsl(150, 12%, 48.6%);
   pointer-events: none;
-  text-shadow: 0 1px 6px hsl(211, 42%, 6%);
+  text-shadow: 0 1px 6px hsl(150, 44%, 5%);
   white-space: nowrap;
 }
 
 .fg2-olabel--water {
   font-style: italic;
   letter-spacing: 0.22em;
-  color: hsl(212, 30%, 38%);
+  color: hsl(150, 18%, 46.9%);
 }
 
 /* Marker layers show/hide with chapter state. MapLibre writes an inline
@@ -486,55 +517,16 @@ body:has(.fg2) .site-header .site-nav a[aria-current] {
    Explorer panel
    ============================================================ */
 
-/* The explorer is a full-screen takeover opened by a button, not a scroll
-   target: the section takes no layout space, so no blank screen sits between
-   the last chapter and the Methods section. Its UI mounts as a fixed overlay
-   above the map only while exploring. */
-.fg2-explorer {
-  position: relative;
-  height: 0;
-}
-
+/* The explorer is its own page now (/guides/sidewalk-forest/map), so its UI is
+   simply an overlay on that route's map rather than a hidden layer waiting on a
+   class toggle. The takeover rules that used to live here are gone with it:
+   .fg2.is-exploring, the fixed full-viewport stage lift, and the
+   html.fg2-scroll-lock body lock. Reading and manipulating wanted opposite
+   scroll behaviour, and two pages express that better than one page in two
+   modes. Positioning is set by the route. */
 .fg2-explorer-ui {
-  position: fixed;
-  inset: 0;
   z-index: 901;
   pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity var(--dur-3) var(--ease-out), visibility 0s linear var(--dur-3);
-}
-
-.fg2.is-exploring .fg2-explorer-ui {
-  opacity: 1;
-  visibility: visible;
-  transition: opacity var(--dur-3) var(--ease-out);
-}
-
-/* Explore takeover: the sticky map stage lifts to a fixed, full-viewport tool
-   above the page. Reading (scroll = progress) and manipulating (scroll = zoom)
-   want opposite scroll behaviour, so exploring gets its own mode: body scroll is
-   locked (.fg2-scroll-lock) and the live map never fights the Methods/footer. */
-.fg2.is-exploring .fg2-stage {
-  position: fixed;
-  inset: 0;
-  height: 100dvh;
-  z-index: 900;
-}
-
-html.fg2-scroll-lock,
-html.fg2-scroll-lock body {
-  overflow: hidden;
-  overscroll-behavior: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .fg2-explorer-ui {
-    transition: visibility 0s linear var(--dur-3);
-  }
-  .fg2.is-exploring .fg2-explorer-ui {
-    transition: none;
-  }
 }
 
 .fg2-panel {
@@ -560,6 +552,9 @@ html.fg2-scroll-lock body {
 }
 
 .fg2-panel-toggle {
+  /* SC 2.5.8: this measured 19px tall. It is a full-width button with no
+     underline to displace, so real height is simpler than a pseudo-element. */
+  min-height: 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -618,7 +613,9 @@ html.fg2-scroll-lock body {
 .fg2-search input {
   width: 100%;
   background-color: var(--n-ground-2);
-  border: 1px solid var(--n-line);
+  /* A text field's boundary is what identifies it as a text field, so it is a
+     1.4.11 control boundary, not a hairline. --n-line measured 1.53:1. */
+  border: 1px solid var(--atlas-control-line);
   color: var(--n-text);
   font-family: var(--font-ui);
   font-size: var(--text-sm);
@@ -852,7 +849,9 @@ html.fg2-scroll-lock body {
 }
 
 .fg2 .maplibregl-ctrl-group button + button {
-  border-top: 1px solid var(--n-line-soft);
+  /* Same specificity as the shared stage's rule, so both must resolve to the
+     same value or source order decides which theme gets an AA divider. */
+  border-top: 1px solid var(--atlas-control-line);
 }
 
 .fg2 .maplibregl-ctrl button .maplibregl-ctrl-icon {

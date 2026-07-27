@@ -1,5 +1,7 @@
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { createMapStage } from './map-stage';
+import { parseCameraFromSearch } from './map-url.mjs';
 
 // ---------------------------------------------------------------------------
 // Field Guide 02: Sidewalk Forest
@@ -16,12 +18,12 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 // ---------------------------------------------------------------------------
 
 // Nocturne map paints
-const GROUND = 'hsl(211, 42%, 9%)';
-const LAKE = 'hsl(213, 55%, 6%)';
-const LAKE_SHORE = 'hsl(210, 32%, 18%)';
-const STREET_MINOR = 'hsl(211, 26%, 16%)';
-const STREET_MAJOR = 'hsl(211, 24%, 21%)';
-const BOUNDARY = 'hsl(210, 18%, 34%)';
+const GROUND = 'hsl(150, 44%, 7%)';
+const LAKE = 'hsl(188, 42%, 6%)';
+const LAKE_SHORE = 'hsl(180, 24%, 17%)';
+const STREET_MINOR = 'hsl(150, 20%, 14%)';
+const STREET_MAJOR = 'hsl(150, 20%, 19%)';
+const BOUNDARY = 'hsl(150, 16%, 32%)';
 
 const CITY_BOUNDS: maplibregl.LngLatBoundsLike = [
   [-79.6393, 43.581],
@@ -145,6 +147,20 @@ class SidewalkForest {
   private scrollyEl: HTMLElement;
   private bloomRaf = 0;
 
+  /** The live map, so the page can hand it to the shared MapStage. */
+  get maplibreMap(): maplibregl.Map {
+    return this.map;
+  }
+
+  /** Set by initSidewalkForest so the shared MapStage can report load state. */
+  onReady: (() => void) | undefined;
+  onDataError: ((error: unknown) => void) | undefined;
+
+  /** Re-run the data load after the stage's Retry. */
+  reloadLayers(): void {
+    void this.addLayers();
+  }
+
   constructor(container: HTMLElement, base: string, scrollyEl: HTMLElement) {
     this.base = base;
     this.scrollyEl = scrollyEl;
@@ -162,19 +178,25 @@ class SidewalkForest {
       maxZoom: 18.5,
       dragRotate: false,
       pitchWithRotate: false,
-      cooperativeGestures: true,
+      // Cooperative gestures removed; MapStage holds scroll-zoom back until the
+      // reader interacts, and the /map route hands over everything.
       attributionControl: false,
     });
     this.map.touchZoomRotate.disableRotation();
 
+    // Attribution moves to bottom-left, out of the corner it was sharing with
+    // zoom. `compact` is left unset so MapLibre expands it where there is room
+    // and collapses it only on narrow screens: the audit asked for attribution
+    // uncollapsed "where space allows", and the reason its ⓘ was read as a help
+    // button was that it was the only info affordance on the map. It no longer
+    // is, so a compact button on a phone is honest rather than misleading.
     this.map.addControl(
       new maplibregl.AttributionControl({
-        compact: true,
         customAttribution: 'Tree data: City of Toronto Open Data · Map data © OpenStreetMap contributors',
       }),
-      'bottom-right',
+      'bottom-left',
     );
-    this.map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+    this.map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
 
     this.map.on('load', () => {
       this.applyZoomLimits({ recenter: true });
@@ -187,11 +209,39 @@ class SidewalkForest {
   // Layers
   // -------------------------------------------------------------------------
 
+  /**
+   * Fetch the inventory metadata and the render manifest, then build every
+   * layer from them.
+   *
+   * The whole body is guarded. It used to be a bare `Promise.all` with no
+   * `.ok` check and no `catch`, called as `void this.addLayers()`, so a 404 or
+   * an offline reader got a rejected promise nobody was listening to and a map
+   * that simply stayed empty. Both files are load-bearing: without them there
+   * are no colours, no bounds, and no dots, so a failure here is a dead map and
+   * gets the covering error state rather than `partial`.
+   */
   private async addLayers(): Promise<void> {
+    try {
+      await this.loadLayers();
+      this.onReady?.();
+    } catch (error) {
+      this.onDataError?.(error);
+    }
+  }
+
+  private async loadLayers(): Promise<void> {
     const [metaRes, renderRes] = await Promise.all([
       fetch(`${this.base}data/fg02/meta.json`),
       fetch(`${this.base}data/fg02/r/render.json`),
     ]);
+    // fetch only rejects on network failure; a 404 arrives as a perfectly happy
+    // Response whose body is HTML, so .json() would throw somewhere far less
+    // legible than here.
+    if (!metaRes.ok || !renderRes.ok) {
+      throw new Error(
+        `Sidewalk Forest data unavailable (meta ${metaRes.status}, render ${renderRes.status})`,
+      );
+    }
     this.meta = (await metaRes.json()) as Meta;
     const rb = (await renderRes.json()) as { bounds: { west: number; south: number; east: number; north: number } };
     const { west, south, east, north } = rb.bounds;
@@ -253,7 +303,7 @@ class SidewalkForest {
       id: 'ward-lines-casing', type: 'line', source: 'wards',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': 'hsl(212, 45%, 5%)',
+        'line-color': 'hsl(150, 45%, 4%)',
         'line-width': 4,
         'line-opacity': 0,
       },
@@ -261,7 +311,7 @@ class SidewalkForest {
     this.map.addLayer({
       id: 'ward-lines', type: 'line', source: 'wards',
       paint: {
-        'line-color': 'hsl(210, 30%, 78%)',
+        'line-color': 'hsl(150, 12%, 78%)',
         'line-width': 1.5,
         'line-dasharray': [3, 2.5],
         'line-opacity': 0,
@@ -364,7 +414,7 @@ class SidewalkForest {
       type: 'circle',
       source: 'sel',
       paint: {
-        'circle-color': 'hsl(48, 90%, 64%)',
+        'circle-color': 'hsl(72, 62%, 62%)',
         'circle-radius': 0,
         'circle-opacity': 0,
         'circle-blur': 0.6,
@@ -377,7 +427,7 @@ class SidewalkForest {
       paint: {
         'circle-color': 'transparent',
         'circle-radius': radius(1, 5),
-        'circle-stroke-color': 'hsl(48, 90%, 64%)',
+        'circle-stroke-color': 'hsl(72, 62%, 62%)',
         'circle-stroke-width': 2,
       },
     });
@@ -552,38 +602,18 @@ class SidewalkForest {
     }
   }
 
-  /**
-   * Open the explorer as a full-screen takeover. The story scrolls (progress);
-   * the explorer manipulates (zoom/pan), so it gets its own mode: the sticky
-   * stage lifts to a fixed full-viewport tool, page scroll is locked so the map
-   * never fights the Methods/footer, and cooperative gestures give way to plain
-   * scroll-to-zoom now that the page can't scroll underneath.
+  /*
+   * enterExplore / exitExplore are gone.
+   *
+   * The explorer used to be a full-screen takeover driven by a class toggle and
+   * a body scroll lock, which meant the most useful view in the guide had no
+   * URL: it could not be linked, bookmarked, or returned to with Back, and it
+   * needed a focus trap because the whole story stayed live underneath it.
+   *
+   * It is now /guides/sidewalk-forest/map, a real page that starts in explore
+   * mode. The takeover machinery, the scroll lock, and the focus trap it would
+   * have required all go away with it.
    */
-  enterExplore(): void {
-    if (this.mode === 'explore') return;
-    const root = this.scrollyEl.closest<HTMLElement>('.fg2');
-    root?.classList.add('is-exploring');
-    document.documentElement.classList.add('fg2-scroll-lock');
-    this.map.cooperativeGestures.disable();
-    this.setMode('explore');
-    // The stage just went sticky -> fixed full viewport; MapLibre must recompute
-    // its canvas size or it paints at the old (story-fit) dimensions.
-    requestAnimationFrame(() => this.map.resize());
-  }
-
-  /** Close the takeover and return to the narrative where the reader left it. */
-  exitExplore(): void {
-    if (this.mode !== 'explore') return;
-    const root = this.scrollyEl.closest<HTMLElement>('.fg2');
-    root?.classList.remove('is-exploring');
-    document.documentElement.classList.remove('fg2-scroll-lock');
-    this.map.cooperativeGestures.enable();
-    this.setMode('story');
-    // Leave a clean citywide map behind the story rather than the reader's last
-    // zoomed-in street; the chapter observers take over again on the next scroll.
-    this.moveCamera('city', true);
-    requestAnimationFrame(() => this.map.resize());
-  }
 
   /** Swap only the overlay raster (the maple chapter's in-card toggle). */
   applyChapterOverlayOnly(key: string): void {
@@ -938,16 +968,53 @@ function formatCommonName(raw: string): string {
 // Page wiring
 // ---------------------------------------------------------------------------
 
-export function initSidewalkForest(): void {
+export interface InitSidewalkForestOptions {
+  /** True on /guides/sidewalk-forest/map: the explorer is the whole page. */
+  expanded?: boolean;
+}
+
+export function initSidewalkForest(options: InitSidewalkForestOptions = {}): void {
   const mapEl = document.getElementById('fg2-map');
   const scrollyEl = document.querySelector<HTMLElement>('.fg2-scrolly');
   if (!mapEl || !scrollyEl) return;
+
+  const expanded = options.expanded ?? false;
 
   mapEl.replaceChildren();
 
   const rawBase = import.meta.env.BASE_URL;
   const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
   const forest = new SidewalkForest(mapEl, base, scrollyEl);
+
+  // --- Shared map stage ------------------------------------------------------
+  const map = forest.maplibreMap;
+  const stage = createMapStage({
+    map,
+    expanded,
+    expandPath: expanded ? undefined : `${base}guides/sidewalk-forest/map`.replace(/\/{2,}/g, '/'),
+    onRetry: () => forest.reloadLayers(),
+  });
+
+  // Both files are load-bearing, so a failure is a dead map, not a partial one.
+  forest.onReady = () => stage?.setState('ready');
+  forest.onDataError = () =>
+    stage?.setState(
+      'error',
+      'The street tree data could not be loaded. Retry, or read the guide for the short version.',
+    );
+
+  if (expanded) {
+    // The explorer is the page here: tap-to-identify and the keyboard reticle
+    // are live from the first frame, with no story to scroll through first.
+    forest.setMode('explore');
+    map.once('idle', () => stage?.focusMap());
+  }
+
+  const camera = parseCameraFromSearch(window.location.search);
+  if (camera !== null) {
+    const [lng, lat, zoom] = camera;
+    map.once('load', () => map.jumpTo({ center: [lng, lat], zoom }));
+  }
 
   // --- Scrolly steps ---------------------------------------------------------
   const steps = Array.from(document.querySelectorAll<HTMLElement>('.fg2-step'));
@@ -979,11 +1046,9 @@ export function initSidewalkForest(): void {
     });
   }
 
-  // --- Explore takeover: open / close ----------------------------------------
-  document.querySelectorAll<HTMLElement>('[data-scroll-to-explorer]').forEach((btn) => {
-    btn.addEventListener('click', () => forest.enterExplore());
-  });
-  document.getElementById('fg2-back-to-story')?.addEventListener('click', () => forest.exitExplore());
+  // The "Explore" and "Back" controls are plain links to and from
+  // /guides/sidewalk-forest/map now, so there is nothing to wire here. Only the
+  // in-map reset stays a button, because it changes the view rather than the page.
   document.getElementById('fg2-reset')?.addEventListener('click', () => forest.resetView());
 
   // Panel collapse (matters most on phones, where the panel is a bottom sheet)

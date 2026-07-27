@@ -2,6 +2,7 @@
 import { getCollection } from 'astro:content';
 import Base from '../../../layouts/Base.astro';
 import ThresholdChip from '../../../components/ThresholdChip.astro';
+import MapStage from '../../../components/MapStage.astro';
 
 const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
 
@@ -27,22 +28,54 @@ const mapLocations = locations.map((loc) => ({
 <Base
   title="Hidden Landscapes"
   description="Eight threshold locations where Toronto's surface cracks open into something older: ravines, buried rivers, and the topography the grid never fully erased."
+  guideTheme="fg01"
 >
-  <div class="guide-layout">
+  <div class="guide-layout fg01">
 
     <!-- Map + panel row -->
-    <div class="guide-map-row" aria-label="Interactive map of threshold locations">
+    <div class="guide-map-row" role="group" aria-label="Interactive map of threshold locations">
 
-      <!-- Map container -->
-      <div class="guide-map-container" id="guide-map" role="img" aria-label="Map of Hidden Landscapes threshold locations in Toronto">
-        <!-- MapLibre GL JS island mounts here -->
-        <div class="guide-map-placeholder" aria-hidden="true">
-          <span class="guide-map-placeholder-label">Map</span>
+      <!-- Map container, inside the shared stage -->
+      <MapStage
+        id="fg01-map-stage"
+        class="guide-map-stage"
+        label="Map of Hidden Landscapes threshold locations"
+        expandPath={`${base}/guides/hidden-landscapes/map`}
+        helpCorner="top-right"
+      >
+        <div
+          class="guide-map-container"
+          id="guide-map"
+          data-map-canvas
+          role="img"
+          aria-label="Map of Hidden Landscapes threshold locations in Toronto"
+        >
+          <!-- MapLibre GL JS island mounts here -->
+          <div class="guide-map-placeholder" aria-hidden="true">
+            <span class="guide-map-placeholder-label">Map</span>
+          </div>
+          <noscript>
+            <p class="guide-map-noscript">Enable JavaScript to load the interactive map. Location entries are listed below.</p>
+          </noscript>
         </div>
-        <noscript>
-          <p class="guide-map-noscript">Enable JavaScript to load the interactive map. Location entries are listed below.</p>
-        </noscript>
-      </div>
+
+        <Fragment slot="howto">
+          <p>
+            Symbols mark thresholds, the points where city fabric gives way to hidden landscape.
+            The shaded layer is the connected valley and ravine system. Select a symbol to preview
+            a location, then open the entry to read it in full.
+          </p>
+          <p>
+            Every symbol has its own shape as well as its own colour, so the map stays readable
+            without relying on colour alone. Tab moves between symbols; Enter opens the one you
+            are on.
+          </p>
+        </Fragment>
+
+        <Fragment slot="status-fallback">
+          <a class="map-stage__btn" href="#guide-location-list">Read the entries instead</a>
+        </Fragment>
+      </MapStage>
 
       <!-- Location data island for the map script -->
       <script is:inline type="application/json" id="guide-map-data" set:html={JSON.stringify(mapLocations)}></script>
@@ -55,7 +88,6 @@ const mapLocations = locations.map((loc) => ({
         class="guide-panel guide-welcome-panel"
         id="guide-welcome-panel"
         aria-label="Guide welcome"
-        tabindex="0"
         aria-live="polite"
       >
         <div class="guide-panel-inner">
@@ -66,12 +98,14 @@ const mapLocations = locations.map((loc) => ({
             Toronto's street grid gives a convincing impression of completeness. The city is built on top of something else: a second geography of valleys, ravines, escarpments, and buried watercourses that the grid cuts around, bridges over, and mostly ignores. The places where one gives way to the other are ordinary corners, stair landings, and bridge approaches. This guide documents eight of them.
           </p>
 
-          <div class="guide-panel-how-to">
-            <h2 class="guide-panel-how-to-label">How to read this map</h2>
-            <p class="guide-panel-how-to-text">Symbols mark thresholds, the points where city fabric gives way to hidden landscape. The shaded layer is the connected valley and ravine system. Select a symbol to preview a location. Open the entry to read it in full.</p>
-          </div>
-
-          <div class="guide-panel-legend" aria-label="Map legend">
+          <!--
+            "How to read this map" moved onto the map itself, where the reader
+            looks for it. Keeping a second copy here would put the same heading
+            on the page twice and leave the map's own help control redundant.
+            The legend stays: it is reference the reader wants open, not a
+            first-use explanation.
+          -->
+          <div class="guide-panel-legend" role="group" aria-label="Map legend">
             <div class="legend-item">
               <span class="legend-swatch" style="background-color: var(--landscape);" aria-hidden="true"></span>
               <span class="legend-label">Valley and ravine system</span>
@@ -97,7 +131,6 @@ const mapLocations = locations.map((loc) => ({
         class="guide-panel guide-selected-panel"
         id="guide-selected-panel"
         aria-label="Selected location"
-        tabindex="0"
         aria-hidden="true"
         hidden
       >
@@ -149,7 +182,7 @@ const mapLocations = locations.map((loc) => ({
     </div>
 
     <!-- Location card grid -->
-    <section class="guide-cards-section" aria-labelledby="guide-cards-heading">
+    <section class="guide-cards-section" id="guide-location-list" aria-labelledby="guide-cards-heading">
       <div class="guide-cards-header">
         <h2 class="guide-cards-heading" id="guide-cards-heading">
           <span class="guide-cards-heading-count">{locations.length}</span> Locations
@@ -184,6 +217,49 @@ const mapLocations = locations.map((loc) => ({
 <script>
   import { initGuideMap } from '../../../scripts/guide-map';
   initGuideMap();
+
+  /**
+   * The panels' tab stops, only when they are really scroll containers.
+   *
+   * Both panels carried a hardcoded `tabindex="0"`. On a static container that
+   * is a keyboard stop that lands nowhere and explains nothing. But both are
+   * `overflow-y: auto` with `max-height: calc(100vh - ...)` on desktop, and
+   * the welcome panel has no focusable children at all, so when it *does*
+   * overflow, removing the stop would leave content a keyboard user cannot
+   * scroll to (SC 2.1.1).
+   *
+   * Measured, not assumed -- the same reasoning as --header-h in Phase 5. At
+   * 1280x900 the welcome panel does not overflow; at 1280x600 it does, by
+   * 122px. The selected panel gets the same treatment rather than a different
+   * one, because two panels side by side behaving differently is how the next
+   * person learns the wrong rule. Nothing focuses either panel
+   * programmatically, so there is no -1 stop to preserve.
+   */
+  const PANEL_IDS = ['guide-welcome-panel', 'guide-selected-panel'];
+
+  const wireScrollStop = () => {
+    const panels = PANEL_IDS
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => el !== null);
+    if (!panels.length) return () => {};
+    const sync = () => {
+      for (const panel of panels) {
+        const scrolls = panel.scrollHeight > panel.clientHeight + 1;
+        if (scrolls) panel.setAttribute('tabindex', '0');
+        else panel.removeAttribute('tabindex');
+      }
+    };
+    sync();
+    const observer = new ResizeObserver(sync);
+    panels.forEach((panel) => observer.observe(panel));
+    return () => observer.disconnect();
+  };
+
+  let releaseScrollStop = wireScrollStop();
+  document.addEventListener('astro:before-swap', () => releaseScrollStop());
+  document.addEventListener('astro:page-load', () => {
+    releaseScrollStop = wireScrollStop();
+  });
 </script>
 
 <style>
@@ -302,7 +378,9 @@ const mapLocations = locations.map((loc) => ({
     font-weight: 700;
     letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: var(--landscape);
+    /* Kelly is a fill colour; at 13px bold on the panel it measured 3.12:1.
+       --atlas-accent-2-text is the same hue, darkened to 4.81:1. */
+    color: var(--atlas-accent-2-text);
   }
 
   .guide-panel-title {
@@ -509,6 +587,13 @@ const mapLocations = locations.map((loc) => ({
      ============================================================ */
 
   .guide-cards-section {
+    /* This is a flex item of .guide-layout, and a flex item's default
+       `min-width: auto` refuses to shrink below its own min-content width. So
+       the section held itself at 396px inside a 375px window and pushed the
+       page sideways. It happens to show up under a doubled root font size,
+       but nothing about it is zoom-specific: a long enough location title
+       would do the same at 320px and normal text. */
+    min-width: 0;
     max-width: var(--container);
     margin-inline: auto;
     padding-block: var(--space-12);
@@ -600,7 +685,12 @@ const mapLocations = locations.map((loc) => ({
 
   @media (min-width: 640px) {
     .guide-card-grid {
-      grid-template-columns: repeat(2, 1fr);
+      /* minmax(0, 1fr), not 1fr. A `1fr` track is min-width:auto underneath,
+         so it refuses to shrink below its widest card and the grid pushes the
+         page sideways instead of the cards getting narrower. Same defect as
+         the flex item above, same canonical fix, and a no-op whenever the
+         content already fits. */
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 
@@ -636,7 +726,7 @@ const mapLocations = locations.map((loc) => ({
      shows the hairline-grid background as an empty card. */
   @media (min-width: 1200px) {
     .guide-card-grid {
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
 </style>

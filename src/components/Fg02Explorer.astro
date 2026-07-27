@@ -1,0 +1,87 @@
+---
+/**
+ * The Sidewalk Forest explorer controls.
+ *
+ * Extracted so the expanded map route and the guide page render the same
+ * panel from one source. Previously this markup only existed inside the guide
+ * page and was revealed by a JS class toggle, which is exactly why the
+ * explorer had no URL.
+ */
+interface Props {
+  categories: { key: string; label: string; color: string; count: number }[];
+}
+
+const { categories } = Astro.props;
+---
+
+<div class="fg2-explorer-ui">
+  <aside class="fg2-panel" id="fg2-panel" aria-label="Explorer controls">
+    <h2 class="fg2-panel-title">
+      <button
+        type="button"
+        class="fg2-panel-toggle"
+        id="fg2-panel-toggle"
+        aria-expanded="true"
+        aria-controls="fg2-panel-body"
+      >
+        The Sidewalk Forest
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          aria-hidden="true"><polyline points="6,15 12,9 18,15" /></svg
+        >
+      </button>
+    </h2>
+    <div id="fg2-panel-body">
+      <p class="fg2-panel-hint">
+        Zoom in until dots separate, then tap a tree to identify it (or focus the map and press
+        Enter to read the tree at the crosshair). Or find your street:
+      </p>
+      <div class="fg2-search">
+        <label class="visually-hidden" for="fg2-street-input">Search streets</label>
+        <input
+          type="search"
+          id="fg2-street-input"
+          placeholder="Search your street…"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <ul class="fg2-search-results" id="fg2-street-results"></ul>
+      </div>
+      <div
+        class="fg2-legend"
+        role="group"
+        aria-label="Tree families. Select one to show only that family."
+      >
+        <span class="fg2-legend-label">Families</span>
+        {
+          categories.map((c, i) => (
+            <button type="button" data-genus={i} aria-pressed="false">
+              <span class="fg2-legend-dot" style={`background-color: ${c.color}`} aria-hidden="true" />
+              {c.label}
+              <span class="fg2-legend-count">{c.count.toLocaleString('en-CA')}</span>
+            </button>
+          ))
+        }
+        <button type="button" class="fg2-card-btn fg2-legend-reset" id="fg2-legend-reset">
+          Show all families
+        </button>
+        <button type="button" class="fg2-card-btn fg2-legend-reset" id="fg2-reset">
+          Citywide view
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!--
+    No back control here. MapStage renders one "Back to the guide" for every
+    expanded route, so the reader finds it in the same place on all three
+    guides. Rendering a second one put it on top of the zoom group.
+  -->
+</div>

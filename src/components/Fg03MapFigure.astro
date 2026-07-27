@@ -1,0 +1,197 @@
+---
+/**
+ * FG03 map figure: the stage, the keyboard instructions, and the legend.
+ *
+ * Shared by the guide and the expanded map route. `expanded` switches the
+ * stage between the in-page preview (which offers "Expand map") and the
+ * full-viewport route (which offers "Back to the guide").
+ */
+import MapStage from './MapStage.astro';
+import { base, snapshotDate } from '../data/fg03';
+
+interface Props {
+  expanded?: boolean;
+}
+
+const { expanded = false } = Astro.props as Props;
+const guideHref = `${base}/guides/when-toronto-has-to-go/`;
+---
+
+<figure class="fg03-map-figure" data-fg03-map-shell>
+  <div class="fg03-map-frame">
+    <MapStage
+      as="div"
+      id={expanded ? 'fg03-map-route' : 'fg03-map-stage'}
+      class:list={['fg03-map-stage', { 'map-stage--expanded': expanded }]}
+      label="Toronto public washroom access and audited interventions"
+      helpCorner="top-left"
+      status={false}
+      expanded={expanded}
+      backHref={expanded ? guideHref : undefined}
+      expandPath={expanded ? undefined : `${base}/guides/when-toronto-has-to-go/map`}
+    >
+    <div
+      class="fg03-map"
+      data-map-canvas
+      data-fg03-map
+      role="region"
+      tabindex="-1"
+      aria-disabled="true"
+      aria-label="Interactive map of Toronto public washroom access and audited interventions"
+      aria-describedby="fg03-map-instructions"
+      inert
+    >
+      <svg
+        class="fg03-map-paper"
+        viewBox="0 0 720 540"
+        role="img"
+        aria-label="Quiet outline of Toronto before the interactive map loads"
+        preserveAspectRatio="xMidYMid slice"
+      >
+        <path
+          class="fg03-map-shore"
+          d="M42 75L146 46L298 59L420 34L628 74L680 160L647 278L584 326L523 386L410 423L274 466L146 438L70 339L33 205Z"
+        />
+        <path class="fg03-map-water" d="M0 407L125 382L279 422L442 385L594 329L720 301V540H0Z" />
+        <path class="fg03-map-line" d="M125 86L211 168L314 222L430 300L592 358" />
+        <path class="fg03-map-line" d="M84 286L208 260L356 245L503 210L639 142" />
+        <path class="fg03-map-line fg03-map-line--secondary" d="M251 66L269 177L303 290L355 418" />
+        <path class="fg03-map-line fg03-map-line--secondary" d="M454 63L433 168L450 280L501 379" />
+        <circle class="fg03-map-mark fg03-map-mark--open" cx="359" cy="325" r="7" />
+        <rect class="fg03-map-mark fg03-map-mark--extend" x="250" y="234" width="14" height="14" />
+        <path class="fg03-map-mark fg03-map-mark--new" d="M519 171L528 188H510Z" />
+        <path class="fg03-map-mark fg03-map-mark--verify" d="M165 297L175 307L165 317L155 307Z" />
+      </svg>
+      <p class="fg03-map-loading-label" aria-hidden="true">
+        Dated Toronto evidence is ready. The interactive layers load near this map.
+      </p>
+    </div>
+
+      <Fragment slot="howto">
+        <p>
+          Each shape is a different kind of place, so the map reads without relying on
+          colour: a ring is a covered transit stop, a circle a facility open right now,
+          a square an extend-hours candidate, a triangle a new-facility zone, a diamond
+          a record needing verification, and a cross an accessibility retrofit.
+        </p>
+        <p>
+          The filters above the map set the hour, the fare condition, and how far you
+          are willing to walk. Everything shown on the map is also in the ranked list
+          below it, so nothing here is map-only.
+        </p>
+        <p>
+          Focus the map and use arrow keys to pan, plus and minus to zoom, and Enter to
+          inspect the place at the centre.
+        </p>
+        <p>
+          The page address tracks what you are looking at, so copying the URL shares
+          this exact view: the hour, the fare setting, the walking distance, the
+          selected place, and where the map is pointed.
+        </p>
+      </Fragment>
+
+    </MapStage>
+
+    <p id="fg03-map-instructions" class="fg03-map-instructions">
+      Focus the map and use arrow keys to pan. Use plus and minus to zoom.
+      Press Enter to inspect the place at the map centre. Every mapped result
+      is also available in the ranked list.
+    </p>
+
+    <div class="fg03-legend" data-fg03-legend role="group" aria-label="Map legend">
+      <h3>Legend</h3>
+      <p><b>Transit and selection</b></p>
+      <ul>
+        <li>
+          <span
+            class="fg03-symbol fg03-symbol--circle"
+            aria-hidden="true"
+            style="border-color: var(--fg03-mauve);"
+          />
+          <span><b class="fg03-shape-name">Ring</b> Covered transit stop</span>
+        </li>
+        <li>
+          <span
+            class="fg03-symbol fg03-symbol--circle"
+            aria-hidden="true"
+            style="background: var(--fg03-ink-muted); border-color: var(--fg03-ink-muted); opacity: 0.55;"
+          />
+          <span><b class="fg03-shape-name">Dot</b> Uncovered transit stop</span>
+        </li>
+        <li>
+          <span
+            class="fg03-symbol fg03-symbol--circle"
+            aria-hidden="true"
+            style="border-color: #9C8023;"
+          />
+          <span><b class="fg03-shape-name">Amber ring</b> Unknown or missing coverage</span>
+        </li>
+        <li>
+          <span
+            aria-hidden="true"
+            style="border-top: 2px dashed var(--fg03-mauve); display: block; width: 1rem;"
+          />
+          <span><b class="fg03-shape-name">Dashed line</b> Selected walking reach</span>
+        </li>
+        <li>
+          <span
+            class="fg03-symbol fg03-symbol--circle"
+            aria-hidden="true"
+            style="border-color: #F37E2A; box-shadow: 0 0 0 2px var(--fg03-paper-raised);"
+          />
+          <span><b class="fg03-shape-name">Orange halo</b> Selected place halo</span>
+        </li>
+      </ul>
+      <p><b>Facilities and actions</b></p>
+      <ul>
+        <li>
+          <span class="fg03-symbol fg03-symbol--circle" aria-hidden="true" />
+          <span><b class="fg03-shape-name">Circle</b> Current open facility record</span>
+        </li>
+        <li>
+          <span
+            class="fg03-symbol fg03-symbol--diamond"
+            aria-hidden="true"
+            style="background: var(--fg03-ink); border-color: var(--fg03-paper-raised);"
+          />
+          <span><b class="fg03-shape-name">Filled diamond</b> Fare-paid facility</span>
+        </li>
+        <li>
+          <span class="fg03-symbol fg03-symbol--square" aria-hidden="true" />
+          <span><b class="fg03-shape-name">Square</b> Extend hours</span>
+        </li>
+        <li>
+          <span class="fg03-symbol fg03-symbol--triangle" aria-hidden="true" />
+          <span><b class="fg03-shape-name">Triangle</b> New facility zone</span>
+        </li>
+        <li>
+          <span class="fg03-symbol fg03-symbol--diamond" aria-hidden="true" />
+          <span><b class="fg03-shape-name">Outline diamond</b> Verify information</span>
+        </li>
+        <li>
+          <span
+            class="fg03-symbol fg03-symbol--cross"
+            aria-hidden="true"
+            style="border-color: #9C8023; color: #9C8023;"
+          >×</span>
+          <span><b class="fg03-shape-name">Amber cross</b> Unknown or missing facility data</span>
+        </li>
+        <li>
+          <span class="fg03-symbol fg03-symbol--cross" aria-hidden="true">+</span>
+          <span><b class="fg03-shape-name">Cross</b> Accessibility retrofit</span>
+        </li>
+      </ul>
+    </div>
+
+    <figcaption>
+      <span>Snapshot: {snapshotDate}</span>
+      <span>
+        Map data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>.
+        City data under the{' '}
+        <a href="https://open.toronto.ca/open-data-license/">
+          Open Government Licence - Toronto
+        </a>.
+      </span>
+    </figcaption>
+  </div>
+</figure>

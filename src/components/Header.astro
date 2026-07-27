@@ -1,0 +1,82 @@
+---
+import '../styles/site-header.css';
+
+/**
+ * The publication's masthead and navigation.
+ *
+ * Extracted from Base.astro so the shell's chrome is a component rather than
+ * markup and 180 lines of CSS embedded in a layout. Behaviour and markup are
+ * unchanged by the extraction itself.
+ */
+interface Props {
+  /** Site base path, already stripped of trailing slashes. */
+  base: string;
+  /** Highlights the Guides dropdown. */
+  onGuides?: boolean;
+  /** Marks About as the current page. */
+  onAbout?: boolean;
+}
+
+const { base, onGuides = false, onAbout = false } = Astro.props as Props;
+---
+
+<header class="site-header">
+  <div class="site-header-inner">
+    <a href={`${base}/`} class="site-masthead">Toronto Micro-Atlas</a>
+    <nav aria-label="Site navigation">
+      <ul class="site-nav">
+        <li class="site-nav-dd">
+          <details class="nav-dd">
+            <summary class:list={['nav-dd-summary', { 'is-current': onGuides }]}>Guides</summary>
+            <ul class="nav-dd-menu">
+              <li><a href={`${base}/guides/when-toronto-has-to-go/`} data-astro-reload>When Toronto Has to Go</a></li>
+              <li><a href={`${base}/guides/sidewalk-forest/`} data-astro-reload>Sidewalk Forest</a></li>
+              <li><a href={`${base}/guides/hidden-landscapes/`} data-astro-reload>Hidden Landscapes</a></li>
+              <li><a href={`${base}/guides/`} class="nav-dd-all">All guides</a></li>
+            </ul>
+          </details>
+        </li>
+        <li><a href={`${base}/about/`} aria-current={onAbout ? 'page' : undefined}>About</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<script>
+  /**
+   * Publish the header's real height as `--header-h`.
+   *
+   * tokens.css carries `--header-h: 67px`, a value measured by hand and true
+   * only at one breakpoint with one font loaded. Guides size full-bleed maps
+   * off it (`calc(100svh - var(--header-h))`), so whenever the header wrapped
+   * to two lines or a webfont swapped in, those maps were wrong by however
+   * much the constant had drifted.
+   *
+   * Measuring it removes the constant's ability to lie. ResizeObserver covers
+   * the cases a resize listener misses: font swap, nav wrapping, and the
+   * mobile disclosure opening.
+   */
+  const measure = () => {
+    const header = document.querySelector<HTMLElement>('.site-header');
+    if (!header) return () => {};
+
+    const publish = () => {
+      const h = Math.round(header.getBoundingClientRect().height);
+      if (h > 0) document.documentElement.style.setProperty('--header-h', `${h}px`);
+    };
+
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(header);
+    // The webfont can land after the first measurement and change the height.
+    void document.fonts?.ready.then(publish);
+
+    return () => observer.disconnect();
+  };
+
+  let teardown = measure();
+  document.addEventListener('astro:before-swap', () => teardown());
+  document.addEventListener('astro:page-load', () => {
+    teardown = measure();
+  });
+</script>

@@ -206,12 +206,22 @@ const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
 
   .about-back,
   .about-guide-link {
+    position: relative;
     font-family: var(--font-ui);
     font-size: var(--text-sm);
     font-weight: 500;
     color: var(--ink-2);
     text-decoration: none;
     transition: color var(--dur-1) var(--ease-out);
+  }
+
+  /* SC 2.5.8: grown with a pseudo-element rather than padding, so the hit
+     area changes and the layout does not. Same technique as the site nav. */
+  .about-back::before,
+  .about-guide-link::before {
+    content: '';
+    position: absolute;
+    inset: -6px -4px;
   }
 
   .about-back:hover,

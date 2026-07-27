@@ -1,4 +1,5 @@
 import { trackAtlasEvent } from './atlas-events.mjs';
+import { createMapStage, type MapStage } from './map-stage';
 import {
   DEFAULT_FG03_STATE,
   parseFg03State,
@@ -815,6 +816,16 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
   let map: MlMap | null = null;
   let maplibre: MlModule | null = null;
   let mapStyleReady = false;
+  let mapStage: MapStage | null = null;
+
+  // The expanded route renders the same root with this flag set, so one script
+  // drives both the in-page map and /guides/when-toronto-has-to-go/map.
+  const isExpandedRoute = root.dataset.fg03Expanded === 'true';
+  const withBase = (path: string): string => {
+    const raw = import.meta.env.BASE_URL;
+    const prefix = raw.endsWith('/') ? raw : `${raw}/`;
+    return `${prefix}${path}`.replace(/\/{2,}/g, '/');
+  };
   let dataLoadPromise: Promise<void> | null = null;
   let disposed = false;
   let gateWithheld = false;
@@ -1821,17 +1832,23 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
       maxZoom: MAP_MAX_ZOOM,
       dragRotate: false,
       pitchWithRotate: false,
-      cooperativeGestures: true,
+      // Cooperative gestures removed; MapStage holds scroll-zoom back until the
+      // reader interacts, and the /map route hands over everything.
       attributionControl: false,
     });
     map.touchZoomRotate.disableRotation();
+
+    // These three groups all defaulted into the bottom-right corner, where they
+    // collided and crowded the primary gesture area, worst on a phone. Each
+    // now has its own corner: zoom top-right, scale and attribution bottom-left,
+    // leaving bottom-right to the stage's expand control.
     map.addControl(
       new maplibre.NavigationControl({
         showCompass: false,
         showZoom: true,
         visualizePitch: false,
       }),
-      'bottom-right',
+      'top-right',
     );
     map.addControl(
       new maplibre.ScaleControl({
@@ -1840,13 +1857,15 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
       }),
       'bottom-left',
     );
+    // `compact` unset: expanded where there is room, collapsed only when narrow.
+    // Its ⓘ was being read as a help button because it was the only info
+    // affordance on the map; "How to read this map" is now that affordance.
     map.addControl(
       new maplibre.AttributionControl({
-        compact: true,
         customAttribution:
           'Map data © OpenStreetMap contributors · City data under the Open Government Licence - Toronto',
       }),
-      'bottom-right',
+      'bottom-left',
     );
 
     await new Promise<void>((resolve, reject) => {
@@ -1891,6 +1910,26 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
     delete mapElement.dataset.failed;
     delete mapElement.dataset.loading;
     syncInteractiveReadiness();
+
+    // The shared stage, for gesture context, the "How to read this map"
+    // disclosure, and the expand link only. Its status region is not rendered
+    // here (status={false}): fg03 already owns a richer state machine wired to
+    // the results list, and startMap's catch above is what drives it.
+    //
+    // syncExpandHref reads window.location.search, which fg03 keeps in step
+    // with the filters, so expanding carries the reader's whole query across.
+    mapStage?.destroy();
+    mapStage = createMapStage({
+      root: mapElement.closest<HTMLElement>('[data-map-stage]'),
+      map,
+      expanded: isExpandedRoute,
+      expandPath: isExpandedRoute
+        ? undefined
+        : `${withBase('guides/when-toronto-has-to-go/map')}`,
+    });
+    if (isExpandedRoute) {
+      map.once('idle', () => mapStage?.focusMap());
+    }
   };
 
   const mapStarter = makeMapStartController({
@@ -2137,6 +2176,8 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
     cleanupCalled = true;
     disposed = true;
     loadSequence += 1;
+    mapStage?.destroy();
+    mapStage = null;
     destroyMap();
     resourceCleanup();
     controls.inert = true;

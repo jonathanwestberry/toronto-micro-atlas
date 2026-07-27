@@ -1,0 +1,185 @@
+---
+import { readFileSync } from 'node:fs';
+import Base from '../../../layouts/Base.astro';
+import MapStage from '../../../components/MapStage.astro';
+import Fg02Explorer from '../../../components/Fg02Explorer.astro';
+import '../../../styles/fg02.css';
+
+const meta = JSON.parse(
+  readFileSync(new URL('./public/data/fg02/meta.json', `file://${process.cwd()}/`), 'utf8'),
+);
+
+const base = import.meta.env.BASE_URL.replace(/\/+$/, '');
+const total = (meta.total as number).toLocaleString('en-CA');
+const categories = meta.categories as { key: string; label: string; color: string; count: number }[];
+
+const guideHref = `${base}/guides/sidewalk-forest/`;
+---
+
+<Base
+  title="Sidewalk Forest map"
+  description={`Explore all ${total} of Toronto's street trees, one dot per tree, by family and by street.`}
+  ogImage="/social/og-sidewalk-forest.jpg"
+  fullHeight
+  guideTheme="fg02"
+>
+  <div class="fg2 fg2--map-route">
+    <h1 class="visually-hidden">Sidewalk Forest, full map</h1>
+
+    <div class="fg2-scrolly" data-mode="explore">
+      <MapStage
+        id="fg02-map-route"
+        class="map-stage--expanded"
+        label={`Map of all ${total} street trees in Toronto's inventory`}
+        expanded
+        backHref={guideHref}
+        helpCorner="top-right"
+      >
+        <div
+          class="fg2-map"
+          id="fg2-map"
+          data-map-canvas
+          role="region"
+          aria-label={`Map of all ${total} street trees in Toronto's inventory`}
+        >
+          <div class="fg2-map-placeholder" aria-hidden="true">
+            <span class="fg2-map-placeholder-label">Map</span>
+          </div>
+        </div>
+
+        <Fragment slot="howto">
+          <p>
+            One dot per tree, coloured by family. At the citywide view the dots merge into a
+            canopy; zoom in until they separate and each dot is a single tree you can tap to
+            identify.
+          </p>
+          <p>
+            Use the Families list to show one family at a time, or search a street name to jump
+            to it. With the map focused, arrow keys pan, plus and minus zoom, and Enter reads the
+            tree under the crosshair.
+          </p>
+        </Fragment>
+
+        <Fragment slot="status-fallback">
+          <a class="map-stage__btn" href={guideHref}>Read the guide instead</a>
+        </Fragment>
+      </MapStage>
+
+      <!-- Keyboard aim: arrow keys pan, +/- zoom, Enter identifies. -->
+      <div class="fg2-reticle" id="fg2-reticle" aria-hidden="true">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 32 32"
+          width="30"
+          height="30"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+        >
+          <circle cx="16" cy="16" r="9" />
+          <line x1="16" y1="2" x2="16" y2="8" />
+          <line x1="16" y1="24" x2="16" y2="30" />
+          <line x1="2" y1="16" x2="8" y2="16" />
+          <line x1="24" y1="16" x2="30" y2="16" />
+          <circle cx="16" cy="16" r="1.5" fill="currentColor" stroke="none" />
+        </svg>
+      </div>
+
+      <div class="visually-hidden" id="fg2-announcer" role="status" aria-live="polite"></div>
+
+      <Fg02Explorer categories={categories} />
+    </div>
+
+    <noscript>
+      <div class="fg2-noscript">
+        <p>
+          The interactive map needs JavaScript.
+          <a href={guideHref}>Read the Sidewalk Forest guide</a>, which covers the same ground in
+          prose.
+        </p>
+      </div>
+    </noscript>
+  </div>
+
+  <script>
+    import { initSidewalkForest } from '../../../scripts/fg02-map';
+
+    const boot = () => initSidewalkForest({ expanded: true });
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', boot, { once: true });
+    } else {
+      boot();
+    }
+    document.addEventListener('astro:page-load', boot);
+  </script>
+</Base>
+
+<style>
+  .visually-hidden {
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+  }
+</style>
+
+<style is:global>
+  /* On the route the map is the page: the stage fills what the header leaves,
+     and the explorer panel overlays it rather than waiting on a class toggle. */
+  .fg2--map-route,
+  .fg2--map-route .fg2-scrolly {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* The explorer UI is bounded by the map area, not the viewport. Left fixed it
+     would sit over the site header. */
+  .fg2--map-route .fg2-scrolly {
+    position: relative;
+  }
+
+  .fg2--map-route .fg2-explorer-ui {
+    position: absolute;
+    inset: 0;
+  }
+
+  /* Clear the stage's "Back to the guide", which owns the top-left of every
+     expanded route.
+     Desktop only: at 767px and below the panel is a bottom sheet
+     (top: auto; bottom: ...), and setting `top` there pinned it against both
+     edges and blew it up into a full-height empty box that swallowed the map
+     and the zoom control. */
+  @media (min-width: 768px) {
+    .fg2--map-route .fg2-panel {
+      top: calc(var(--space-6) + 2.5rem);
+    }
+  }
+
+  /* The panel becomes a bottom sheet here and sat on top of the attribution.
+     Attribution is a licence obligation, so it is lifted clear of the sheet's
+     collapsed height rather than left to be covered. */
+  @media (max-width: 767px) {
+    .fg2--map-route .maplibregl-ctrl-bottom-left {
+      bottom: calc(var(--space-3) + 4rem);
+    }
+  }
+
+  .fg2--map-route .map-stage--expanded,
+  .fg2--map-route .map-stage--expanded .map-stage__frame {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .fg2--map-route .fg2-map {
+    position: relative;
+    inset: auto;
+    height: 100%;
+    min-height: 0;
+  }
+
+</style>

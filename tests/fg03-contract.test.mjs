@@ -65,7 +65,8 @@ test('route has one editorial title, guide position, breadcrumb, and social meta
   const html = readRoute();
   assert.equal((html.match(/<main\b/g) ?? []).length, 1);
   assert.equal((html.match(/<h1\b/g) ?? []).length, 1);
-  assert.match(html, /Guide 03 of 03/);
+  // Editorial kicker replaces the old numbered "Guide 03 of 03" position label.
+  assert.match(html, /class="fg03-kicker">Public access & time/);
   assert.match(html, /aria-label="Breadcrumb"/);
   assert.match(html, /<h1[^>]*>When Toronto Has to Go<\/h1>/);
   assert.match(
@@ -342,24 +343,23 @@ test('shared discovery surfaces publish all three guides with FG03 newest', () =
     assert.match(header, new RegExp(`href="${escapedHref}".*?${title}`));
     assert.match(footer, new RegExp(`href="${escapedHref}".*?${title}`));
     assert.match(homeMain, new RegExp(`href="${escapedHref}"`));
-    assert.match(homeMain, new RegExp(`>${title}<`));
+    // Titles render tight in cards and with wrapping whitespace in the feature.
+    assert.match(homeMain, new RegExp(`>\\s*${title}\\s*<`));
     assert.match(about, new RegExp(`href="${escapedHref}".*?${title}`));
   }
 
+  // The homepage h1 is the hero tagline (single h1, fixes heading order); each
+  // guide is a peer card in one gallery, the newest wearing the New status.
   assert.equal((homeMain.match(/<h1\b/g) ?? []).length, 1);
-  assert.match(homeMain, /<h1[^>]*>When Toronto Has to Go<\/h1>/);
+  assert.match(homeMain, /<h1[^>]*>\s*Field guides to a city you think you know\s*<\/h1>/);
   assert.equal(
-    (homeMain.match(/Guide(?:\s+\d+)? · New/g) ?? []).length,
+    (homeMain.match(/guide-card-status--new/g) ?? []).length,
     1,
-    'Only the newest guide may carry the New label',
+    'Only the newest guide may carry the New status',
   );
   assert.ok(
     homeMain.indexOf('When Toronto Has to Go') < homeMain.indexOf('Sidewalk Forest'),
     'FG03 must appear before the older guides on the homepage',
-  );
-  assert.match(
-    homeMain,
-    /href="\/guides\/when-toronto-has-to-go\/"[^>]*>Open the Guide<\/a>/,
   );
 });
 

@@ -1,0 +1,314 @@
+/*
+ * Site header: masthead, nav, and the Guides dropdown.
+ * Moved out of Base.astro with Header.astro so the shell's chrome is a
+ * component with its own stylesheet rather than 180 lines inside a layout.
+ */
+
+/* ============================================================
+   Site header
+   ============================================================ */
+
+/*
+ * Sticky, and that is load-bearing rather than fashionable.
+ *
+ * FG02's map stage is `position: sticky; top: 0; height: 100svh`. With a
+ * header in normal flow the stage starts below it and therefore overhangs the
+ * viewport by the header's height until the reader has scrolled past it, which
+ * is why Phase 4 had to inset the stage chrome to keep the expand control on
+ * screen. A sticky header lets the stage sit at `top: var(--header-h)` with a
+ * height of `100svh - var(--header-h)` and occupy exactly the space below the
+ * header at every scroll position. The overhang stops existing instead of
+ * being dodged.
+ *
+ * It also means a reader part-way through a long scrollytelling guide always
+ * has a way back out.
+ */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  padding: var(--space-6) var(--space-6) 0;
+  border-bottom: 1px solid var(--atlas-rule-header);
+  /* Opaque: content scrolls underneath now. */
+  background-color: var(--atlas-ground);
+}
+
+/* On the expanded map routes the page cannot scroll, so sticky has nothing to
+   do and the header is simply the first flex item. */
+body[data-full-height] .site-header {
+  position: static;
+}
+
+.site-header-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-4) var(--space-8);
+  padding-bottom: var(--space-4);
+}
+
+.site-masthead {
+  font-family: var(--font-heading);
+  font-weight: 900;
+  font-size: var(--text-sm);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--atlas-ink);
+  flex-shrink: 0;
+}
+
+.site-masthead:hover {
+  color: var(--atlas-accent);
+}
+
+.site-masthead:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.site-nav {
+  display: flex;
+  gap: var(--space-6);
+  align-items: baseline;
+  list-style: none;
+  flex-wrap: wrap;
+}
+
+.site-nav a {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-decoration: none;
+  color: var(--atlas-ink-muted);
+  letter-spacing: 0.02em;
+  padding-bottom: 2px;
+}
+
+.site-nav a[aria-current='page'],
+.site-nav a[aria-current='true'] {
+  color: var(--atlas-ink);
+  font-weight: 700;
+  box-shadow: inset 0 -2px 0 var(--atlas-accent);
+}
+
+.site-nav a:hover {
+  color: var(--atlas-accent);
+}
+
+.site-nav a:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/*
+ * Tap targets.
+ *
+ * The top-level nav links measured 22-23px tall, under WCAG 2.2 SC 2.5.8
+ * Target Size (Minimum) at 24x24. The hit area is grown with a pseudo-element
+ * rather than padding, because padding would push the current-page underline
+ * (an inset box-shadow on the link's own box) away from the text and change
+ * how the nav looks in order to fix how it is hit.
+ *
+ * The masthead joined them in Phase 6: it is the same kind of target and was
+ * missed the first time, at 110x21 on a phone. Phase 5 measured the nav and
+ * fixed what it measured; it never measured the wordmark beside it.
+ */
+.site-nav a,
+.nav-dd-summary,
+.site-masthead {
+  position: relative;
+}
+
+.site-nav a::before,
+.nav-dd-summary::before,
+.site-masthead::before {
+  content: '';
+  position: absolute;
+  inset: -6px -4px;
+}
+
+/* Field Guides dropdown. <details> so it works with no JS; a small script
+   closes it on outside-click / Escape as an enhancement. */
+.site-nav-dd {
+  position: relative;
+}
+
+.nav-dd-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--atlas-ink-muted);
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  padding-bottom: 2px;
+  list-style: none;
+  user-select: none;
+}
+
+.nav-dd-summary::-webkit-details-marker {
+  display: none;
+}
+
+.nav-dd-summary::after {
+  content: '';
+  width: 0;
+  height: 0;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  border-top: 4px solid currentColor;
+  transition: transform var(--dur-1) var(--ease-out);
+}
+
+.nav-dd[open] .nav-dd-summary::after {
+  transform: rotate(180deg);
+}
+
+.nav-dd-summary:hover {
+  color: var(--atlas-accent);
+}
+
+.nav-dd-summary:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.nav-dd-summary.is-current {
+  color: var(--atlas-ink);
+  font-weight: 700;
+  box-shadow: inset 0 -2px 0 var(--atlas-accent);
+}
+
+.nav-dd[open] .nav-dd-summary {
+  color: var(--atlas-ink);
+}
+
+.nav-dd-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  z-index: 50;
+  list-style: none;
+  min-width: 232px;
+  /* Bounded by the viewport, not by its longest guide title. The audit called
+     this out ("dropdown constrained to viewport") and text-scaled to 200% it
+     grew to 444px inside a 375px window. The 24px gutter is deliberately a
+     fixed px value: the whole spacing scale is in rem, so a rem gutter would
+     scale along with the text and stop being a gutter exactly when it is
+     needed.
+
+     `width: max-content` is what keeps this from changing the desktop menu.
+     Dropping `nowrap` alone let the box collapse to the 232px minimum and
+     wrapped "When Toronto Has to Go" onto two lines, 49px -> 62px. max-content
+     sizes to the longest title on one line exactly as nowrap did, and the
+     max-width only bites when the viewport is genuinely too narrow -- at which
+     point wrapping is what you want. One line normally, wrap when bounded. */
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  background: var(--atlas-ground);
+  border: 1px solid var(--atlas-ink);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+  padding: var(--space-2);
+}
+
+.nav-dd-menu a {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--atlas-ink-muted);
+  text-decoration: none;
+  /* Wrapping is the fallback, not the default. The menu is still sized by its
+     content, and at normal text every guide title fits on one line inside the
+     232px minimum, so nothing moves. `nowrap` only ever mattered once the
+     max-width above started biting, and there a title running off the screen
+     is worse than a title on two lines. */
+  white-space: normal;
+}
+
+.nav-dd-menu a:hover,
+.nav-dd-menu a:focus-visible {
+  background: var(--atlas-surface);
+  color: var(--atlas-accent);
+  outline: none;
+}
+
+.nav-dd-all {
+  margin-top: var(--space-1);
+  border-top: 1px solid var(--rule, var(--atlas-surface));
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--atlas-ink-faint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-dd-summary::after {
+    transition: none;
+  }
+}
+
+/* ============================================================
+   Narrow screens
+
+   Deliberately NOT a hamburger.
+
+   The plan called for a mobile disclosure. A disclosure earns its
+   place by hiding complexity, and this nav has two items: a Guides
+   dropdown and About. Hiding two links behind a tap makes navigation
+   slower and buys nothing. It also would not scale-proof anything,
+   because guides live inside the dropdown, so the top level stays at
+   two items however many guides get published.
+
+   The actual problem at 320px was that the header wrapped to a second
+   row and stood at 107px, and now that it is sticky that height is
+   gone from every scroll position, not just the top of the page. So
+   the header is made to fit one row instead: tighter padding, a
+   smaller gap, and the interface type one step down.
+   ============================================================ */
+
+@media (max-width: 540px) {
+  .site-header {
+    padding: var(--space-4) var(--space-4) 0;
+  }
+
+  .site-header-inner {
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding-bottom: var(--space-3);
+  }
+
+  .site-masthead {
+    font-size: var(--text-xs);
+    letter-spacing: 0.08em;
+  }
+
+  /* No `flex-wrap: nowrap` here or on .site-header-inner above.
+     The one row is bought by the smaller type and the tighter gap, and it is
+     still one row at 320: `nowrap` was belt-and-braces on top of that. What it
+     actually did was turn a layout that cannot fit into one that overflows
+     instead of one that wraps, and the header ran 128px off a 375px screen
+     once the root font size was doubled. A two-row header is ugly; a header
+     off the side of the screen is broken. Wrapping stays available as the
+     fallback it always was. */
+  .site-nav {
+    gap: var(--space-4);
+  }
+
+  .site-nav a,
+  .nav-dd-summary {
+    font-size: var(--text-xs);
+  }
+
+  /* Right-aligned so it cannot run off the viewport edge. */
+  .nav-dd-menu {
+    left: auto;
+    right: 0;
+  }
+}

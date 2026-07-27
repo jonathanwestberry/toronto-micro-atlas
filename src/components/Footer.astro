@@ -1,0 +1,49 @@
+---
+import '../styles/site-footer.css';
+
+/**
+ * The publication colophon.
+ *
+ * Extracted from Base.astro alongside Header.astro. `hidden` is set by the
+ * layout on full-height routes, where an expanded map owns the viewport and a
+ * footer underneath it would make the page scroll.
+ */
+interface Props {
+  base: string;
+  hidden?: boolean;
+}
+
+const { base, hidden = false } = Astro.props as Props;
+---
+
+<footer class="site-footer" hidden={hidden}>
+  <div class="site-footer-inner">
+    <div class="site-footer-id">
+      <p class="site-footer-mark">Toronto Micro-Atlas</p>
+      <p class="site-footer-tagline">Guides about noticing and using Toronto.</p>
+      <p class="site-footer-signature">
+        <span>Made by</span>
+        {/* Hand-lettered signature SVG replaces this text link when the final wordmark is exported */}
+        <a href="https://jonathan-westberry.com" rel="noopener">Jonathan Westberry</a>
+      </p>
+    </div>
+    <nav class="site-footer-nav" aria-label="Footer">
+      <p class="site-footer-heading">Explore</p>
+      <ul class="site-footer-links">
+        <li><a href={`${base}/guides/hidden-landscapes/`} data-astro-reload>Hidden Landscapes</a></li>
+        <li><a href={`${base}/guides/sidewalk-forest/`} data-astro-reload>Sidewalk Forest</a></li>
+        <li><a href={`${base}/guides/when-toronto-has-to-go/`} data-astro-reload>When Toronto Has to Go</a></li>
+        <li><a href={`${base}/about/`}>About the atlas</a></li>
+        <li><a href="https://github.com/jonathanwestberry/toronto-micro-atlas" rel="noopener">Source on GitHub</a></li>
+      </ul>
+    </nav>
+    <div class="site-footer-colophon">
+      <p class="site-footer-heading">Credits</p>
+      <p class="site-footer-meta">
+        Built with Astro and MapLibre GL JS.<br />
+        Map data &copy; OpenStreetMap and the City of Toronto.<br />
+        Code is open source. Writing and illustrations reserved.
+      </p>
+    </div>
+  </div>
+</footer>

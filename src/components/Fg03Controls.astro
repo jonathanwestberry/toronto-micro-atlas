@@ -1,0 +1,170 @@
+---
+/**
+ * FG03 explorer controls.
+ *
+ * Moved out of the guide page unchanged so the guide and the expanded map
+ * route render one form, not two that drift. Every name, value, and data
+ * attribute here is part of the shareable-state contract asserted by
+ * tests/fg03-contract.test.mjs.
+ */
+import {
+  defaultAction,
+  defaultTime,
+  defaultUrlAccess,
+  defaultWalk,
+  number,
+} from '../data/fg03';
+---
+
+<form
+  class="fg03-controls"
+  data-fg03-controls
+  aria-describedby="fg03-controls-help"
+  aria-disabled="true"
+  inert
+>
+  <p id="fg03-controls-help" class="fg03-controls-help">
+    Results update after each choice. The URL stores time, access, walk,
+    action, selected place, and map view for sharing.
+  </p>
+
+  <div class="fg03-control-grid">
+    <fieldset data-fg03-filter="time">
+      <legend>Time</legend>
+      <div class="fg03-choice-row">
+        <label>
+          <input type="radio" name="time" value="1200" checked={defaultTime === '1200'} />
+          <span>Noon</span>
+        </label>
+        <label>
+          <input type="radio" name="time" value="2030" checked={defaultTime === '2030'} />
+          <span>8:30 p.m.</span>
+        </label>
+        <label>
+          <input type="radio" name="time" value="2200" checked={defaultTime === '2200'} />
+          <span>10 p.m.</span>
+        </label>
+        <label>
+          <input type="radio" name="time" value="0030" checked={defaultTime === '0030'} />
+          <span>12:30 a.m.</span>
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset data-fg03-filter="access">
+      <legend>Access assumption</legend>
+      <div class="fg03-choice-row">
+        <label>
+          <input
+            type="radio"
+            name="access"
+            value="public"
+            checked={defaultUrlAccess === 'public'}
+          />
+          <span>Public, no fare required</span>
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="access"
+            value="rider"
+            checked={defaultUrlAccess === 'rider'}
+          />
+          <span>TTC rider, fare gate allowed</span>
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset data-fg03-filter="walk">
+      <legend>Network walk</legend>
+      <div class="fg03-choice-row">
+        <label>
+          <input type="radio" name="walk" value="300" checked={defaultWalk === 300} />
+          <span>300 m</span>
+        </label>
+        <label>
+          <input type="radio" name="walk" value="400" checked={defaultWalk === 400} />
+          <span>400 m</span>
+        </label>
+        <label>
+          <input type="radio" name="walk" value="500" checked={defaultWalk === 500} />
+          <span>500 m</span>
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset data-fg03-filter="action">
+      <legend>Action</legend>
+      <div class="fg03-choice-row fg03-choice-row--actions">
+        <label>
+          <input
+            type="radio"
+            name="action"
+            value="open"
+            checked={defaultAction === 'open'}
+          />
+          <span>Current open washrooms</span>
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="action"
+            value="extend"
+            checked={defaultAction === 'extend'}
+          />
+          <span>Extend hours</span>
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="action"
+            value="new"
+            checked={defaultAction === 'new'}
+          />
+          <span>New facility zones</span>
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="action"
+            value="verify"
+            checked={defaultAction === 'verify'}
+          />
+          <span>Verify published information</span>
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="action"
+            value="retrofit"
+            checked={defaultAction === 'retrofit'}
+          />
+          <span>Retrofit accessibility</span>
+        </label>
+      </div>
+    </fieldset>
+  </div>
+
+  <div class="fg03-control-tools">
+    <div class="fg03-search">
+      <label for="fg03-search">Search places</label>
+      <div>
+        <input
+          id="fg03-search"
+          type="search"
+          name="search"
+          autocomplete="off"
+          placeholder="Name, address, source, or action"
+          data-fg03-search
+        />
+        <button type="button" data-fg03-clear-search disabled>Clear search</button>
+      </div>
+    </div>
+    <div class="fg03-control-actions">
+      <button type="button" data-fg03-reset>Reset explorer</button>
+      <button type="button" class="fg03-button--primary" data-fg03-share>
+        Share this view
+      </button>
+    </div>
+  </div>
+</form>

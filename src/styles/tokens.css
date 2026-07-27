@@ -3,6 +3,13 @@
 /* Font faces */
 @import "@fontsource-variable/archivo/wght.css";
 @import "@fontsource-variable/source-serif-4/wght.css";
+/* Family type voices (Bebas display + Space Mono data/labels). @font-face
+   declarations only; the browser fetches these woff2 files lazily, when an
+   element actually uses the family, so importing here adds no payload or
+   visual change until a selector opts in (Phase 2+). */
+@import "@fontsource/bebas-neue/400.css";
+@import "@fontsource/space-mono/400.css";
+@import "@fontsource/space-mono/700.css";
 
 :root {
   /* Colour palette */
@@ -44,10 +51,11 @@
   --text-4xl: 2.75rem;   /* 44px */
   --text-5xl: 3.75rem;   /* 60px */
 
-  /* Font families */
-  --font-heading: "Archivo Variable", system-ui, sans-serif;
+  /* Font families. Atlas voice = Bebas display + Space Mono interface/label +
+     Source Serif reading body. (--font-display / --font-mono defined below.) */
+  --font-heading: "Bebas Neue", "Archivo Variable", system-ui, sans-serif;
   --font-body: "Source Serif 4 Variable", Georgia, serif;
-  --font-ui: "Archivo Variable", system-ui, sans-serif;
+  --font-ui: "Space Mono", ui-monospace, "SFMono-Regular", monospace;
 
   /* Focus ring */
   --focus-ring: 2px solid var(--ink);
@@ -60,7 +68,15 @@
   /* Layout containers */
   --container: 1200px;
   --container-wide: 1280px;
-  --gutter: clamp(1.25rem, 5vw, 4rem);
+  /* The floor is px, not rem, and that is the whole point of the change.
+     A gutter's job is to hold content off the edge of the screen; it is not
+     type, and it has no reason to grow when type does. At a doubled root font
+     size the rem floor became 40px a side, so a 375px phone spent 80px -- 21%
+     of the viewport -- on margin, and pushed fg01's card grid off the screen.
+     1.25rem and 20px are the same number at normal text, so this is a no-op
+     everywhere except the case it fixes. The 5vw and 4rem upper reaches are
+     untouched; those only apply on wide screens where there is room. */
+  --gutter: clamp(20px, 5vw, 4rem);
 
   /* Motion: micro-interactions 150-300ms, exits faster than enters */
   --dur-1: 120ms;
@@ -80,4 +96,186 @@
 
   /* Full-bleed guide-map hero (desktop fills viewport below the header) */
   --header-h: 67px;    /* measured height of .site-header (normal flow, not sticky) */
+
+  /* ==========================================================================
+     ONE PALETTE  (canon: Figma "Design System | Jonathan Westberry")
+     24 colours in 6 hue families + 3 utilities. Raw values only; surfaces
+     consume the semantic --atlas-* contract below, never these directly.
+     Additive in Phase 1: nothing references these yet, so no visual change.
+     ========================================================================== */
+  --c-pale-ice:   #CCDFF2;
+  --c-sky:        #92BAE6;
+  --c-cobalt:     #2A5BD0;
+  --c-deep-navy:  #1A2F66;
+
+  --c-pale-lime:  #E1EFA8;
+  --c-lime:       #C5DE5F;
+  --c-kelly:      #45A26A;
+  --c-forest:     #1F4F30;
+
+  --c-pale-lemon: #FBF8C8;
+  --c-lemon:      #F0E54B;
+  --c-mustard:    #C9A52E;
+
+  --c-pale-peach: #FBE5CE;
+  --c-coral:      #F4A285;
+  --c-hot-orange: #F37E2A;
+  --c-tomato:     #E84A2A;
+
+  --c-blush:      #F7D8DC;
+  --c-hot-pink:   #F085A0;
+  --c-magenta:    #C84478;
+
+  --c-pale-plum:  #E8C8DC;
+  --c-mauve:      #8A4A70;
+  --c-plum:       #4A1F3F;
+
+  --c-cream:      #F3EDDD;   /* NB: distinct from the atlas --paper #FAF6EC;
+                               shell migrates to true Cream in Phase 2/3 */
+  --c-kraft:      #D3CFA6;
+  --c-contour:    #1A1F2A;
+
+  /* ==========================================================================
+     Radius scale (THE GRID / DEPTH). Additive; unused until Phase 2+.
+     ========================================================================== */
+  --radius-0: 0;
+  --radius-1: 3px;
+  --radius-2: 8px;
+  --radius-3: 16px;
+  --radius-round: 44px;
+
+  /* ==========================================================================
+     Type voices (THREE VOICES). --font-display and --font-mono are the shared
+     family signature; the atlas keeps a reading serif for body (--font-body).
+     Existing --font-heading / --font-ui stay on Archivo in Phase 1 so nothing
+     re-renders; the redesign phases repoint headings/UI to these.
+     ========================================================================== */
+  --font-display: "Bebas Neue", "Archivo Variable", system-ui, sans-serif;
+  --font-mono:    "Space Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  /* ==========================================================================
+     Theme contract  (semantic tokens every surface reads).
+     Default = the atlas shell theme. Phase 1 maps each token to the CURRENT
+     computed value so rendering is pixel-identical; per-guide themes will
+     override this set via [data-guide-theme="..."] in Phase 2. This replaces
+     the private --n-* (fg02) and --fg03-* (fg03) namespaces.
+     ========================================================================== */
+  --atlas-ground:      var(--paper);          /* page background */
+  --atlas-surface:     var(--card);           /* raised card / panel */
+  --atlas-ink:         var(--ink);            /* primary text */
+  --atlas-ink-muted:   var(--ink-2);          /* secondary text */
+  --atlas-ink-faint:   var(--ink-3);          /* tertiary text */
+  --atlas-line:        var(--street-minor);   /* hairline */
+  --atlas-line-strong: var(--street-major);   /* stronger rule */
+  --atlas-accent:      var(--threshold);      /* primary accent (Tomato-adjacent) */
+  --atlas-accent-2:    var(--landscape);      /* secondary accent */
+  /* Text-weight siblings of the two accents.
+
+     An accent chosen to work as a FILL (a 3px rule, a filled chip, a map
+     marker) does not survive being set as 11-14px type on a light ground: it
+     only has to clear 3:1 as a fill, and 4.5:1 as text. Every small-text
+     contrast failure in the Phase 6 audit was one accent doing both jobs
+     (Kelly at 2.94, Tomato at 4.12, Hot Orange at 2.49 on cream).
+
+     So the accents keep their brand value for fills, and these darker
+     siblings carry type. Same hue and saturation, lightness lowered until the
+     ratio clears 4.8 against the theme's own ground -- 4.8 rather than 4.5 so
+     a hover state or a slightly different surface cannot tip it back under.
+     Never set an --atlas-accent* on text; use these. */
+  --atlas-accent-text:   #CB3510;             /* Tomato, darkened: 4.80 on cream */
+  --atlas-accent-2-text: #347A50;             /* Kelly, darkened: 4.81 on cream */
+  /* Boundary of an interactive control (SC 1.4.11, 3:1). Distinct from
+     --atlas-line, which is a content hairline and is allowed to be faint.
+     The map stage's buttons fill with --atlas-surface, which on a cream page
+     is ~1.02:1 against the ground, so the border is the only thing that says
+     where the control is. It measured 1.45:1. */
+  --atlas-control-line: #8F836B;              /* 3.47 on cream */
+  --atlas-link:        var(--ink);            /* link colour */
+  --atlas-focus:       var(--ink);            /* focus ring colour */
+  --atlas-marker:      var(--threshold);      /* map marker fill */
+  --atlas-marker-alt:  var(--landscape);      /* second marker category */
+  --atlas-layer:       var(--landscape);      /* map layer wash */
+  --atlas-hover:       var(--threshold-active);
+  --atlas-active:      var(--threshold-active);
+  /* The masthead rule: the strongest line on the page. Defaults to the ink so
+     the shell keeps its hard editorial rule on cream. A dark theme has to
+     override it, because "ink" there is near-white and a 1px white line across
+     the top of the page is a glare, not a rule. */
+  --atlas-rule-header: var(--atlas-ink);
+}
+
+/* ==========================================================================
+   Per-guide themes, declared on <body data-guide-theme="...">.
+
+   These used to live only on the guides' own root elements (.fg01, .fg2,
+   .fg03), which meant the site header and footer sat *outside* the themed
+   subtree and kept the shell's Tomato. That is why the "Guides" nav underline
+   rendered #DE3A11 on a Cobalt page: the rule read --atlas-accent, but from
+   outside the scope that defined it.
+
+   Declaring the contract on the body puts the shell inside the theme. Values
+   are literals rather than var() references to the guides' private namespaces
+   (--n-*, --fg03-*), because those are defined further down the tree and are
+   not in scope here.
+   ========================================================================== */
+
+/* Hidden Landscapes: cream ground, Cobalt threshold, Kelly landscapes. */
+[data-guide-theme='fg01'] {
+  --atlas-accent:      #2A5BD0;                  /* Cobalt */
+  --atlas-accent-2:    #45A26A;                  /* Kelly */
+  --atlas-accent-text:   #2A5BD0;                /* Cobalt already reads at 5.55 on cream */
+  --atlas-accent-2-text: #347A50;                /* Kelly darkened: 2.94 -> 4.81 */
+  --atlas-focus:       #1A2F66;                  /* Deep Navy */
+  --atlas-hover:       #1A2F66;
+  --atlas-active:      #1A2F66;
+}
+
+/* Sidewalk Forest: near-black forest ground, Lime glow. The shell goes dark
+   with the guide here, which is what the old `body:has(.fg2)` patch was for. */
+[data-guide-theme='fg02'] {
+  --atlas-ground:      hsl(150, 44%, 7%);
+  --atlas-surface:     hsl(150, 30%, 14%);
+  --atlas-ink:         hsl(48, 42%, 93%);
+  --atlas-ink-muted:   hsl(150, 14%, 76%);
+  --atlas-ink-faint:   hsl(150, 11%, 62%);
+  --atlas-line:        hsl(150, 22%, 24%);
+  --atlas-line-strong: hsl(150, 22%, 34%);
+  --atlas-accent:      hsl(72, 62%, 62%);        /* Lime */
+  --atlas-accent-2:    hsl(76, 66%, 52%);
+  /* On a near-black ground the accents are the LIGHT end, so they already read
+     as text (Lime 11.96, accent-2 10.29). The text siblings exist so a shared
+     component can reference them in every theme without branching. */
+  --atlas-accent-text:   hsl(72, 62%, 62%);
+  --atlas-accent-2-text: hsl(76, 66%, 52%);
+  /* Solved against the LIGHTEST surface a control lands on, not the page
+     ground. Solving against the ground alone gave 3.20 there but only 2.60
+     behind the street-search field, which sits on a raised panel. 42.5%
+     clears 3.2 on all four fg02 surfaces. */
+  --atlas-control-line:  hsl(150, 22%, 42.5%);   /* 4.19 ground .. 3.20 card */
+  --atlas-focus:       hsl(72, 62%, 62%);
+  --atlas-hover:       hsl(76, 66%, 52%);
+  --atlas-active:      hsl(76, 66%, 52%);
+  --atlas-rule-header: hsl(150, 22%, 24%);       /* muted, not a white glare */
+}
+
+/* When Toronto Has to Go: cream ground, Deep Navy reading accent, Hot Orange
+   for alarm. Orange never carries text on cream (~2:1); navy does (~11:1). */
+[data-guide-theme='fg03'] {
+  --atlas-ground:      #F3EDDD;                  /* Cream */
+  --atlas-surface:     #FFFAF0;
+  --atlas-ink:         #1A1F2A;                  /* Contour */
+  --atlas-ink-muted:   #565A63;
+  --atlas-line:        rgba(26, 31, 42, 0.3);
+  --atlas-line-strong: rgba(26, 31, 42, 0.72);
+  --atlas-accent:      #1A2F66;                  /* Deep Navy */
+  --atlas-accent-2:    #F37E2A;                  /* Hot Orange */
+  --atlas-accent-text:   #1A2F66;                /* Navy already reads at 10.94 on this ground */
+  --atlas-accent-2-text: #A94C0A;                /* Hot Orange darkened: 2.49 -> 4.80 */
+  --atlas-focus:       #1A2F66;
+  --atlas-hover:       #1A2F66;
+  --atlas-active:      #F37E2A;
+  /* Set explicitly rather than inherited: --atlas-rule-header is declared on
+     :root as var(--atlas-ink), and that reference resolves against :root's ink,
+     not the theme's. Stating it here keeps the rule predictable. */
+  --atlas-rule-header: #1A1F2A;                  /* Contour */
 }

@@ -1,4 +1,27 @@
 /* ============================================================
+   Guide theme "Hidden Landscapes" (fg01)
+   Cream ground, Cobalt threshold accent (the grid's edge, water and
+   depth below), Kelly green for the revealed ravine landscapes.
+   Overrides the shell's Tomato threshold within this guide only, and
+   maps the guide onto the shared --atlas-* contract.
+   ============================================================ */
+.fg01 {
+  --threshold: #2A5BD0;           /* Cobalt: threshold markers + accents */
+  --threshold-active: #1A2F66;    /* Deep Navy: active / hover */
+  --landscape: #45A26A;           /* Kelly: revealed ravine + valley fills */
+  --landscape-edge: #1F4F30;      /* Forest: ravine edges */
+
+  --atlas-ground: var(--paper);
+  --atlas-surface: var(--card);
+  --atlas-ink: var(--ink);
+  --atlas-ink-muted: var(--ink-2);
+  --atlas-line: var(--street-minor);
+  --atlas-accent: #2A5BD0;        /* Cobalt */
+  --atlas-accent-2: #45A26A;      /* Kelly */
+  --atlas-focus: #1A2F66;
+}
+
+/* ============================================================
    Guide map island: markers, orientation labels, controls
    Loaded globally via src/scripts/guide-map.ts
    ============================================================ */

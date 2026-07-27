@@ -2,6 +2,8 @@
 import '../styles/tokens.css';
 import '../styles/motion.css';
 import { ClientRouter } from 'astro:transitions';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
 
 interface Props {
   title?: string;
@@ -12,6 +14,22 @@ interface Props {
   articlePublished?: string;
   articleUpdated?: string;
   articleAuthor?: string;
+  /**
+   * Full-height pages (the expanded map routes): the footer is dropped and
+   * main fills whatever the header leaves, so the page itself never scrolls.
+   * The header stays, because an expanded map is a page of the publication,
+   * not a modal, and a reader who lands on a shared link needs a way out.
+   *
+   * Using flex to fill also means these routes never consult the hardcoded
+   * `--header-h: 67px`; the header can be any height and the map still fits.
+   */
+  fullHeight?: boolean;
+  /**
+   * Which guide theme the whole document wears. Set on <body>, so the shared
+   * header and footer sit inside the theme instead of outside it, which is
+   * what kept the nav's current-page underline shell-Tomato on a Cobalt page.
+   */
+  guideTheme?: 'fg01' | 'fg02' | 'fg03';
 }
 
 const {
@@ -22,6 +40,8 @@ const {
   articlePublished,
   articleUpdated,
   articleAuthor = 'Jonathan Westberry',
+  fullHeight = false,
+  guideTheme,
 } = Astro.props;
 
 const siteTitle = 'Toronto Micro-Atlas';
@@ -145,6 +165,47 @@ const onAbout = path.includes('/about');
         flex: 1;
       }
 
+      /* A themed page paints its own ground, so the area beyond the guide's
+         own boxes (and the overscroll gutter) matches the guide rather than
+         flashing the shell's cream. */
+      body[data-guide-theme] {
+        background-color: var(--atlas-ground);
+      }
+
+      /* ============================================================
+         Full-height pages (expanded map routes)
+         The map takes the viewport minus the header, measured by the
+         layout rather than by the --header-h constant, and the page is
+         pinned so scrolling belongs to the map alone.
+         ============================================================ */
+
+      /* The scrolling root is <html>, not <body>. Constraining only the body
+         left the window free to scroll, and something inside FG03 (focus
+         landing on the map) scrolled it 187px, taking the site header off
+         screen on a page that is not supposed to scroll at all. Both elements
+         are pinned. */
+      html:has(> body[data-full-height]) {
+        height: 100%;
+        overflow: hidden;
+      }
+
+      body[data-full-height] {
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      body[data-full-height] main {
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      body[data-full-height] .site-footer[hidden] {
+        display: none;
+      }
+
       img, svg {
         display: block;
         max-width: 100%;
@@ -197,280 +258,6 @@ const onAbout = path.includes('/about');
         }
       }
 
-      /* ============================================================
-         Site header
-         ============================================================ */
-
-      .site-header {
-        padding: var(--space-6) var(--space-6) 0;
-        border-bottom: 1px solid var(--ink);
-      }
-
-      .site-header-inner {
-        max-width: 1280px;
-        margin: 0 auto;
-        display: flex;
-        flex-wrap: wrap;
-        align-items: baseline;
-        gap: var(--space-4) var(--space-8);
-        padding-bottom: var(--space-4);
-      }
-
-      .site-masthead {
-        font-family: var(--font-heading);
-        font-weight: 900;
-        font-size: var(--text-sm);
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        text-decoration: none;
-        color: var(--ink);
-        flex-shrink: 0;
-      }
-
-      .site-masthead:hover {
-        color: var(--threshold);
-      }
-
-      .site-masthead:focus-visible {
-        outline: var(--focus-ring);
-        outline-offset: var(--focus-ring-offset);
-      }
-
-      .site-nav {
-        display: flex;
-        gap: var(--space-6);
-        align-items: baseline;
-        list-style: none;
-        flex-wrap: wrap;
-      }
-
-      .site-nav a {
-        font-family: var(--font-ui);
-        font-size: var(--text-sm);
-        font-weight: 500;
-        text-decoration: none;
-        color: var(--ink-2);
-        letter-spacing: 0.02em;
-        padding-bottom: 2px;
-      }
-
-      .site-nav a[aria-current='page'],
-      .site-nav a[aria-current='true'] {
-        color: var(--ink);
-        font-weight: 700;
-        box-shadow: inset 0 -2px 0 var(--threshold);
-      }
-
-      .site-nav a:hover {
-        color: var(--threshold);
-      }
-
-      .site-nav a:focus-visible {
-        outline: var(--focus-ring);
-        outline-offset: var(--focus-ring-offset);
-      }
-
-      /* Field Guides dropdown. <details> so it works with no JS; a small script
-         closes it on outside-click / Escape as an enhancement. */
-      .site-nav-dd {
-        position: relative;
-      }
-
-      .nav-dd-summary {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        font-family: var(--font-ui);
-        font-size: var(--text-sm);
-        font-weight: 500;
-        color: var(--ink-2);
-        letter-spacing: 0.02em;
-        cursor: pointer;
-        padding-bottom: 2px;
-        list-style: none;
-        user-select: none;
-      }
-
-      .nav-dd-summary::-webkit-details-marker {
-        display: none;
-      }
-
-      .nav-dd-summary::after {
-        content: '';
-        width: 0;
-        height: 0;
-        border-left: 3.5px solid transparent;
-        border-right: 3.5px solid transparent;
-        border-top: 4px solid currentColor;
-        transition: transform var(--dur-1) var(--ease-out);
-      }
-
-      .nav-dd[open] .nav-dd-summary::after {
-        transform: rotate(180deg);
-      }
-
-      .nav-dd-summary:hover {
-        color: var(--threshold);
-      }
-
-      .nav-dd-summary:focus-visible {
-        outline: var(--focus-ring);
-        outline-offset: var(--focus-ring-offset);
-      }
-
-      .nav-dd-summary.is-current {
-        color: var(--ink);
-        font-weight: 700;
-        box-shadow: inset 0 -2px 0 var(--threshold);
-      }
-
-      .nav-dd[open] .nav-dd-summary {
-        color: var(--ink);
-      }
-
-      .nav-dd-menu {
-        position: absolute;
-        top: calc(100% + 10px);
-        left: 0;
-        z-index: 50;
-        list-style: none;
-        min-width: 232px;
-        background: var(--paper);
-        border: 1px solid var(--ink);
-        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
-        padding: var(--space-2);
-      }
-
-      .nav-dd-menu a {
-        display: block;
-        padding: var(--space-2) var(--space-3);
-        font-family: var(--font-ui);
-        font-size: var(--text-sm);
-        color: var(--ink-2);
-        text-decoration: none;
-        white-space: nowrap;
-      }
-
-      .nav-dd-menu a:hover,
-      .nav-dd-menu a:focus-visible {
-        background: var(--card);
-        color: var(--threshold);
-        outline: none;
-      }
-
-      .nav-dd-all {
-        margin-top: var(--space-1);
-        border-top: 1px solid var(--rule, var(--card));
-        font-size: var(--text-xs);
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        color: var(--ink-3);
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        .nav-dd-summary::after {
-          transition: none;
-        }
-      }
-
-      /* ============================================================
-         Site footer: publication colophon
-         ============================================================ */
-
-      .site-footer {
-        margin-top: auto;
-        border-top: 1px solid var(--ink);
-        background: var(--card);
-      }
-
-      .site-footer-inner {
-        max-width: var(--container-wide);
-        margin: 0 auto;
-        padding: var(--space-12) var(--gutter) var(--space-8);
-        display: grid;
-        grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.2fr);
-        gap: var(--space-8) var(--space-12);
-      }
-
-      @media (max-width: 767px) {
-        .site-footer-inner {
-          grid-template-columns: 1fr;
-          padding-top: var(--space-8);
-        }
-      }
-
-      .site-footer-mark {
-        font-family: var(--font-heading);
-        font-weight: 900;
-        font-size: var(--text-sm);
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-      }
-
-      .site-footer-tagline {
-        margin-top: var(--space-2);
-        font-family: var(--font-body);
-        font-size: var(--text-sm);
-        color: var(--ink-2);
-        max-width: 34ch;
-      }
-
-      .site-footer-signature {
-        margin-top: var(--space-6);
-        font-family: var(--font-ui);
-        font-size: var(--text-sm);
-        color: var(--ink-2);
-      }
-
-      .site-footer-signature a {
-        color: var(--ink);
-        font-weight: 600;
-        text-decoration-thickness: 2px;
-        text-underline-offset: 4px;
-      }
-
-      .site-footer-signature a:hover {
-        color: var(--threshold);
-      }
-
-      .site-footer-heading {
-        font-family: var(--font-ui);
-        font-size: var(--text-xs);
-        font-weight: 700;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: var(--ink-3);
-        margin-bottom: var(--space-3);
-      }
-
-      .site-footer-links {
-        list-style: none;
-        display: grid;
-        gap: var(--space-2);
-      }
-
-      .site-footer-links a {
-        font-family: var(--font-ui);
-        font-size: var(--text-sm);
-        color: var(--ink-2);
-        text-decoration: none;
-      }
-
-      .site-footer-links a:hover {
-        color: var(--threshold);
-      }
-
-      .site-footer-links a:focus-visible {
-        outline: var(--focus-ring);
-        outline-offset: var(--focus-ring-offset);
-      }
-
-      .site-footer-meta {
-        font-family: var(--font-ui);
-        font-size: var(--text-xs);
-        color: var(--ink-3);
-        line-height: 1.7;
-      }
 
       /* ============================================================
          Prose typography
@@ -562,66 +349,16 @@ const onAbout = path.includes('/about');
       }
     </style>
   </head>
-  <body>
+  <body data-full-height={fullHeight ? 'true' : undefined} data-guide-theme={guideTheme}>
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <header class="site-header">
-      <div class="site-header-inner">
-        <a href={`${base}/`} class="site-masthead">Toronto Micro-Atlas</a>
-        <nav aria-label="Site navigation">
-          <ul class="site-nav">
-            <li class="site-nav-dd">
-              <details class="nav-dd">
-                <summary class:list={['nav-dd-summary', { 'is-current': onGuides }]}>Guides</summary>
-                <ul class="nav-dd-menu">
-                  <li><a href={`${base}/guides/hidden-landscapes/`} data-astro-reload>01 &middot; Hidden Landscapes</a></li>
-                  <li><a href={`${base}/guides/sidewalk-forest/`} data-astro-reload>02 &middot; Sidewalk Forest</a></li>
-                  <li><a href={`${base}/guides/when-toronto-has-to-go/`} data-astro-reload>03 &middot; When Toronto Has to Go</a></li>
-                  <li><a href={`${base}/#field-guides`} class="nav-dd-all">All guides</a></li>
-                </ul>
-              </details>
-            </li>
-            <li><a href={`${base}/about/`} aria-current={onAbout ? 'page' : undefined}>About</a></li>
-          </ul>
-        </nav>
-      </div>
-    </header>
+    <Header base={base} onGuides={onGuides} onAbout={onAbout} />
 
     <main id="main-content">
       <slot />
     </main>
 
-    <footer class="site-footer">
-      <div class="site-footer-inner">
-        <div class="site-footer-id">
-          <p class="site-footer-mark">Toronto Micro-Atlas</p>
-          <p class="site-footer-tagline">Guides about noticing and using Toronto.</p>
-          <p class="site-footer-signature">
-            <span>Made by</span>
-            {/* Hand-lettered signature SVG replaces this text link when the final wordmark is exported */}
-            <a href="https://jonathan-westberry.com" rel="noopener">Jonathan Westberry</a>
-          </p>
-        </div>
-        <nav class="site-footer-nav" aria-label="Footer">
-          <p class="site-footer-heading">Explore</p>
-          <ul class="site-footer-links">
-            <li><a href={`${base}/guides/hidden-landscapes/`} data-astro-reload>Hidden Landscapes</a></li>
-            <li><a href={`${base}/guides/sidewalk-forest/`} data-astro-reload>Sidewalk Forest</a></li>
-            <li><a href={`${base}/guides/when-toronto-has-to-go/`} data-astro-reload>When Toronto Has to Go</a></li>
-            <li><a href={`${base}/about/`}>About the atlas</a></li>
-            <li><a href="https://github.com/jonathanwestberry/toronto-micro-atlas" rel="noopener">Source on GitHub</a></li>
-          </ul>
-        </nav>
-        <div class="site-footer-colophon">
-          <p class="site-footer-heading">Colophon</p>
-          <p class="site-footer-meta">
-            Set in Archivo and Source Serif 4. Built with Astro and MapLibre GL JS.<br />
-            Map data &copy; OpenStreetMap contributors, City of Toronto.<br />
-            Code MIT. Writing and illustrations all rights reserved.
-          </p>
-        </div>
-      </div>
-    </footer>
+    <Footer base={base} hidden={fullHeight} />
 
     <script>
       const revealAll = () => {
