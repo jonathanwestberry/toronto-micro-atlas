@@ -44,7 +44,7 @@ const newestTime = Math.max(...guides.map((g) => g.data.published.getTime()));
       <div class="gallery-inner">
         <div class="gallery-head">
           <h2 class="gallery-heading" id="gallery-heading">The field guides</h2>
-          <a class="gallery-all" href={`${base}/guides/`}>All guides &amp; forthcoming &rarr;</a>
+          <a class="gallery-all" href={`${base}/guides/`}>All guides and what's under research &rarr;</a>
         </div>
         <ul class="gallery-grid" role="list">
           {
@@ -72,11 +72,11 @@ const newestTime = Math.max(...guides.map((g) => g.data.published.getTime()));
       <div class="about-inner">
         <p class="about-kicker" id="about-heading">What a field guide is</p>
         <p class="about-lede">
-          Not a listicle and not a review. Each guide is one researched way of seeing a single system
-          in the city, drawn straight from public records and rendered as a map you can read, zoom,
-          and search. More are under research.
+          Not a listicle and not a review. Each one starts from a record the city already keeps,
+          checks it, and draws it. Read straight through for the argument, or open the map and go
+          looking for your own street. More guides are under research.
         </p>
-        <a class="about-cta" href={`${base}/guides/`}>Start exploring &rarr;</a>
+        <a class="about-cta" href={`${base}/guides/`}>Open a guide &rarr;</a>
       </div>
     </section>
 
