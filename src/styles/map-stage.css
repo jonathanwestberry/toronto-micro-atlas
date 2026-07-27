@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Map stage — the shared frame around every guide map.
+   Map stage: the shared frame around every guide map.
 
    Themes itself entirely from the --atlas-* contract, so a guide changes the
    stage's colour by setting its theme and nothing else.
