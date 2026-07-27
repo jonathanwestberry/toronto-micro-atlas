@@ -92,6 +92,42 @@ const onAbout = path.includes('/about');
     <link rel="canonical" href={canonicalURL.href} />
 
     <script is:inline>document.documentElement.classList.add('js');</script>
+
+    {/*
+      Cloudflare Web Analytics, loaded explicitly rather than left to
+      Cloudflare's automatic injection.
+
+      Auto-injection cannot reach this site. Every real page ships with
+      `no-transform` in its Cache-Control (public/_headers), a direct
+      instruction to Cloudflare and every other intermediary not to alter the
+      response body, so the edge correctly declines to insert anything. The
+      only pages it ever reached were 404s, which go out with `no-store`.
+      Keeping `no-transform` and writing the tag ourselves is the right way
+      round: the HTML nobody else edits, and a third-party script host that is
+      reviewable in git.
+
+      `version` is load-bearing, not decoration. The beacon picks its reporting
+      endpoint from it. With a version set it POSTs same-origin to
+      /cdn-cgi/rum, which Cloudflare's edge intercepts on a proxied domain.
+      Omit it and the beacon POSTs to the absolute
+      https://cloudflareinsights.com/cdn-cgi/rum, which 404s for a manual
+      install and then surfaces in the console as a CORS error, because a 404
+      response carries no Access-Control-Allow-Origin. That cost a deploy and a
+      revert before an A/B of the two tag forms showed which branch each takes.
+
+      Because the report is same-origin, connect-src stays 'self'; only the
+      script host is added to the CSP.
+
+      The token is a public site identifier. It ships in the HTML of every page
+      by design and grants no access to the account.
+    */}
+    <script
+      is:inline
+      defer
+      src="https://static.cloudflareinsights.com/beacon.min.js"
+      data-cf-beacon='{"version": "2024.11.0", "token": "d823217aa6de42519a52baecb3d3fe49"}'
+    ></script>
+
     <ClientRouter />
 
     <!-- Open Graph -->
