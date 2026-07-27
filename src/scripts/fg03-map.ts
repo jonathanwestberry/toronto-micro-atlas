@@ -2566,18 +2566,6 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
       }
     });
   }
-  {
-    // The stage's help control is shared markup this guide cannot edit, and its
-    // label promised prose while the disclosure now leads with the symbol key.
-    // Renaming it here keeps the button honest about what opening it gives you.
-    // A shared change would be better: see the note in the fix report.
-    const howtoLabel = mapElement
-      .closest<HTMLElement>('[data-map-stage]')
-      ?.querySelector<HTMLElement>('[data-map-howto-toggle] span');
-    if (howtoLabel) {
-      howtoLabel.textContent = 'Legend & how to read';
-    }
-  }
   if (resetButton) {
     addListener(removeListeners, resetButton, 'click', () => {
       currentSearch = '';

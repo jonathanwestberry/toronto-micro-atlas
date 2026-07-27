@@ -48,6 +48,17 @@ interface Props {
    * it; the rest get the stage's.
    */
   status?: boolean;
+  /**
+   * What the help disclosure calls itself, on the button and in the panel's
+   * own heading.
+   *
+   * "How to read this map" fits a guide whose panel is prose. fg03's panel is
+   * mostly a twelve-row symbol key, so it reads as a legend and should say so.
+   * It used to rewrite the button text after mount, which left the panel's
+   * heading saying one thing and the button another, and the pre-mount label
+   * stale for anyone who got there first.
+   */
+  howtoLabel?: string;
 }
 
 const {
@@ -60,6 +71,7 @@ const {
   helpCorner = 'top-left',
   as = 'figure',
   status = true,
+  howtoLabel = 'How to read this map',
   // Cast rather than annotate: the dynamic `Root` element below stops Astro
   // inferring Props for Astro.props, and an annotation would then demand every
   // optional prop at the call site.
@@ -104,7 +116,7 @@ const Caption = as === 'figure' ? 'figcaption' : 'div';
             />
             <circle cx="7.5" cy="4.3" r="0.95" fill="currentColor" />
           </svg>
-          <span>How to read this map</span>
+          <span>{howtoLabel}</span>
         </button>
 
         {
@@ -169,7 +181,7 @@ const Caption = as === 'figure' ? 'figcaption' : 'div';
     -->
     <div class="map-stage__howto" id={howtoId} data-map-howto hidden>
       <div class="map-stage__howto-head">
-        <h2 class="map-stage__howto-title">How to read this map</h2>
+        <h2 class="map-stage__howto-title">{howtoLabel}</h2>
         <button
           type="button"
           class="map-stage__howto-close"

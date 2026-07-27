@@ -1244,12 +1244,25 @@
     font-size: var(--text-sm);
   }
 
+  /* Stretched edge to edge the banner ran under the zoom stack and covered the
+     minus button: measured at 390x844, banner 12 to 378 across y 116 to 171
+     against a zoom group at 334 to 368 across y 78 to 144. It is
+     pointer-events: none so the button still worked, which is worse, not
+     better, because the control was invisible while remaining live. The
+     right edge now stops at the control gutter, the same reservation the
+     gesture hint makes. */
   .fg2-banner {
     top: calc(var(--space-3) + 3rem);
     left: var(--space-3);
-    right: var(--space-3);
+    /* The fallback is load-bearing: the banner is a child of .fg2-stage, not
+       of .map-stage, so --map-ctrl-gutter is out of scope here and without a
+       fallback the whole declaration is invalid and dropped, which made the
+       banner wider rather than narrower. 3.5rem is MapLibre's 10px control
+       margin plus its 34px button plus a gap. */
+    right: calc(var(--space-3) + var(--map-ctrl-gutter, 3.5rem));
     transform: none;
     max-width: none;
+    text-align: left;
   }
 
   .fg2-back-to-story {
