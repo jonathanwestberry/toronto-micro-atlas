@@ -38,7 +38,10 @@ const showingOpenFacilities = defaultAction === 'open';
       <h3>{actionLabels[defaultAction]} at {defaultSnapshotLabel}</h3>
     </div>
     <p data-fg03-results-count={defaultResultCount}>
-      {defaultResultCount} places
+      {defaultResultCount}{' '}
+      {showingOpenFacilities
+        ? (defaultResultCount === 1 ? 'facility record' : 'facility records')
+        : (defaultResultCount === 1 ? 'proposed place' : 'proposed places')}
     </p>
   </header>
 

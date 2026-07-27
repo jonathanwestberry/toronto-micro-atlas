@@ -234,14 +234,18 @@ export const facilitySourceLabelFor = (properties: FacilityProperties): string =
   sourceLabels[properties.source] ?? 'Official facility source';
 export const accessLabelFor = (access: InterventionProperties['accessCondition']): string =>
   access === 'fare_paid'
-    ? 'Fare-paid area, valid fare required'
+    ? 'Inside the fare gates, valid fare required'
     : access === 'unrestricted'
-      ? 'No fare required'
-      : 'Access condition unknown';
-export const closureLabelFor = (category: string): string =>
-  category === 'none'
-    ? 'No temporary or construction closure recorded'
-    : category.replaceAll('_', ' ');
+      ? 'Open to anyone, no fare required'
+      : 'Access condition not published';
+// Matches READER_LABELS in fg03-map.ts. The server list and the runtime detail
+// panel describe the same facility, so they must not word it two ways.
+export const closureLabelFor = (category: string): string => ({
+  none: 'No closure recorded',
+  construction: 'Closed for construction',
+  temporary: 'Temporarily closed',
+  seasonal: 'Closed for the season',
+}[category] ?? 'Not classified');
 export const guideDescription = gatePassed
   ? `At ${defaultSnapshotLabel}, Toronto has ${number.format(
       defaultPhase1.activeTransitPointCount,
@@ -308,6 +312,21 @@ export const defaultOpenResults = filterOpenFacilities(facilities, {
 export const defaultResultCount = defaultAction === 'open'
   ? defaultOpenResults.length
   : defaultResults.length;
+
+/**
+ * How many audited proposals of each kind this snapshot published.
+ *
+ * The action control offered "Retrofit accessibility" as an equal option and
+ * it returned nothing at every hour, because this snapshot has no retrofits at
+ * all: a control that cannot do anything, and no way to tell that apart from a
+ * filter combination that happened to be empty. The counts are read off the
+ * data so a later snapshot that does publish retrofits needs no code change.
+ */
+export const interventionCountsByAction: Record<string, number> =
+  interventions.features.reduce<Record<string, number>>((tally, { properties }) => {
+    tally[properties.action] = (tally[properties.action] ?? 0) + 1;
+    return tally;
+  }, {});
 
 export const riderConditionalCount =
   manifest.headlines.bySnapshot[defaultTime].phase1Grouped.farePaidOpenFacilityRecordCount;

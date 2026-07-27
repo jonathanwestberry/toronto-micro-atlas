@@ -12,8 +12,15 @@ import {
   defaultTime,
   defaultUrlAccess,
   defaultWalk,
+  interventionCountsByAction,
   number,
 } from '../data/fg03';
+
+// Each proposal option carries how many places it holds in this snapshot, so a
+// reader can see an option is empty before spending a click on it. Retrofit is
+// the one that is empty today.
+const proposalCount = (action: string): number =>
+  interventionCountsByAction[action] ?? 0;
 ---
 
 <form
@@ -123,7 +130,14 @@ import {
             value="extend"
             checked={defaultAction === 'extend'}
           />
-          <span>Extend hours</span>
+          <span>
+            Extend hours
+            <small class="fg03-choice-count">
+              {proposalCount('extend') === 0
+                ? 'none in this snapshot'
+                : `${proposalCount('extend')} places`}
+            </small>
+          </span>
         </label>
         <label>
           <input
@@ -132,7 +146,14 @@ import {
             value="new"
             checked={defaultAction === 'new'}
           />
-          <span>New facility zones</span>
+          <span>
+            New facility zones
+            <small class="fg03-choice-count">
+              {proposalCount('new') === 0
+                ? 'none in this snapshot'
+                : `${proposalCount('new')} places`}
+            </small>
+          </span>
         </label>
         <label>
           <input
@@ -141,7 +162,14 @@ import {
             value="verify"
             checked={defaultAction === 'verify'}
           />
-          <span>Verify published information</span>
+          <span>
+            Verify published information
+            <small class="fg03-choice-count">
+              {proposalCount('verify') === 0
+                ? 'none in this snapshot'
+                : `${proposalCount('verify')} places`}
+            </small>
+          </span>
         </label>
         <label>
           <input
@@ -150,7 +178,14 @@ import {
             value="retrofit"
             checked={defaultAction === 'retrofit'}
           />
-          <span>Retrofit accessibility</span>
+          <span>
+            Retrofit accessibility
+            <small class="fg03-choice-count">
+              {proposalCount('retrofit') === 0
+                ? 'none in this snapshot'
+                : `${proposalCount('retrofit')} places`}
+            </small>
+          </span>
         </label>
       </div>
     </fieldset>

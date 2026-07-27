@@ -142,12 +142,54 @@ const TIME_LABELS: Record<Snapshot, string> = {
   '2200': '10 p.m.',
   '0030': '12:30 a.m.',
 };
+/** Plural, for counting: "Showing 10 audited extend-hours opportunities". */
 const ACTION_LABELS: Record<Action, string> = {
   open: 'current open facility records',
   extend: 'audited extend-hours opportunities',
   new: 'audited new-facility zones',
   verify: 'audited information checks',
   retrofit: 'audited accessibility retrofits',
+};
+/** Singular, for one place: "Proposed change: Extend hours". */
+const ACTION_LABELS_ONE: Record<Action, string> = {
+  open: 'Currently open',
+  extend: 'Extend hours',
+  new: 'New facility zone',
+  verify: 'Verify published information',
+  retrofit: 'Accessibility retrofit',
+};
+/**
+ * Dataset values written for a reader.
+ *
+ * The detail panel used to print these straight out of the GeoJSON, so a
+ * reader got "unrestricted", "none" and "unknown" as answers to questions
+ * they had asked in English. Every value below appears in the published
+ * snapshot; anything unrecognised falls back to a "not published" phrasing
+ * rather than leaking the raw token.
+ */
+const READER_LABELS: Record<string, Record<string, string>> = {
+  access: {
+    unrestricted: 'Open to anyone, no fare required',
+    fare_paid: 'Inside the fare gates, valid fare required',
+    unknown: 'Access condition not published',
+  },
+  closure: {
+    none: 'No closure recorded',
+    construction: 'Closed for construction',
+    temporary: 'Temporarily closed',
+    seasonal: 'Closed for the season',
+  },
+  accessibility: {
+    accessible: 'Step-free access recorded',
+    inaccessible: 'No step-free access recorded',
+    unknown: 'Not published',
+  },
+  stability: {
+    robust: 'Holds up under the robustness rules',
+  },
+  audit: {
+    valid: 'Checked by hand against the source',
+  },
 };
 const MAP_MAX_ZOOM = 18.5;
 const STALE_AFTER_DAYS = 45;
@@ -983,6 +1025,17 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
     }
   };
 
+  /**
+   * What one row in the list actually is. Open washrooms are facility records
+   * from the city's datasets; everything else is an audited proposal.
+   */
+  const countedUnit = (action: Action, count: number): string => {
+    if (action === 'open') {
+      return count === 1 ? 'facility record' : 'facility records';
+    }
+    return count === 1 ? 'proposed place' : 'proposed places';
+  };
+
   const statusText = (count: number): string => {
     return formatStatus({
       action: currentState.action,
@@ -1047,7 +1100,7 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
     // proposal, and only then the facts underneath it.
     const rawAction = String(properties.action ?? 'open');
     const isProposal = rawAction !== 'open';
-    const actionLabel = ACTION_LABELS[rawAction as Action] ?? rawAction;
+    const actionLabel = ACTION_LABELS_ONE[rawAction as Action] ?? rawAction;
     const rows: Array<[string, string]> = [
       isProposal
         ? ['What this is', 'A change I am proposing here, not an open washroom']
@@ -1057,12 +1110,17 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
       rows.push(['Proposed change', actionLabel]);
     }
     rows.push(
-      ['Access', String(properties.accessCondition ?? 'unknown')],
+      ['Access', READER_LABELS.access[String(properties.accessCondition)]
+        ?? 'Access condition not published'],
       ['Hours', String(properties.hours ?? 'Not published')],
-      ['Closure', String(properties.closureCategory ?? 'Not classified')],
-      ['Accessibility', String(properties.accessibility ?? 'Not published')],
-      ['Stability', String(properties.stability ?? 'Not evaluated')],
-      ['Audit', String(properties.auditStatus ?? 'Not applicable')],
+      ['Closure', READER_LABELS.closure[String(properties.closureCategory)]
+        ?? 'Not classified'],
+      ['Accessibility', READER_LABELS.accessibility[String(properties.accessibility)]
+        ?? 'Not published'],
+      ['Stability', READER_LABELS.stability[String(properties.stability)]
+        ?? 'Not evaluated'],
+      ['Audit', READER_LABELS.audit[String(properties.auditStatus)]
+        ?? 'Not applicable'],
     );
     const metrics = metricsFor(feature);
     if (metrics) {
@@ -1203,8 +1261,14 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
     hoursGroup.hidden = hours.length === 0;
     accessibilityGroup.hidden = accessibility.length === 0;
     if (resultsCount) {
+      // "places" hid which grain was being counted. The proof above the
+      // explorer counts unrestricted *access points*, which groups co-located
+      // records: 324 at noon. This list counts facility *records*: 332 at the
+      // same hour. Both are right and the page explains the difference, but
+      // while the label said "places" the two numbers just looked wrong next
+      // to each other. At 10 p.m. they both read 6, so nothing gave it away.
       resultsCount.textContent = `${currentFeatures.length.toLocaleString('en-CA')} ${
-        currentFeatures.length === 1 ? 'place' : 'places'
+        countedUnit(currentState.action, currentFeatures.length)
       }`;
       resultsCount.setAttribute(
         'data-fg03-results-count',

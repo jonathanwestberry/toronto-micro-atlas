@@ -544,6 +544,16 @@
   margin-top: 0.25rem;
 }
 
+/* How many places an option holds, so an empty one says so before it is
+   chosen. Sits under the option name, quieter than it. */
+.fg03-choice-count {
+  display: block;
+  font-size: 0.6875rem;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--fg03-ink-muted);
+}
+
 .fg03-control-tools {
   border-top: 1px solid var(--fg03-line);
   display: grid;
