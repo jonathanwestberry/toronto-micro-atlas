@@ -838,6 +838,253 @@
   transform: rotate(45deg);
 }
 
+/* The cross and the plus are strokes on the map, not filled shapes, so the
+   swatch is the glyph itself. It used to inherit .fg03-symbol's box, which drew
+   a square around a mark that has no square. */
+.fg03-symbol--cross {
+  background: none;
+  border: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  height: auto;
+  line-height: 0.75rem;
+  text-align: center;
+  width: 0.75rem;
+}
+
+.fg03-symbol--rule {
+  background: none;
+  border: 0;
+  border-top: 2px dashed var(--fg03-mauve);
+  height: 0;
+  width: 1rem;
+}
+
+/* The rail's folded copy. The legend inside keeps its own grid, so the
+   disclosure only supplies the summary row and the border it hangs from. */
+.fg03-legend-disclosure {
+  border-top: 1px solid var(--fg03-line);
+  font-family: var(--fg03-ui);
+  font-size: 0.8125rem;
+}
+
+.fg03-legend-disclosure > summary {
+  cursor: pointer;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0.75rem 0;
+}
+
+.fg03-legend-disclosure > summary:focus-visible {
+  outline: 2px solid var(--fg03-mauve);
+  outline-offset: 2px;
+}
+
+.fg03-legend-disclosure .fg03-legend {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.fg03-rank-basis {
+  color: var(--fg03-ink-muted);
+  font-family: var(--fg03-ui);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  padding: 0.75rem 0 0;
+}
+
+.fg03-rank-basis[hidden] {
+  display: none;
+}
+
+/*
+  Everything below draws inside the map frame. The map container is
+  position: relative, so each of these anchors to the canvas the reader is
+  looking at rather than to a page they may have scrolled past.
+*/
+.fg03-map-title {
+  background: rgba(243, 237, 221, 0.94);
+  border: 1px solid var(--fg03-line-strong);
+  font-family: var(--fg03-ui);
+  left: 0.75rem;
+  max-width: min(20rem, calc(100% - 1.5rem));
+  padding: 0.5rem 0.75rem;
+  pointer-events: none;
+  position: absolute;
+  /* Clear of the stage's "How to read this map" button, which owns top-left. */
+  top: 3.5rem;
+  z-index: 3;
+}
+
+.fg03-map-title[hidden] {
+  display: none;
+}
+
+
+.fg03-map-title-count {
+  font-size: 0.9375rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.fg03-map-title-filters {
+  color: var(--fg03-ink-muted);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  margin-top: 0.125rem;
+}
+
+.fg03-map-veil {
+  background: rgba(243, 237, 221, 0.96);
+  border: 2px solid var(--fg03-ink);
+  display: grid;
+  font-family: var(--fg03-ui);
+  font-size: 0.8125rem;
+  gap: 0.75rem;
+  justify-items: center;
+  left: 50%;
+  line-height: 1.5;
+  max-width: min(22rem, calc(100% - 2rem));
+  padding: 1.25rem;
+  position: absolute;
+  text-align: center;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+}
+
+.fg03-map-veil[hidden] {
+  display: none;
+}
+
+.fg03-map-veil button[hidden] {
+  display: none;
+}
+
+.fg03-map-card {
+  background: var(--fg03-paper-raised);
+  border-top: 2px solid var(--fg03-ink);
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--fg03-ui);
+  font-size: 0.8125rem;
+  left: 0;
+  line-height: 1.5;
+  /* Half the frame at most. A published-hours string can run seven days long,
+     and a card that grows to fit one covers the map it is a note about. */
+  max-height: 52%;
+  padding: 0.75rem 1rem 1rem;
+  position: absolute;
+  right: 0;
+  z-index: 5;
+}
+
+.fg03-map-card[hidden] {
+  display: none;
+}
+
+.fg03-map-card-head {
+  align-items: start;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+.fg03-map-card-head h4 {
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+/* Only the facts scroll. The way out and the way onward stay put, or a long
+   hours string pushes both off the bottom of the card. */
+.fg03-map-card dl {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.fg03-map-card dl > div {
+  display: grid;
+  gap: 0.125rem 0.5rem;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+}
+
+.fg03-map-card dt {
+  color: var(--fg03-ink-muted);
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.fg03-map-card button {
+  flex: 0 0 auto;
+  margin-top: 0.75rem;
+}
+
+.fg03-map-card-head {
+  flex: 0 0 auto;
+}
+
+.fg03-map-card-head button {
+  margin-top: 0;
+}
+
+/* Follows the cursor, so it must never sit under it and swallow the click. */
+.fg03-map-hover-label {
+  background: rgba(26, 31, 42, 0.94);
+  color: #f3eddd;
+  font-family: var(--fg03-ui);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.2;
+  max-width: 12rem;
+  overflow: hidden;
+  padding: 0.25rem 0.4rem;
+  pointer-events: none;
+  position: absolute;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  z-index: 4;
+}
+
+.fg03-map-hover-label[hidden] {
+  display: none;
+}
+
+/* The stage's zoom group is top-right; this hangs directly beneath it, because
+   the way back out of a selection should be where the way in and out of zoom
+   already is. */
+/* The stage sizes its help panel for three paragraphs, which is what its other
+   guides put in there. This one now carries the whole symbol key, so at the
+   stage's 30ch every row wraps to three lines and the panel grows past the
+   bottom of a frame that clips it. Wider and scrollable, only on fg03. A stage
+   default of max-height plus overflow would serve every guide better; that is a
+   shared change this map was not free to make. */
+.fg03 .map-stage__howto {
+  max-height: calc(100% - 2.25rem - 2 * var(--space-3));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  width: min(42ch, calc(100% - 2 * var(--space-3)));
+}
+
+/* Three classes deliberately: the stage pins every control button to a 32px
+   square, which is right for an icon and wrong for a word. This one is the only
+   labelled control on the map, so it is the only one that opts out. */
+.fg03 .map-stage .fg03-fit-control button {
+  font-family: var(--fg03-ui);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0 0.625rem;
+  white-space: nowrap;
+  width: auto;
+}
+
 .fg03-map-figure figcaption {
   border-top: 1px solid var(--fg03-line);
   color: var(--fg03-ink-muted);
@@ -1216,6 +1463,18 @@
     grid-column: 2;
   }
 
+  /* The 5rem first column exists to hold the "Legend" heading beside the rows.
+     The rail disclosure and the howto panel both name themselves already, so
+     without this they reserve an empty 5rem gutter inside a narrow column. */
+  .fg03-legend--headless {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fg03-legend--headless > p,
+  .fg03-legend--headless > ul {
+    grid-column: 1;
+  }
+
   .fg03-legend ul {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1301,6 +1560,21 @@
 
   .fg03-map-instructions {
     font-size: 0.6875rem;
+  }
+}
+
+/* The stage's own breakpoint. Below it the gesture hint leaves the bottom
+   centre and moves into the top-left, landing exactly on the title block until
+   the reader first touches the map, which is precisely when the title is worth
+   reading. Same corner, so the title drops below the hint. */
+@media (max-width: 640px) {
+  .fg03-map-title {
+    left: 0.5rem;
+    /* Stops short of the control column. At this width the zoom pair and the
+       fit button are a tall stack down the right edge, and a title running the
+       full width slides underneath them. */
+    max-width: calc(100% - 8rem);
+    top: 6rem;
   }
 }
 
