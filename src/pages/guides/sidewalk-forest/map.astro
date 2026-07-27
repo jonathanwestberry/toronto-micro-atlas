@@ -54,9 +54,10 @@ const guideHref = `${base}/guides/sidewalk-forest/`;
             identify.
           </p>
           <p>
-            Use the Families list to show one family at a time, or search a street name to jump
-            to it. With the map focused, arrow keys pan, plus and minus zoom, and Enter reads the
-            tree under the crosshair.
+            Use "Show one family" to keep a single family on screen, or search a street name to
+            jump to it. Either way a line appears saying what is left showing, with the way back
+            attached. With the map focused, arrow keys pan, plus and minus zoom, and Enter reads
+            the tree under the crosshair.
           </p>
         </Fragment>
 
@@ -84,6 +85,13 @@ const guideHref = `${base}/guides/sidewalk-forest/`;
           <circle cx="16" cy="16" r="1.5" fill="currentColor" stroke="none" />
         </svg>
       </div>
+
+      <!--
+        The visible half of everything the map says. aria-hidden on purpose:
+        #fg2-announcer below is the live region, and one event should be
+        announced once. See showStatus in fg02-map.ts.
+      -->
+      <p class="fg2-banner" id="fg2-banner" data-tone="idle" aria-hidden="true" hidden></p>
 
       <div class="visually-hidden" id="fg2-announcer" role="status" aria-live="polite"></div>
 
@@ -157,6 +165,20 @@ const guideHref = `${base}/guides/sidewalk-forest/`;
   @media (min-width: 768px) {
     .fg2--map-route .fg2-panel {
       top: calc(var(--space-6) + 2.5rem);
+      /* Pushing the panel down by the height of "Back to the guide" also has to
+         take that height off what it is allowed to fill, or the bottom edge
+         walks off the map by exactly the amount the top edge moved. */
+      max-height: calc(100% - var(--space-12) - 2.5rem);
+    }
+  }
+
+  /* Scale bar, street readout and attribution share the bottom-left corner with
+     the panel's lower edge, and the panel wins on stacking order. Now that the
+     corner carries a measurement the reader is meant to use, it moves clear of
+     the panel's column rather than hiding behind it. */
+  @media (min-width: 768px) {
+    .fg2--map-route .maplibregl-ctrl-bottom-left {
+      left: calc(300px + var(--space-6) + var(--space-3));
     }
   }
 
@@ -165,7 +187,10 @@ const guideHref = `${base}/guides/sidewalk-forest/`;
      collapsed height rather than left to be covered. */
   @media (max-width: 767px) {
     .fg2--map-route .maplibregl-ctrl-bottom-left {
-      bottom: calc(var(--space-3) + 4rem);
+      /* Clears the collapsed sheet: 12px offset plus its 84px shut height,
+         which grew when the handle went to a 44px thumb target. Measured at
+         390x844; attribution is a licence obligation and must not be sat on. */
+      bottom: calc(var(--space-3) + 6rem);
     }
   }
 

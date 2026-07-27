@@ -153,6 +153,12 @@ class SidewalkForest {
   private wardMarkers: maplibregl.Marker[] = [];
   private streets: [string, number, number, number][] | null = null;
   private announcer: HTMLElement | null;
+  private banner: HTMLElement | null;
+  private statusTimer = 0;
+  /** True while an event line is holding the banner against the zoom rule. */
+  private statusHeld = false;
+  private locatorEl: HTMLElement | null = null;
+  private exploreControlsAdded = false;
   private scrollyEl: HTMLElement;
   private bloomRaf = 0;
 
@@ -170,11 +176,16 @@ class SidewalkForest {
   private streetFilter: number | null = null;
 
   /**
-   * Told when a street is isolated (or cleared), so the panel can say so on
-   * screen. A change the reader can only hear in a live region is a change
+   * Told what the map is narrowed to, as one finished sentence, or null when
+   * nothing is. A change the reader can only hear in a live region is a change
    * most readers never learn about.
+   *
+   * Family and street both report here. They used to differ: a street painted
+   * a gold chip, a family wrote to the announcer and nothing else, so the same
+   * act of dimming nine tenths of the map was accounted for or not depending
+   * on which control you happened to use.
    */
-  onIsolatedStreet: ((name: string | null, count: number) => void) | undefined;
+  onNarrowed: ((sentence: string | null) => void) | undefined;
 
   /** Re-run the data load after the stage's Retry. */
   reloadLayers(): void {
@@ -185,6 +196,7 @@ class SidewalkForest {
     this.base = base;
     this.scrollyEl = scrollyEl;
     this.announcer = document.getElementById('fg2-announcer');
+    this.banner = document.getElementById('fg2-banner');
 
     this.map = new maplibregl.Map({
       container,
@@ -473,7 +485,7 @@ class SidewalkForest {
       e.preventDefault();
       if (this.map.getZoom() < XF_HI) {
         this.map.easeTo({ zoom: 15.6, duration: prefersReducedMotion() ? 0 : 700 });
-        this.announce('Zooming in. Press Enter again to identify the tree at the crosshair.');
+        this.showStatus('Zooming in. Press Enter again to identify the tree at the crosshair.');
         return;
       }
       const centre = this.map.getCenter();
@@ -486,11 +498,16 @@ class SidewalkForest {
       if (hits.length > 0) {
         this.openTreePopup(hits[0], centre, true);
       } else {
-        this.announce('No tree at the crosshair. Use the arrow keys to move, or press plus to zoom in.');
+        this.showStatus('No tree at the crosshair. Use the arrow keys to move, or press plus to zoom in.', 3000);
       }
     });
     canvas.addEventListener('focus', () => this.scrollyEl.classList.add('fg2-map-focused'));
     canvas.addEventListener('blur', () => this.scrollyEl.classList.remove('fg2-map-focused'));
+    // The stage focuses the canvas on the map's first idle, and with only a
+    // background layer in the initial style that idle beats the tree data, so
+    // it also beats these listeners. The reader arrived with the canvas focused
+    // and no crosshair, and a second focus event was never coming.
+    if (document.activeElement === canvas) this.scrollyEl.classList.add('fg2-map-focused');
   }
 
   private promoteBaseOnce = (): void => {
@@ -617,21 +634,9 @@ class SidewalkForest {
     this.applyCircleFilter();
     document.querySelectorAll<HTMLButtonElement>('.fg2-legend button[data-genus]')
       .forEach((b) => b.setAttribute('aria-pressed', 'false'));
-    this.onIsolatedStreet?.(name, count);
-    this.announce(
-      `Showing only the ${count.toLocaleString('en-CA')} trees on ${name}. Tap any dot to identify it.`,
-    );
-  }
-
-  /** Put every other tree back. */
-  clearStreet(): void {
-    if (this.streetFilter === null) return;
-    this.streetFilter = null;
-    this.currentBaseOpacity = 1;
-    this.map.setPaintProperty('trees-base', 'raster-opacity', this.rasterOpacityExpr(1));
-    this.applyCircleFilter();
-    this.onIsolatedStreet?.(null, 0);
-    this.announce('Showing every street tree again.');
+    const sentence = `Showing ${name} only, ${count.toLocaleString('en-CA')} trees. Everything else is dimmed.`;
+    this.onNarrowed?.(sentence);
+    this.showStatus(sentence);
   }
 
   private moveCamera(camera: Chapter['camera'], instant: boolean): void {
@@ -669,12 +674,23 @@ class SidewalkForest {
     this.scrollyEl.dataset.mode = mode;
     if (mode === 'explore') {
       this.applyChapter('find-yours');
-      this.announce('Explorer active. Zoom in until dots separate, then tap a tree to identify it.');
+      this.addExploreControls();
+      // The zoom rule takes over as soon as this one expires, so the reader
+      // never has to remember the greeting to know what the dots will do.
+      this.showStatus('Explorer active. Zoom in until dots separate, then tap a tree to identify it.');
+      // Zoom changes what a click can do, so it changes what the banner says.
+      this.map.on('zoom', this.onZoomForStatus);
     } else {
+      this.map.off('zoom', this.onZoomForStatus);
       this.isolate(null);
       this.popup?.remove();
+      this.paintBanner('', 'idle');
     }
   }
+
+  private onZoomForStatus = (): void => {
+    if (!this.statusHeld) this.restStatus();
+  };
 
   /*
    * enterExplore / exitExplore are gone.
@@ -694,28 +710,34 @@ class SidewalkForest {
     this.setOverlay(key);
   }
 
-  /** Legend isolation: null restores all categories. */
+  /**
+   * Legend isolation: null restores all categories, and is also the single
+   * "show all trees" used by the chip, both reset buttons and the story exit,
+   * whichever narrowing is live.
+   */
   isolate(genus: number | null): void {
     if (!this.meta) return;
     this.clearSelection();
     // Picking a family is a new question, so it drops any street narrowing
     // rather than silently intersecting with it.
-    if (this.streetFilter !== null) {
-      this.streetFilter = null;
-      this.onIsolatedStreet?.(null, 0);
-    }
+    const wasNarrowed = this.streetFilter !== null || this.genusFilter !== null;
+    this.streetFilter = null;
     if (genus === null) {
       this.map.setPaintProperty('trees-base', 'raster-opacity', this.rasterOpacityExpr(1));
       this.currentBaseOpacity = 1;
       this.setOverlay(null);
       this.setCircleGenus(null);
+      this.onNarrowed?.(null);
+      if (wasNarrowed) this.showStatus('Showing every street tree again.');
     } else {
-      const key = `cat-${this.meta.categories[genus].key}`;
+      const cat = this.meta.categories[genus];
       this.currentBaseOpacity = 0.12;
       this.map.setPaintProperty('trees-base', 'raster-opacity', this.rasterOpacityExpr(0.12));
-      this.setOverlay(key);
+      this.setOverlay(`cat-${cat.key}`);
       this.setCircleGenus(genus);
-      this.announce(`Showing only ${this.meta.categories[genus].label}, ${this.meta.categories[genus].count.toLocaleString('en-CA')} trees.`);
+      const sentence = `Showing ${cat.label} only, ${cat.count.toLocaleString('en-CA')} trees. Everything else is dimmed.`;
+      this.onNarrowed?.(sentence);
+      this.showStatus(sentence);
     }
     document.querySelectorAll<HTMLButtonElement>('.fg2-legend button[data-genus]').forEach((b) => {
       b.setAttribute('aria-pressed', String(Number(b.dataset.genus) === genus));
@@ -750,7 +772,12 @@ class SidewalkForest {
         [e.point.x + 8, e.point.y + 8],
       ];
       const hits = this.map.queryRenderedFeatures(bbox, { layers: ['trees-circles'] });
-      if (hits.length === 0) return;
+      if (hits.length === 0) {
+        // A miss used to be a silent no-op, which reads as a broken map rather
+        // than as a near miss. Short hold: this is a correction, not news.
+        this.showStatus('No tree there. Try tapping a dot directly.', 2000);
+        return;
+      }
       this.openTreePopup(hits[0], e.lngLat);
     });
 
@@ -804,7 +831,7 @@ class SidewalkForest {
     this.popup.on('close', () => this.clearSelection());
     this.selectTree([coords[0], coords[1]], p.d, p.g);
 
-    this.announce(`${common}. ${botanical}. ${bits.join('. ')}`);
+    this.showStatus(`${common}. ${botanical}. ${bits.join('. ')}`);
 
     // Keyboard-opened popups move focus into the popup so the answer, the map
     // link, and dismissal are all reachable without a pointer.
@@ -867,15 +894,13 @@ class SidewalkForest {
    * store in `t`. That is what lets a search result isolate its own trees.
    */
   async searchStreets(query: string): Promise<StreetHit[]> {
-    if (!this.streets) {
-      const res = await fetch(`${this.base}data/fg02/streets.json`);
-      this.streets = (await res.json()) as [string, number, number, number][];
-    }
+    const streets = await this.loadStreets();
+    if (!streets) return [];
     const q = query.trim().toLowerCase();
     if (q.length < 2) return [];
     const starts: StreetHit[] = [];
     const contains: StreetHit[] = [];
-    this.streets.forEach(([name, lng, lat, count], id) => {
+    streets.forEach(([name, lng, lat, count], id) => {
       if (starts.length >= 8) return;
       const lower = name.toLowerCase();
       if (lower.startsWith(q)) starts.push({ id, name, lng, lat, count });
@@ -884,9 +909,26 @@ class SidewalkForest {
     return [...starts, ...contains].slice(0, 8);
   }
 
-  goToStreet(lng: number, lat: number, name: string): void {
+  /**
+   * The street table, fetched once and shared by search and the locator chip.
+   * Null on failure: search degrades to no results and the locator stays
+   * hidden, neither of which is worth an error state over.
+   */
+  private async loadStreets(): Promise<[string, number, number, number][] | null> {
+    if (this.streets) return this.streets;
+    try {
+      const res = await fetch(`${this.base}data/fg02/streets.json`);
+      if (!res.ok) return null;
+      this.streets = (await res.json()) as [string, number, number, number][];
+      return this.streets;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Fly to a search hit. isolateStreet, called right after, does the talking. */
+  goToStreet(lng: number, lat: number): void {
     this.map.easeTo({ center: [lng, lat], zoom: 15.4, duration: prefersReducedMotion() ? 0 : 1100 });
-    this.announce(`Moved to ${name}. Tap any dot to identify the tree.`);
   }
 
   // -------------------------------------------------------------------------
@@ -1024,9 +1066,124 @@ class SidewalkForest {
     ];
   }
 
-  private announce(message: string): void {
+  /**
+   * Say something once, in both registers.
+   *
+   * Everything this map had to report went to #fg2-announcer alone, which is
+   * clipped to a one-pixel box: the strings were good and almost nobody read
+   * them. The banner is the same words, on screen. After `holdMs` the banner
+   * falls back to the standing rule for the current zoom, so a message never
+   * outlives the moment it described.
+   */
+  private showStatus(message: string, holdMs = 4200): void {
     if (this.announcer) this.announcer.textContent = message;
+    window.clearTimeout(this.statusTimer);
+    if (this.mode !== 'explore') return;
+    this.statusHeld = true;
+    this.paintBanner(message, 'event');
+    this.statusTimer = window.setTimeout(() => {
+      this.statusHeld = false;
+      this.restStatus();
+    }, holdMs);
   }
+
+  /**
+   * The banner's resting text: what the dots will do if you touch them right
+   * now. Below the crossfade a click cannot resolve one tree, so it dives
+   * instead, and nothing on screen said so.
+   */
+  private restStatus(): void {
+    if (this.mode !== 'explore') {
+      this.paintBanner('', 'idle');
+      return;
+    }
+    this.paintBanner(
+      this.map.getZoom() < XF_HI
+        ? 'Too far out to pick a single tree. Zoom in, or click anywhere to jump closer.'
+        : 'Tap any dot to identify it.',
+      'idle',
+    );
+  }
+
+  private paintBanner(message: string, tone: 'idle' | 'event'): void {
+    if (!this.banner) return;
+    this.banner.textContent = message;
+    this.banner.dataset.tone = tone;
+    this.banner.hidden = message === '';
+  }
+
+  // --- Where am I ------------------------------------------------------------
+
+  /**
+   * Scale bar and street readout, added on the way into explore mode rather
+   * than in the constructor: the story map is a camera the reader never
+   * drives, and measurement furniture on it is decoration.
+   */
+  private addExploreControls(): void {
+    if (this.exploreControlsAdded) return;
+    this.exploreControlsAdded = true;
+
+    this.map.addControl(new maplibregl.ScaleControl({ maxWidth: 100, unit: 'metric' }), 'bottom-left');
+
+    // Chosen over map labels because the style carries no glyph endpoint, and
+    // because the tiles already answer the question directly: every tree knows
+    // its street, so the trees around the centre of the screen are the most
+    // reliable statement of where the centre of the screen is.
+    const locator = document.createElement('div');
+    locator.className = 'fg2-locator maplibregl-ctrl';
+    locator.hidden = true;
+    this.locatorEl = locator;
+    this.map.addControl(
+      { onAdd: () => locator, onRemove: () => locator.remove() } as maplibregl.IControl,
+      'bottom-left',
+    );
+
+    this.map.on('moveend', this.updateLocator);
+    void this.updateLocator();
+  }
+
+  private updateLocator = async (): Promise<void> => {
+    const el = this.locatorEl;
+    if (!el) return;
+    if (this.mode !== 'explore' || this.map.getZoom() < XF_HI) {
+      el.hidden = true;
+      return;
+    }
+    // The glow layer, not the circles: circles carry the family and street
+    // filters, so once the reader narrows anything the answer would go blank
+    // exactly when knowing where you are matters most.
+    const c = this.map.project(this.map.getCenter());
+    const box: [maplibregl.PointLike, maplibregl.PointLike] = [
+      [c.x - 60, c.y - 60],
+      [c.x + 60, c.y + 60],
+    ];
+    // The nearest tree, not the most common street in the box. A wide box on a
+    // downtown grid holds four or five streets, and the busiest of them is
+    // often the one you are not standing on: searching Ossington and being told
+    // "near Concord" is worse than no readout at all.
+    let best = -1;
+    let bestDist = Infinity;
+    for (const f of this.map.queryRenderedFeatures(box, { layers: ['trees-glow'] })) {
+      const t = (f.properties as { t?: number }).t;
+      if (typeof t !== 'number' || f.geometry.type !== 'Point') continue;
+      const [lng, lat] = f.geometry.coordinates as [number, number];
+      const pt = this.map.project([lng, lat]);
+      const dist = (pt.x - c.x) ** 2 + (pt.y - c.y) ** 2;
+      if (dist < bestDist) { bestDist = dist; best = t; }
+    }
+    if (best < 0) {
+      el.hidden = true;
+      return;
+    }
+    const streets = await this.loadStreets();
+    const row = streets?.[best];
+    if (!row) {
+      el.hidden = true;
+      return;
+    }
+    el.textContent = `Near ${row[0]}`;
+    el.hidden = false;
+  };
 
   destroy(): void {
     try { this.map.remove(); } catch { /* already gone */ }
@@ -1134,6 +1291,12 @@ export function initSidewalkForest(options: InitSidewalkForestOptions = {}): voi
         if (!id) continue;
         steps.forEach((s) => s.classList.toggle('is-active', s === entry.target));
         forest.applyChapter(id);
+        // Re-entering the chapter repaints the Norway overlay, so the toggle's
+        // own copy has to come back with it or the caption starts lying.
+        if (id === 'import-flag' && mapleShowing !== 'norway') {
+          mapleShowing = 'norway';
+          paintMaple();
+        }
       }
     },
     { rootMargin: '-45% 0px -45% 0px' },
@@ -1144,14 +1307,30 @@ export function initSidewalkForest(options: InitSidewalkForestOptions = {}): voi
   // (wired below), not by scrolling a sentinel into view.
 
   // --- Maple toggle ----------------------------------------------------------
+  //
+  // The button says what pressing it will do, which is the opposite of what is
+  // on the map, and it was the only text near the toggle. A reader arriving
+  // mid-chapter read "Show the sugar maples" over a field of dots and had no
+  // way to know those dots were the Norway ones. The caption states the
+  // present tense; the button keeps the future.
+  const MAPLE_COPY = {
+    norway: { button: 'Show the sugar maples', state: 'On the map: Norway maples, 69,474' },
+    sugar: { button: 'Show the Norway maples', state: 'On the map: sugar maples, 11,325' },
+  } as const;
   const mapleBtn = document.getElementById('fg2-maple-toggle');
+  const mapleState = document.getElementById('fg2-maple-state');
+  let mapleShowing: 'norway' | 'sugar' = 'norway';
+  const paintMaple = (): void => {
+    if (mapleBtn) mapleBtn.textContent = MAPLE_COPY[mapleShowing].button;
+    if (mapleState) mapleState.textContent = MAPLE_COPY[mapleShowing].state;
+  };
   if (mapleBtn) {
-    let showing: 'norway' | 'sugar' = 'norway';
     mapleBtn.addEventListener('click', () => {
-      showing = showing === 'norway' ? 'sugar' : 'norway';
-      forest.applyChapterOverlayOnly(`maples-${showing}`);
-      mapleBtn.textContent = showing === 'norway' ? 'Show the sugar maples' : 'Show the Norway maples';
+      mapleShowing = mapleShowing === 'norway' ? 'sugar' : 'norway';
+      forest.applyChapterOverlayOnly(`maples-${mapleShowing}`);
+      paintMaple();
     });
+    paintMaple();
   }
 
   // The "Explore" and "Back" controls are plain links to and from
@@ -1162,6 +1341,11 @@ export function initSidewalkForest(options: InitSidewalkForestOptions = {}): voi
   // Panel collapse (matters most on phones, where the panel is a bottom sheet)
   const panelToggle = document.getElementById('fg2-panel-toggle');
   const panel = document.getElementById('fg2-panel');
+  const expandPanel = (): void => {
+    if (!panel || !panelToggle) return;
+    panel.classList.remove('is-collapsed');
+    panelToggle.setAttribute('aria-expanded', 'true');
+  };
   if (panelToggle && panel) {
     panelToggle.addEventListener('click', () => {
       const collapsed = panel.classList.toggle('is-collapsed');
@@ -1205,7 +1389,7 @@ export function initSidewalkForest(options: InitSidewalkForestOptions = {}): voi
           c.textContent = `${count.toLocaleString('en-CA')} trees`;
           b.append(label, c);
           b.addEventListener('click', () => {
-            forest.goToStreet(lng, lat, name);
+            forest.goToStreet(lng, lat);
             forest.isolateStreet(id, name, count);
             results.replaceChildren();
             input.value = name;
@@ -1220,22 +1404,27 @@ export function initSidewalkForest(options: InitSidewalkForestOptions = {}): voi
     });
   }
 
-  // --- "Showing only ..." chip ---------------------------------------------------
+  // Search's permanent door on phones, where the panel starts shut. It has to
+  // do both halves of the job: open the drawer and land the caret, or the
+  // reader arrives at an expanded panel still hunting for the field.
+  document.getElementById('fg2-panel-search-jump')?.addEventListener('click', () => {
+    expandPanel();
+    input?.focus();
+    input?.select();
+  });
+
+  // --- "Showing ..." chip ---------------------------------------------------
   const isolated = document.getElementById('fg2-isolated');
   const isolatedText = document.getElementById('fg2-isolated-text');
   document.getElementById('fg2-isolated-clear')?.addEventListener('click', () => {
-    forest.clearStreet();
+    // One way out, whichever narrowing put the chip there.
+    forest.isolate(null);
     input?.focus();
   });
-  forest.onIsolatedStreet = (name, count) => {
+  forest.onNarrowed = (sentence) => {
     if (!isolated || !isolatedText) return;
-    if (name === null) {
-      isolated.hidden = true;
-      isolatedText.textContent = '';
-      return;
-    }
-    isolatedText.textContent = `Showing the ${count.toLocaleString('en-CA')} trees on ${name}.`;
-    isolated.hidden = false;
+    isolatedText.textContent = sentence ?? '';
+    isolated.hidden = sentence === null;
   };
 
   // --- Cleanup on view transition ----------------------------------------------
