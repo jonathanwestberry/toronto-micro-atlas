@@ -297,6 +297,31 @@ test('the expanded route arms every gesture up front and hides the hint', () => 
   assert.equal(stage.isActive(), true, 'the expanded route is always live');
 });
 
+test('an inert stage never arms a gesture and never offers to', () => {
+  const f = setup();
+  const stage = build(f, { gestures: 'inert' });
+
+  assert.deepEqual(
+    f.map.calls,
+    ['scrollZoom:disable', 'touchZoomRotate:disable', 'dragPan:disable'],
+    'a scrollytelling map is a camera the story drives, not a map the reader drives',
+  );
+  assert.equal(f.hint.hasAttribute('hidden'), true, 'no invitation to a mode that does not exist');
+  assert.equal(f.root.dataset.mapActive, 'false');
+
+  // The gate's activation paths must not exist here. Clicking a tappable
+  // marker inside the story used to arm scroll-zoom behind the reader and
+  // leave it armed, because activation listens on the stage root.
+  f.root.dispatch('pointerdown');
+  f.root.dispatch('keydown', { key: 'Enter' });
+  assert.equal(stage.isActive(), false);
+  assert.deepEqual(
+    f.map.calls,
+    ['scrollZoom:disable', 'touchZoomRotate:disable', 'dragPan:disable'],
+    'no gesture call after a click: the story keeps the scroll',
+  );
+});
+
 test('Escape on the expanded route follows the back link', () => {
   const f = setup({ withBack: true });
   build(f, { expanded: true, expandPath: undefined });

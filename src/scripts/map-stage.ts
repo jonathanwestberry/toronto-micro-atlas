@@ -66,6 +66,19 @@ export interface MapStageOptions {
   expandPath?: string;
   /** Called when the reader hits Retry in the error state. */
   onRetry?: () => void;
+  /**
+   * How the embedded map treats the reader's gestures.
+   *
+   * `gated` (default) suits a map you browse in place: it holds scroll-zoom
+   * back until the reader clicks, then hands the map over.
+   *
+   * `inert` suits a scrollytelling map, where the scroll *is* the story and
+   * the map is a camera driven by it. There is no state in which the reader
+   * wants the map to eat a scroll, so the stage never arms one and never
+   * offers to. fg02's story map already sets `pointer-events: none` for the
+   * same reason; this stops the stage promising a mode the CSS forbids.
+   */
+  gestures?: 'gated' | 'inert';
 }
 
 const COARSE_POINTER = '(hover: none), (pointer: coarse)';
@@ -82,6 +95,7 @@ export class MapStage {
   private expanded: boolean;
   private expandPath: string | undefined;
   private onRetry: (() => void) | undefined;
+  private gestures: 'gated' | 'inert';
 
   private active = false;
   private state: MapStageState = 'loading';
@@ -103,6 +117,7 @@ export class MapStage {
     this.expanded = options.expanded ?? false;
     this.expandPath = options.expandPath;
     this.onRetry = options.onRetry;
+    this.gestures = options.gestures ?? 'gated';
 
     this.hintEl = this.root.querySelector<HTMLElement>('[data-map-hint]');
     this.statusEl = this.root.querySelector<HTMLElement>('[data-map-status]');
@@ -135,6 +150,18 @@ export class MapStage {
       this.root.dataset.mapActive = 'true';
       this.hintEl?.setAttribute('hidden', '');
       this.bindExpandedKeys();
+    } else if (this.gestures === 'inert') {
+      // The scroll belongs to the story. Hold every gesture off and say
+      // nothing: a hint reading "Click the map to zoom and pan" was inviting
+      // the reader into a mode this map does not have, and the click that
+      // accepted the invitation left scroll-zoom armed behind the story.
+      this.map?.scrollZoom.disable();
+      this.map?.touchZoomRotate.disable();
+      this.map?.dragPan.disable();
+      this.root.dataset.mapActive = 'false';
+      this.hintEl?.setAttribute('hidden', '');
+      this.syncExpandHref();
+      this.map?.on('moveend', this.onMove);
     } else {
       this.applyGate();
       this.bindActivation();
