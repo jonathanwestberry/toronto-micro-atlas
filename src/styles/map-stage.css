@@ -20,6 +20,17 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+
+  /* The gutter the top chrome row keeps clear for MapLibre's zoom group.
+     It was a hard-coded 44px, which happened to equal MapLibre's own
+     10px control margin plus its default 34px button and left exactly zero
+     gap. Then fg03 raised its buttons to 2.75rem for target size (SC 2.5.8)
+     and the group grew to 46px, so "How to read this map" ran 12px under the
+     zoom stack. Two files owned the same number and only one of them knew
+     the buttons had changed. Now the row derives the gutter from the control
+     size, and any guide that resizes its controls sets --map-ctrl-size. */
+  --map-ctrl-size: 34px;
+  --map-ctrl-gutter: calc(10px + var(--map-ctrl-size) + var(--space-2));
 }
 
 .map-stage__frame {
@@ -63,7 +74,7 @@
 /* Top-left holds help; top-right is left empty for MapLibre's zoom group. */
 .map-stage__chrome-row--top {
   justify-content: flex-start;
-  padding-inline-end: 44px;
+  padding-inline-end: var(--map-ctrl-gutter);
 }
 
 /* Guides that own their own top-left (fg01's welcome panel) put help beside
@@ -82,7 +93,7 @@
 
 [data-map-help-corner='top-right'] .map-stage__howto {
   left: auto;
-  right: calc(var(--space-3) + 44px);
+  right: calc(var(--space-3) + var(--map-ctrl-gutter));
 }
 
 /* Bottom-right holds expand; bottom-left is left empty for scale + attribution. */

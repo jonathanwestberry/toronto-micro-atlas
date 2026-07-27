@@ -12,8 +12,15 @@ import {
   defaultTime,
   defaultUrlAccess,
   defaultWalk,
+  interventionCountsByAction,
   number,
 } from '../data/fg03';
+
+// Each proposal option carries how many places it holds in this snapshot, so a
+// reader can see an option is empty before spending a click on it. Retrofit is
+// the one that is empty today.
+const proposalCount = (action: string): number =>
+  interventionCountsByAction[action] ?? 0;
 ---
 
 <form
@@ -93,8 +100,16 @@ import {
       </div>
     </fieldset>
 
+    <!--
+      One radio group, two kinds of thing. "Current open washrooms" is what the
+      city has; the other four are what I argue it should do. Reading them as a
+      flat list of five is what let a reader count ten proposal squares and
+      believe they were washrooms, so the group now says which is which before
+      the reader clicks anything.
+    -->
     <fieldset data-fg03-filter="action">
-      <legend>Action</legend>
+      <legend>Show on the map</legend>
+      <p class="fg03-choice-group-label">What Toronto has</p>
       <div class="fg03-choice-row fg03-choice-row--actions">
         <label>
           <input
@@ -105,6 +120,9 @@ import {
           />
           <span>Current open washrooms</span>
         </label>
+      </div>
+      <p class="fg03-choice-group-label">What I would change (proposals, not facilities)</p>
+      <div class="fg03-choice-row fg03-choice-row--actions">
         <label>
           <input
             type="radio"
@@ -112,7 +130,14 @@ import {
             value="extend"
             checked={defaultAction === 'extend'}
           />
-          <span>Extend hours</span>
+          <span>
+            Extend hours
+            <small class="fg03-choice-count">
+              {proposalCount('extend') === 0
+                ? 'none in this snapshot'
+                : `${proposalCount('extend')} places`}
+            </small>
+          </span>
         </label>
         <label>
           <input
@@ -121,7 +146,14 @@ import {
             value="new"
             checked={defaultAction === 'new'}
           />
-          <span>New facility zones</span>
+          <span>
+            New facility zones
+            <small class="fg03-choice-count">
+              {proposalCount('new') === 0
+                ? 'none in this snapshot'
+                : `${proposalCount('new')} places`}
+            </small>
+          </span>
         </label>
         <label>
           <input
@@ -130,7 +162,14 @@ import {
             value="verify"
             checked={defaultAction === 'verify'}
           />
-          <span>Verify published information</span>
+          <span>
+            Verify published information
+            <small class="fg03-choice-count">
+              {proposalCount('verify') === 0
+                ? 'none in this snapshot'
+                : `${proposalCount('verify')} places`}
+            </small>
+          </span>
         </label>
         <label>
           <input
@@ -139,7 +178,14 @@ import {
             value="retrofit"
             checked={defaultAction === 'retrofit'}
           />
-          <span>Retrofit accessibility</span>
+          <span>
+            Retrofit accessibility
+            <small class="fg03-choice-count">
+              {proposalCount('retrofit') === 0
+                ? 'none in this snapshot'
+                : `${proposalCount('retrofit')} places`}
+            </small>
+          </span>
         </label>
       </div>
     </fieldset>

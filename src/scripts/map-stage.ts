@@ -95,7 +95,6 @@ export class MapStage {
   private retryBtn: HTMLButtonElement | null;
 
   private onMove = (): void => this.syncExpandHref();
-  private onDocPointerDown: ((event: Event) => void) | null = null;
   private onKeyDown: ((event: KeyboardEvent) => void) | null = null;
 
   constructor(options: MapStageOptions) {
@@ -126,7 +125,14 @@ export class MapStage {
 
     if (this.expanded) {
       // The expanded route is the map's own page: every gesture is native and
-      // the hint has nothing left to say.
+      // the hint has nothing left to say. Enable them rather than inherit
+      // MapLibre's defaults, so the route states what it wants instead of
+      // depending on nobody having disabled a gesture upstream.
+      this.active = true;
+      this.map?.scrollZoom.enable();
+      this.map?.dragPan.enable();
+      this.map?.touchZoomRotate.enable();
+      this.root.dataset.mapActive = 'true';
       this.hintEl?.setAttribute('hidden', '');
       this.bindExpandedKeys();
     } else {
@@ -141,11 +147,6 @@ export class MapStage {
 
   destroy(): void {
     this.map?.off('moveend', this.onMove);
-    if (this.onDocPointerDown) {
-      document.removeEventListener('pointerdown', this.onDocPointerDown, true);
-      document.removeEventListener('focusin', this.onDocPointerDown, true);
-      this.onDocPointerDown = null;
-    }
     if (this.onKeyDown) {
       document.removeEventListener('keydown', this.onKeyDown);
       this.onKeyDown = null;
@@ -241,19 +242,17 @@ export class MapStage {
       this.activate();
     });
 
-    // Release when attention leaves, so a reader who scrolls on past the map
-    // does not leave a live scroll-zoom target behind them.
-    this.onDocPointerDown = (event: Event): void => {
-      // Duck-typed rather than `instanceof Node`: the global Node identity is
-      // per-realm, so an event crossing an iframe boundary would read as
-      // "outside" and release the map mid-drag.
-      const target = event.target as Node | null;
-      if (target !== null && typeof target === 'object' && this.root.contains(target)) return;
-      this.deactivate();
-    };
-    document.addEventListener('pointerdown', this.onDocPointerDown, true);
-    document.addEventListener('focusin', this.onDocPointerDown, true);
-
+    // Activation is not revoked by clicking elsewhere on the page. It used to
+    // be, on the theory that a reader scrolling past should not leave a live
+    // scroll-zoom target behind them, but scroll-zoom only fires while the
+    // cursor is over the canvas, so there was nothing to leave behind: to hit
+    // the "live" target you must first move back onto the map, which is the
+    // same gesture that would have re-armed it.
+    //
+    // What it did cost was real. fg03's result list sits outside this root, so
+    // clicking a result silently disarmed the map, and the reader's next scroll
+    // did nothing with no visible reason why. Escape stays as the explicit
+    // release.
     this.onKeyDown = (event: KeyboardEvent): void => {
       if (event.key !== 'Escape') return;
       if (this.howtoToggle?.getAttribute('aria-expanded') === 'true') {

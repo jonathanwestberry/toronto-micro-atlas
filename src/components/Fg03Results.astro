@@ -12,31 +12,98 @@ import {
   actionLabels,
   closureLabelFor,
   defaultAction,
+  defaultOpenResults,
+  defaultResultCount,
   defaultResults,
   defaultSnapshotLabel,
+  facilitySourceLabelFor,
   number,
   safePublishedHref,
   sourceLabelFor,
 } from '../data/fg03';
+
+// The guide opens on the open-washroom view, and an open washroom is not a
+// ranked proposal: no rank, no transit gain, no "extending these hours would".
+// Rendering it through the intervention row would have printed rank 1 of a
+// ranking that does not exist, so the two kinds get two rows.
+const showingOpenFacilities = defaultAction === 'open';
 ---
 
 <div class="fg03-results" data-fg03-results>
   <header class="fg03-results-header">
     <div>
-      <p class="fg03-eyebrow">Default ranking</p>
+      <p class="fg03-eyebrow">
+        {showingOpenFacilities ? 'What Toronto has' : 'Default ranking'}
+      </p>
       <h3>{actionLabels[defaultAction]} at {defaultSnapshotLabel}</h3>
     </div>
-    <p data-fg03-results-count={defaultResults.length}>
-      {defaultResults.length} places
+    <p data-fg03-results-count={defaultResultCount}>
+      {defaultResultCount}{' '}
+      {showingOpenFacilities
+        ? (defaultResultCount === 1 ? 'facility record' : 'facility records')
+        : (defaultResultCount === 1 ? 'proposed place' : 'proposed places')}
     </p>
   </header>
 
   <section data-fg03-results-group="standard" aria-labelledby="fg03-standard-results">
     <h4 id="fg03-standard-results" class="visually-hidden">
-      Ranked intervention results
+      {showingOpenFacilities ? 'Open washroom results' : 'Ranked intervention results'}
     </h4>
     <ol class="fg03-result-list" data-fg03-result-list>
-      {defaultResults.map(({ feature, cell }) => {
+      {showingOpenFacilities && defaultOpenResults.map((feature) => {
+        const { properties } = feature;
+        const sourceUrl = safePublishedHref(properties.sourceUrl);
+        const sourceLabel = facilitySourceLabelFor(properties);
+        return (
+          <li data-fg03-result-item data-fg03-result-id={properties.id}>
+            <div class="fg03-result-summary">
+              <h4>{properties.name}</h4>
+              <p>
+                Open at {defaultSnapshotLabel} ·{' '}
+                {accessLabelFor(properties.accessCondition)}
+              </p>
+              <button
+                type="button"
+                class="fg03-result-map-button"
+                data-fg03-select-place={properties.id}
+                aria-label={`Map loading before ${properties.name} can be shown`}
+                aria-disabled="true"
+                disabled
+              >
+                Map loading
+              </button>
+            </div>
+            <details data-fg03-result-evidence>
+              <summary>Read the evidence</summary>
+              <div>
+                <p>
+                  <strong>Action:</strong> {actionLabels.open}
+                </p>
+                <p>
+                  <strong>Access condition:</strong>{' '}
+                  {accessLabelFor(properties.accessCondition)}
+                </p>
+                <p>
+                  <strong>Published hours:</strong>{' '}
+                  {properties.hours ?? 'Not published'}
+                </p>
+                <p>
+                  <strong>Closure evidence:</strong>{' '}
+                  {closureLabelFor(properties.closureCategory)}
+                </p>
+                {sourceUrl && (
+                  <p>
+                    <a href={sourceUrl} rel="noopener noreferrer">
+                      Official source: {sourceLabel}
+                    </a>
+                  </p>
+                )}
+              </div>
+            </details>
+          </li>
+        );
+      })}
+      {!showingOpenFacilities && defaultResults.map(({ feature, cell }) => {
         const { properties } = feature;
         const sourceUrl = safePublishedHref(properties.sourceUrl);
         const sourceLabel = sourceLabelFor(properties);

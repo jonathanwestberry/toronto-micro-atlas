@@ -142,12 +142,54 @@ const TIME_LABELS: Record<Snapshot, string> = {
   '2200': '10 p.m.',
   '0030': '12:30 a.m.',
 };
+/** Plural, for counting: "Showing 10 audited extend-hours opportunities". */
 const ACTION_LABELS: Record<Action, string> = {
   open: 'current open facility records',
   extend: 'audited extend-hours opportunities',
   new: 'audited new-facility zones',
   verify: 'audited information checks',
   retrofit: 'audited accessibility retrofits',
+};
+/** Singular, for one place: "Proposed change: Extend hours". */
+const ACTION_LABELS_ONE: Record<Action, string> = {
+  open: 'Currently open',
+  extend: 'Extend hours',
+  new: 'New facility zone',
+  verify: 'Verify published information',
+  retrofit: 'Accessibility retrofit',
+};
+/**
+ * Dataset values written for a reader.
+ *
+ * The detail panel used to print these straight out of the GeoJSON, so a
+ * reader got "unrestricted", "none" and "unknown" as answers to questions
+ * they had asked in English. Every value below appears in the published
+ * snapshot; anything unrecognised falls back to a "not published" phrasing
+ * rather than leaking the raw token.
+ */
+const READER_LABELS: Record<string, Record<string, string>> = {
+  access: {
+    unrestricted: 'Open to anyone, no fare required',
+    fare_paid: 'Inside the fare gates, valid fare required',
+    unknown: 'Access condition not published',
+  },
+  closure: {
+    none: 'No closure recorded',
+    construction: 'Closed for construction',
+    temporary: 'Temporarily closed',
+    seasonal: 'Closed for the season',
+  },
+  accessibility: {
+    accessible: 'Step-free access recorded',
+    inaccessible: 'No step-free access recorded',
+    unknown: 'Not published',
+  },
+  stability: {
+    robust: 'Holds up under the robustness rules',
+  },
+  audit: {
+    valid: 'Checked by hand against the source',
+  },
 };
 const MAP_MAX_ZOOM = 18.5;
 const STALE_AFTER_DAYS = 45;
@@ -831,6 +873,9 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
   let gateWithheld = false;
   let suppressCameraHistory = false;
   let lastSelectionOpener: HTMLElement | null = null;
+  /** Where the current selection came from. Decides whether the detail panel
+      has to bring itself into view: see renderDetail. */
+  let lastSelectionSource: 'map' | 'list' | 'search' | null = null;
   let searchAnalyticsTimer = 0;
   let loadSequence = 0;
   let deferredLoader: ReturnType<typeof makeDeferredLoader> | null = null;
@@ -980,6 +1025,17 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
     }
   };
 
+  /**
+   * What one row in the list actually is. Open washrooms are facility records
+   * from the city's datasets; everything else is an audited proposal.
+   */
+  const countedUnit = (action: Action, count: number): string => {
+    if (action === 'open') {
+      return count === 1 ? 'facility record' : 'facility records';
+    }
+    return count === 1 ? 'proposed place' : 'proposed places';
+  };
+
   const statusText = (count: number): string => {
     return formatStatus({
       action: currentState.action,
@@ -1037,15 +1093,35 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
     detailTitle.textContent =
       typeof properties.name === 'string' ? properties.name : 'Selected place';
     const evidence = document.createElement('dl');
+    // This row used to print the raw action id, so a reader who clicked a
+    // square got the single word "extend": a conclusion, with nothing saying
+    // it was a conclusion. It reads as a property of the washroom when it is
+    // an argument about the washroom. Name the kind of thing first, then the
+    // proposal, and only then the facts underneath it.
+    const rawAction = String(properties.action ?? 'open');
+    const isProposal = rawAction !== 'open';
+    const actionLabel = ACTION_LABELS_ONE[rawAction as Action] ?? rawAction;
     const rows: Array<[string, string]> = [
-      ['Action', String(properties.action ?? 'open')],
-      ['Access', String(properties.accessCondition ?? 'unknown')],
-      ['Hours', String(properties.hours ?? 'Not published')],
-      ['Closure', String(properties.closureCategory ?? 'Not classified')],
-      ['Accessibility', String(properties.accessibility ?? 'Not published')],
-      ['Stability', String(properties.stability ?? 'Not evaluated')],
-      ['Audit', String(properties.auditStatus ?? 'Not applicable')],
+      isProposal
+        ? ['What this is', 'A change I am proposing here, not an open washroom']
+        : ['What this is', 'A washroom recorded as open at the selected time'],
     ];
+    if (isProposal) {
+      rows.push(['Proposed change', actionLabel]);
+    }
+    rows.push(
+      ['Access', READER_LABELS.access[String(properties.accessCondition)]
+        ?? 'Access condition not published'],
+      ['Hours', String(properties.hours ?? 'Not published')],
+      ['Closure', READER_LABELS.closure[String(properties.closureCategory)]
+        ?? 'Not classified'],
+      ['Accessibility', READER_LABELS.accessibility[String(properties.accessibility)]
+        ?? 'Not published'],
+      ['Stability', READER_LABELS.stability[String(properties.stability)]
+        ?? 'Not evaluated'],
+      ['Audit', READER_LABELS.audit[String(properties.auditStatus)]
+        ?? 'Not applicable'],
+    );
     const metrics = metricsFor(feature);
     if (metrics) {
       rows.push(
@@ -1075,7 +1151,21 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
     }
     closeDetail.disabled = false;
     if (focus) {
+      // preventScroll is right when the reader picked the place from the list:
+      // the panel is already beside the row they clicked and a jump would be
+      // noise. It is wrong when the click came from the map, because the panel
+      // can be a full column away, off-screen. That combination made a marker
+      // click look like it did nothing at all: the record rendered, took focus,
+      // and never came into view, so the only way to read a place was to scroll
+      // the results column by hand until something looked highlighted.
+      const cameFromMap = lastSelectionSource === 'map';
       detailTitle.focus({ preventScroll: true });
+      if (cameFromMap) {
+        detail.scrollIntoView({
+          block: 'nearest',
+          behavior: isReducedMotion() ? 'auto' : 'smooth',
+        });
+      }
     }
   };
 
@@ -1171,8 +1261,14 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
     hoursGroup.hidden = hours.length === 0;
     accessibilityGroup.hidden = accessibility.length === 0;
     if (resultsCount) {
+      // "places" hid which grain was being counted. The proof above the
+      // explorer counts unrestricted *access points*, which groups co-located
+      // records: 324 at noon. This list counts facility *records*: 332 at the
+      // same hour. Both are right and the page explains the difference, but
+      // while the label said "places" the two numbers just looked wrong next
+      // to each other. At 10 p.m. they both read 6, so nothing gave it away.
       resultsCount.textContent = `${currentFeatures.length.toLocaleString('en-CA')} ${
-        currentFeatures.length === 1 ? 'place' : 'places'
+        countedUnit(currentState.action, currentFeatures.length)
       }`;
       resultsCount.setAttribute(
         'data-fg03-results-count',
@@ -1390,6 +1486,9 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
       source: 'map' | 'list' | 'search';
     };
   }): Fg03State {
+    if (input.selection) {
+      lastSelectionSource = input.selection.source;
+    }
     let transition = reduceTransition(currentState, input);
     let result: DerivedFg03Results | null = null;
     if (dataReady) {

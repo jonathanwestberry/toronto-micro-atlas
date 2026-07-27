@@ -2955,11 +2955,18 @@ def build_phase2(
             "schemaVersion": 1,
             "snapshotDate": snapshot_date,
             "generatedAt": generated_at.isoformat(),
+            # The guide opens on what Toronto has, not on what it should do.
+            # This defaulted to "extend", so a reader landing at 10 p.m. saw the
+            # ten extend-hours proposals and nothing else, while the guide's own
+            # headline was about the six washrooms that are actually open. They
+            # counted the proposals, and the map offered no way to tell that the
+            # squares were an argument rather than a facility.
+            # Facts first; the proposals are one radio away.
             "defaultState": {
                 "time": "2200",
                 "access": "public",
                 "walk": 400,
-                "action": "extend",
+                "action": "open",
             },
             "snapshots": list(SNAPSHOTS),
             "actions": list(PUBLIC_ACTIONS),

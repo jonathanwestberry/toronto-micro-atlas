@@ -85,11 +85,15 @@ function assertReadOnce(reads) {
 }
 
 test('the useful default is immutable and serializes to no query', () => {
+  // 'open' must match the manifest's defaultState.action. When these two
+  // disagreed the page server-rendered one landing state and hydrated into the
+  // other, which is how a guide about six open washrooms came up showing ten
+  // proposals instead.
   assert.deepEqual(DEFAULT_FG03_STATE, {
     time: '2200',
     access: 'public',
     walk: 400,
-    action: 'extend',
+    action: 'open',
     place: null,
     map: null,
   });
@@ -106,7 +110,7 @@ test('the useful default is immutable and serializes to no query', () => {
       time: '2200',
       access: 'public',
       walk: 400,
-      action: 'extend',
+      action: 'open',
       place: null,
       map: null,
     }),
@@ -151,7 +155,7 @@ test('invalid recognized values fall back independently while valid values survi
       time: '2030',
       access: 'public',
       walk: 400,
-      action: 'extend',
+      action: 'open',
       place: null,
       map: null,
     },
@@ -307,13 +311,20 @@ test('serialization emits only meaningful state in canonical parameter order', (
     }),
     '?time=0030&access=rider&walk=500&action=new&place=facility%3Aabc&map=-79.38320%2C43.65320%2C12.35',
   );
+  // A non-default action rides in the URL; the default one stays out of it.
+  // 'extend' is the non-default now that the guide opens on 'open'.
   assert.equal(
     serializeFg03State({
       ...DEFAULT_FG03_STATE,
-      action: 'open',
+      action: 'extend',
       time: '2200',
     }),
-    '?action=open',
+    '?action=extend',
+  );
+  assert.equal(
+    serializeFg03State({ ...DEFAULT_FG03_STATE, action: 'open' }),
+    '',
+    'the landing state is what a bare URL means, so it never serializes',
   );
 });
 

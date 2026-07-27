@@ -10,7 +10,7 @@
 import {
   actionStatusLabels,
   defaultAction,
-  defaultResults,
+  defaultResultCount,
   defaultSnapshotLabel,
   defaultUrlAccess,
   defaultWalk,
@@ -26,7 +26,7 @@ import {
   aria-atomic="true"
   data-fg03-status
 >
-  Showing {number.format(defaultResults.length)}{' '}
+  Showing {number.format(defaultResultCount)}{' '}
   {actionStatusLabels[defaultAction]} for {defaultSnapshotLabel},{' '}
   {defaultUrlAccess === 'public' ? 'public access' : 'TTC rider access'}, and a{' '}
   {number.format(defaultWalk)} m walk.
