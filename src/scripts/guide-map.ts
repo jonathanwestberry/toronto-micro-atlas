@@ -202,30 +202,50 @@ function isDenseLabel(props: { name: string; kind: string }): boolean {
 // ResetControl - custom IControl that restores the initial map extent
 // ---------------------------------------------------------------------------
 
+/**
+ * "Show all N", the only way back to every marker once the reader has flown
+ * off to one of them.
+ *
+ * It used to be an unlabelled crosshair, which is the icon every mapping
+ * product on the internet uses for "find my location". Readers who pressed it
+ * expecting to be located got the whole city instead, and readers who wanted
+ * the whole city back had no reason to think that button would give it to
+ * them. The count is in the label because it is the reassurance the reader
+ * wants at that moment: there are eight of these, and this puts them all back
+ * on screen.
+ *
+ * It wears .map-stage__btn so it speaks the same language as Back, Expand and
+ * How to read this map rather than inventing a third control style inside the
+ * same frame.
+ */
 class ResetControl implements maplibregl.IControl {
   private _container: HTMLDivElement | undefined;
   private _guideMap: GuideMap;
+  private _count: number;
 
-  constructor(guideMap: GuideMap) {
+  constructor(guideMap: GuideMap, count: number) {
     this._guideMap = guideMap;
+    this._count = count;
   }
 
   onAdd(_map: maplibregl.Map): HTMLElement {
     this._container = document.createElement('div');
-    this._container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
+    // No maplibregl-ctrl-group: that class is the square icon-button chrome,
+    // and this control is a labelled text button.
+    this._container.className = 'maplibregl-ctrl gm-reset-ctrl';
 
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'gm-reset-btn';
-    button.setAttribute('aria-label', 'Reset map view');
+    button.className = 'map-stage__btn gm-reset-btn';
+    button.setAttribute('aria-label', `Show all ${this._count} locations`);
+    // Corner brackets, the fit-to-extent idiom, rather than the crosshair the
+    // reader has learned to read as "locate me".
     button.innerHTML =
-      '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">' +
-      '<circle cx="10" cy="10" r="5" stroke="currentColor" stroke-width="1.5"/>' +
-      '<line x1="10" y1="1" x2="10" y2="5" stroke="currentColor" stroke-width="1.5"/>' +
-      '<line x1="10" y1="15" x2="10" y2="19" stroke="currentColor" stroke-width="1.5"/>' +
-      '<line x1="1" y1="10" x2="5" y2="10" stroke="currentColor" stroke-width="1.5"/>' +
-      '<line x1="15" y1="10" x2="19" y2="10" stroke="currentColor" stroke-width="1.5"/>' +
-      '</svg>';
+      '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true" focusable="false">' +
+      '<path d="M1.6 5V1.6H5M10 1.6h3.4V5M13.4 10v3.4H10M5 13.4H1.6V10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<circle cx="7.5" cy="7.5" r="1.6" fill="currentColor"/>' +
+      '</svg>' +
+      `<span>Show all ${this._count}</span>`;
 
     button.addEventListener('click', () => {
       this._guideMap.resetView();
@@ -247,10 +267,12 @@ class ResetControl implements maplibregl.IControl {
 
 export class GuideMap {
   private map: maplibregl.Map;
+  private containerEl: HTMLElement | null;
   private baseUrl: string;
   private locations: LocationData[] = [];
   private markerButtons = new Map<string, HTMLButtonElement>();
   private refs: PanelRefs | null = null;
+  private countEl: HTMLElement | null = null;
   private selectedSlug: string | null = null;
   /** Cache-busts each Retry so a failed fetch is not served from cache. */
   private retryToken = 0;
@@ -277,6 +299,9 @@ export class GuideMap {
 
   constructor(containerId: string, baseUrl: string) {
     this.baseUrl = baseUrl;
+    // Held separately from this.map: fitPadding() runs while the Map options
+    // object is still being built, so this.map does not exist yet.
+    this.containerEl = document.getElementById(containerId);
 
     this.map = new maplibregl.Map({
       container: containerId,
@@ -332,8 +357,8 @@ export class GuideMap {
       'top-right',
     );
 
-    // Reset control - added after NavigationControl so it sits below it
-    this.map.addControl(new ResetControl(this), 'top-right');
+    // The reset control is added in init(), not here: its label carries the
+    // location count and the locations are not known until then.
 
     this.map.on('load', () => {
       this.addSourcesAndLayers();
@@ -596,6 +621,11 @@ export class GuideMap {
       const wrap = document.createElement('div');
       wrap.className = 'gm-marker-wrap';
 
+      // One string, three consumers: the accessible name, the visible tooltip,
+      // and the live-region announcement. A marker that reads one thing to a
+      // screen reader and another to a mouse is two maps.
+      const label = `${loc.title}, ${loc.thresholdLabel}`;
+
       /*
        * SC 2.5.8, documented exception rather than a defect.
        *
@@ -613,18 +643,46 @@ export class GuideMap {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'gm-marker';
-      button.setAttribute('aria-label', `${loc.title}, ${loc.thresholdLabel}`);
+      button.setAttribute('aria-label', label);
       button.setAttribute('aria-pressed', 'false');
       button.dataset.slug = loc.slug;
       button.innerHTML = thresholdGlyphSvg(loc.thresholdType, 16);
 
       button.addEventListener('click', (event) => {
-        // Keep the click from bubbling to the map (which clears selection).
+        // The marker is the control, not the canvas underneath it. Stopping
+        // here keeps a marker press from also registering as a map press.
         event.stopPropagation();
         this.selectLocation(loc.slug);
       });
 
+      /*
+       * The name on hover and on focus, not only on click.
+       *
+       * Markers carried an aria-label and nothing else, so a sighted reader
+       * could only learn what a pin was by selecting it, and selecting flies
+       * the camera. Comparing eight places therefore cost eight camera flights
+       * and eight ways back. A tooltip that answers "what is this one" without
+       * moving the map is the whole fix.
+       *
+       * It is a sibling element rather than the native `title` attribute:
+       * `title` never appears on keyboard focus, and this has to reach both.
+       * aria-hidden because the button's aria-label already says it, and a
+       * screen reader should not hear the name twice.
+       */
+      const tip = document.createElement('span');
+      tip.className = 'gm-marker-tip';
+      tip.setAttribute('aria-hidden', 'true');
+      tip.textContent = label;
+
+      // A marker within half a label's width of an edge would have its label
+      // clipped by the frame's overflow, so the position is settled the moment
+      // before the label is shown rather than assumed at build time.
+      const place = () => this.placeTip(tip);
+      button.addEventListener('mouseenter', place);
+      button.addEventListener('focus', place);
+
       wrap.appendChild(button);
+      wrap.appendChild(tip);
 
       new maplibregl.Marker({ element: wrap, anchor: 'center' })
         .setLngLat([loc.lng, loc.lat])
@@ -637,6 +695,42 @@ export class GuideMap {
       wrap.removeAttribute('aria-label');
 
       this.markerButtons.set(loc.slug, button);
+    }
+  }
+
+  /**
+   * Keep a marker's label inside the map frame.
+   *
+   * The frame clips its overflow, so a centred label on a marker near an edge
+   * loses its last few words with no sign that anything is missing. Both
+   * corrections are measured from the live rects: nudge sideways when the
+   * label runs past a side, and drop below the marker when there is not room
+   * above it.
+   */
+  private placeTip(tip: HTMLElement): void {
+    const frame = this.containerEl?.getBoundingClientRect();
+    if (!frame) return;
+
+    /* Breathing room between the label and the frame edge. */
+    const EDGE = 8;
+
+    // Reset first: a marker that was near an edge and has since been panned to
+    // the middle should sit centred again.
+    tip.style.removeProperty('--gm-tip-shift');
+    tip.classList.remove('gm-marker-tip--below');
+
+    let rect = tip.getBoundingClientRect();
+
+    if (rect.top < frame.top + EDGE) {
+      tip.classList.add('gm-marker-tip--below');
+      rect = tip.getBoundingClientRect();
+    }
+
+    let shift = 0;
+    if (rect.left < frame.left + EDGE) shift = frame.left + EDGE - rect.left;
+    else if (rect.right > frame.right - EDGE) shift = frame.right - EDGE - rect.right;
+    if (shift !== 0) {
+      tip.style.setProperty('--gm-tip-shift', `${Math.round(shift)}px`);
     }
   }
 
@@ -749,6 +843,33 @@ export class GuideMap {
     this.refs.welcome.hidden = false;
   }
 
+  /**
+   * Keep the panel's count line current: how many locations exist, and how
+   * many of them are inside the current view.
+   *
+   * At 390x844 five marker pairs overlap (Nordheimer and Baldwin by 27x26px,
+   * about two thirds of a marker), so counting pins by eye gives the wrong
+   * answer and the reader has no way to know it. The number is the honest
+   * version of the information the overlapping pins are failing to carry.
+   */
+  private updateCountLine(): void {
+    if (!this.countEl) return;
+    const bounds = this.map.getBounds();
+    const inView = this.locations.filter((loc) =>
+      bounds.contains([loc.lng, loc.lat]),
+    ).length;
+
+    const parts = [
+      `${this.locations.length} locations`,
+      `${inView} in view`,
+    ];
+    // Only the guide page has a card list under the map to scroll to.
+    if (this.countEl.dataset.countHint === 'true') {
+      parts.push('scroll for the full list');
+    }
+    this.countEl.textContent = parts.join(' · ');
+  }
+
   private setPlaceParam(slug: string | null): void {
     const url = new URL(window.location.href);
     if (slug === null) {
@@ -805,20 +926,59 @@ export class GuideMap {
   // Helpers
   // -------------------------------------------------------------------------
 
+  /**
+   * Padding for the marker fit, measured from the live panel rather than
+   * copied from the stylesheet.
+   *
+   * The panel is in three different places depending on the route and the
+   * width: page flow below the map on the guide page at narrow widths, floated
+   * over the map's top-left from 1024px, and docked to the bottom of the map
+   * route on a phone. Three hardcoded numbers is three chances to be wrong, and
+   * the last one already was: the bottom-docked panel hid five of the eight
+   * markers at 390x844 because the fit still padded uniformly.
+   *
+   * Right padding is the one number still written down. It clears the control
+   * column, which used to be a 29px zoom button and is now a 119px "Show all N"
+   * button, and the controls are MapLibre's rather than ours to measure.
+   */
   private fitPadding(): maplibregl.PaddingOptions | number {
-    // Desktop: the floating panel renders 430px wide (its 380px basis plus
-    // padding), inset 32px from the left edge, so its right edge sits at
-    // x=462. Left padding = 462 + 24 breathing room = 486px, measured from
-    // the live layout rather than the stylesheet basis. This keeps all
-    // eight markers (Old Mill Bridge at lng -79.495 westernmost) clear of
-    // the panel on a 1440x900 viewport.
-    if (this.isDesktop()) {
-      return { top: 48, right: 48, bottom: 48, left: 486 };
+    /** Breathing room between a marker and whatever it is being kept clear of. */
+    const GAP = 24;
+    /** Width the top-right control column needs, "Show all N" included. */
+    const CONTROL_COLUMN = 160;
+
+    const frame = this.containerEl?.getBoundingClientRect();
+    const panel = document.getElementById('guide-panel')?.getBoundingClientRect();
+
+    const overlaps =
+      frame !== undefined &&
+      panel !== undefined &&
+      panel.width > 0 &&
+      panel.left < frame.right &&
+      panel.right > frame.left &&
+      panel.top < frame.bottom &&
+      panel.bottom > frame.top;
+
+    // Panel in page flow, or no panel at all: nothing covers the canvas, so
+    // uniform padding just keeps markers off the frame edges.
+    if (!overlaps || frame === undefined || panel === undefined) return 40;
+
+    // Which edge it is docked to, read from where it actually sits.
+    if (panel.top - frame.top > frame.height / 2) {
+      return {
+        top: 48,
+        right: 48,
+        bottom: Math.round(frame.bottom - panel.top) + GAP,
+        left: 40,
+      };
     }
-    // Mobile / tablet: panels render below the map as a normal flow block,
-    // so no horizontal offset is needed. Uniform padding keeps markers
-    // away from map controls at the edges.
-    return 40;
+
+    return {
+      top: 48,
+      right: CONTROL_COLUMN,
+      bottom: 48,
+      left: Math.round(panel.right - frame.left) + GAP,
+    };
   }
 
   private isDesktop(): boolean {
@@ -902,6 +1062,11 @@ export class GuideMap {
   init(locations: LocationData[]): void {
     this.locations = [...locations].sort((a, b) => a.order - b.order);
     this.refs = this.collectPanelRefs();
+    this.countEl = document.getElementById('guide-panel-count');
+
+    // Added after NavigationControl so it sits below the zoom group, and here
+    // rather than in the constructor because its label carries the count.
+    this.map.addControl(new ResetControl(this, this.locations.length), 'top-right');
 
     // Markers and labels are HTML overlays; they do not wait for style load.
     this.addThresholdMarkers();
@@ -910,13 +1075,37 @@ export class GuideMap {
     this.map.on('zoom', () => this.updateLabelDensity());
     this.updateLabelDensity();
 
-    // Clicking empty map space clears the selection. Marker buttons stop
-    // propagation, so this only fires for genuine empty-space clicks.
-    this.map.on('click', () => this.clearSelection());
+    this.map.on('move', () => this.updateCountLine());
+    this.updateCountLine();
 
-    // Escape anywhere clears the selection.
+    /*
+     * A background click no longer clears the selection.
+     *
+     * It used to, and the reader was never told. Panning a map means dragging
+     * empty space, and a drag that ends within MapLibre's click threshold is a
+     * click, so a slightly impatient pan silently threw away the place the
+     * reader had just chosen, closed the panel, and rewrote the URL. Destroying
+     * work needs a control the reader aimed at: the labelled close button, or
+     * Escape.
+     */
+
+    /*
+     * Escape clears the selection, and on the expanded route it has to get
+     * there first.
+     *
+     * MapStage also listens for Escape and uses it to leave /map for the
+     * guide. Both handlers used to fire on the same keypress, so once the
+     * expanded route had a panel, pressing Escape on an open preview closed
+     * the preview and threw away the whole page at the same time. One Escape
+     * undoes one thing: the preview if there is one, the route if there is
+     * not. This listener is registered before MapStage's, so stopping
+     * immediate propagation is enough to hold the route.
+     */
     document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') this.clearSelection();
+      if (event.key !== 'Escape') return;
+      if (this.selectedSlug === null) return;
+      event.stopImmediatePropagation();
+      this.clearSelection();
     });
 
     this.refs?.closeBtn?.addEventListener('click', () => this.clearSelection());

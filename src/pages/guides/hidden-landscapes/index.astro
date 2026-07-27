@@ -3,6 +3,8 @@ import { getCollection } from 'astro:content';
 import Base from '../../../layouts/Base.astro';
 import ThresholdChip from '../../../components/ThresholdChip.astro';
 import MapStage from '../../../components/MapStage.astro';
+import GuidePanel from './_GuidePanel.astro';
+import HowToRead from './_HowToRead.astro';
 
 const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
 
@@ -59,18 +61,7 @@ const mapLocations = locations.map((loc) => ({
           </noscript>
         </div>
 
-        <Fragment slot="howto">
-          <p>
-            Symbols mark thresholds, the points where city fabric gives way to hidden landscape.
-            The shaded layer is the connected valley and ravine system. Select a symbol to preview
-            a location, then open the entry to read it in full.
-          </p>
-          <p>
-            Every symbol has its own shape as well as its own colour, so the map stays readable
-            without relying on colour alone. Tab moves between symbols; Enter opens the one you
-            are on.
-          </p>
-        </Fragment>
+        <HowToRead slot="howto" />
 
         <Fragment slot="status-fallback">
           <a class="map-stage__btn" href="#guide-location-list">Read the entries instead</a>
@@ -83,101 +74,19 @@ const mapLocations = locations.map((loc) => ({
       <!-- Live region announcing map selection changes to assistive tech -->
       <div class="visually-hidden" id="guide-map-announcer" role="status" aria-live="polite"></div>
 
-      <!-- Welcome panel (shown by default, hidden when location selected) -->
-      <aside
-        class="guide-panel guide-welcome-panel"
-        id="guide-welcome-panel"
-        aria-label="Guide welcome"
-        aria-live="polite"
-      >
-        <div class="guide-panel-inner">
-          <span class="guide-panel-kicker">Guide</span>
-          <h1 class="guide-panel-title">Hidden Landscapes</h1>
-
+      <!--
+        One panel, three bands: a head and a key that never move, and a middle
+        band that swaps between the resting copy and the selected location.
+        See ./_GuidePanel.astro for why the legend no longer lives inside the
+        welcome copy.
+      -->
+      <GuidePanel count={locations.length} scrollHint>
+        <Fragment slot="welcome">
           <p class="guide-panel-welcome">
             Toronto's street grid gives a convincing impression of completeness. The city is built on top of something else: a second geography of valleys, ravines, escarpments, and buried watercourses that the grid cuts around, bridges over, and mostly ignores. The places where one gives way to the other are ordinary corners, stair landings, and bridge approaches. This guide documents eight of them.
           </p>
-
-          <!--
-            "How to read this map" moved onto the map itself, where the reader
-            looks for it. Keeping a second copy here would put the same heading
-            on the page twice and leave the map's own help control redundant.
-            The legend stays: it is reference the reader wants open, not a
-            first-use explanation.
-          -->
-          <div class="guide-panel-legend" role="group" aria-label="Map legend">
-            <div class="legend-item">
-              <span class="legend-swatch" style="background-color: var(--landscape);" aria-hidden="true"></span>
-              <span class="legend-label">Valley and ravine system</span>
-            </div>
-            <div class="legend-item">
-              <span class="legend-swatch legend-swatch--line" style="background-color: var(--water);" aria-hidden="true"></span>
-              <span class="legend-label">Watercourses</span>
-            </div>
-            <div class="legend-item">
-              <span class="legend-swatch legend-swatch--line" style="background-image: repeating-linear-gradient(90deg, var(--water) 0 5px, transparent 5px 9px);" aria-hidden="true"></span>
-              <span class="legend-label">Buried watercourses</span>
-            </div>
-            <div class="legend-item">
-              <span class="legend-swatch legend-swatch--line" style="background-color: #57513F;" aria-hidden="true"></span>
-              <span class="legend-label">City of Toronto boundary</span>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      <!-- Selected location panel (hidden by default; JS island populates and shows) -->
-      <aside
-        class="guide-panel guide-selected-panel"
-        id="guide-selected-panel"
-        aria-label="Selected location"
-        aria-hidden="true"
-        hidden
-      >
-        <div class="guide-panel-inner">
-          <button
-            class="guide-panel-close"
-            id="guide-panel-close"
-            type="button"
-            aria-label="Close location preview"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-              <line x1="18" y1="6" x2="6" y2="18"/>
-              <line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-            <span class="visually-hidden">Clear selection</span>
-          </button>
-
-          <!-- Vignette image slot -->
-          <div class="guide-selected-vignette" id="guide-selected-vignette" aria-hidden="true" hidden></div>
-
-          <!-- Location metadata -->
-          <div class="guide-selected-chip" id="guide-selected-chip"></div>
-          <h2 class="guide-selected-name" id="guide-selected-name"></h2>
-          <p class="guide-selected-preview" id="guide-selected-preview"></p>
-
-          <!-- Actions -->
-          <div class="guide-selected-actions">
-            <a
-              class="guide-selected-view-btn"
-              id="guide-selected-view-btn"
-              href="#"
-              data-href-template="{base}/guides/hidden-landscapes/{slug}/"
-            >
-              View entry
-            </a>
-            <a
-              class="guide-selected-maps-link"
-              id="guide-selected-maps-link"
-              href="#"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Open in Maps
-            </a>
-          </div>
-        </div>
-      </aside>
+        </Fragment>
+      </GuidePanel>
 
     </div>
 
@@ -216,50 +125,10 @@ const mapLocations = locations.map((loc) => ({
 
 <script>
   import { initGuideMap } from '../../../scripts/guide-map';
+  import { wirePanelScrollStop } from './_panel-scroll-stop';
+
   initGuideMap();
-
-  /**
-   * The panels' tab stops, only when they are really scroll containers.
-   *
-   * Both panels carried a hardcoded `tabindex="0"`. On a static container that
-   * is a keyboard stop that lands nowhere and explains nothing. But both are
-   * `overflow-y: auto` with `max-height: calc(100vh - ...)` on desktop, and
-   * the welcome panel has no focusable children at all, so when it *does*
-   * overflow, removing the stop would leave content a keyboard user cannot
-   * scroll to (SC 2.1.1).
-   *
-   * Measured, not assumed -- the same reasoning as --header-h in Phase 5. At
-   * 1280x900 the welcome panel does not overflow; at 1280x600 it does, by
-   * 122px. The selected panel gets the same treatment rather than a different
-   * one, because two panels side by side behaving differently is how the next
-   * person learns the wrong rule. Nothing focuses either panel
-   * programmatically, so there is no -1 stop to preserve.
-   */
-  const PANEL_IDS = ['guide-welcome-panel', 'guide-selected-panel'];
-
-  const wireScrollStop = () => {
-    const panels = PANEL_IDS
-      .map((id) => document.getElementById(id))
-      .filter((el): el is HTMLElement => el !== null);
-    if (!panels.length) return () => {};
-    const sync = () => {
-      for (const panel of panels) {
-        const scrolls = panel.scrollHeight > panel.clientHeight + 1;
-        if (scrolls) panel.setAttribute('tabindex', '0');
-        else panel.removeAttribute('tabindex');
-      }
-    };
-    sync();
-    const observer = new ResizeObserver(sync);
-    panels.forEach((panel) => observer.observe(panel));
-    return () => observer.disconnect();
-  };
-
-  let releaseScrollStop = wireScrollStop();
-  document.addEventListener('astro:before-swap', () => releaseScrollStop());
-  document.addEventListener('astro:page-load', () => {
-    releaseScrollStop = wireScrollStop();
-  });
+  wirePanelScrollStop();
 </script>
 
 <style>
@@ -294,6 +163,15 @@ const mapLocations = locations.map((loc) => ({
   .guide-map-row {
     position: relative;
     width: 100%;
+    /* How much of the viewport the map gives back on desktop so the section
+       below it is visible on load. Read by the desktop rule at the foot of
+       this file and by the docked panel's max-height in _GuidePanel.astro.
+       Measured at 1440x900, not guessed: the section adds 48px of padding
+       above a 21px heading and another 32px before the grid, so anything
+       under about 7rem shows a heading sliced in half and no card at all,
+       which is a worse promise than no peek. 8rem puts the whole heading and
+       the first card row's top edge above the fold. */
+    --fg01-map-peek: 8rem;
   }
 
   .guide-map-container {
@@ -352,234 +230,6 @@ const mapLocations = locations.map((loc) => ({
     background-color: var(--card);
     border: 1px solid var(--street-minor);
     z-index: 3;
-  }
-
-  /* ============================================================
-     Guide panels (shared)
-     ============================================================ */
-
-  .guide-panel {
-    background-color: var(--card);
-    border-top: 1px solid var(--street-minor);
-    padding: var(--space-8) var(--space-6);
-  }
-
-  .guide-panel-inner {
-    max-width: var(--measure);
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-6);
-  }
-
-  .guide-panel-kicker {
-    font-family: var(--font-ui);
-    font-size: var(--text-xs);
-    font-weight: 700;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    /* Kelly is a fill colour; at 13px bold on the panel it measured 3.12:1.
-       --atlas-accent-2-text is the same hue, darkened to 4.81:1. */
-    color: var(--atlas-accent-2-text);
-  }
-
-  .guide-panel-title {
-    font-family: var(--font-heading);
-    font-weight: 900;
-    font-size: var(--text-3xl);
-    line-height: 1.05;
-    letter-spacing: -0.01em;
-    color: var(--ink);
-    text-transform: uppercase;
-  }
-
-  .guide-panel-welcome {
-    font-family: var(--font-body);
-    font-size: var(--text-base);
-    line-height: 1.65;
-    color: var(--ink);
-  }
-
-  .guide-panel-how-to {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  .guide-panel-how-to-label {
-    font-family: var(--font-ui);
-    font-size: var(--text-xs);
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--ink-2);
-  }
-
-  .guide-panel-how-to-text {
-    font-family: var(--font-body);
-    font-size: var(--text-sm);
-    line-height: 1.6;
-    color: var(--ink-2);
-  }
-
-  /* ============================================================
-     Legend
-     ============================================================ */
-
-  .guide-panel-legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-4) var(--space-8);
-  }
-
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
-  .legend-swatch {
-    display: inline-block;
-    width: 14px;
-    height: 14px;
-    border-radius: 2px;
-    flex-shrink: 0;
-  }
-
-  .legend-swatch--line {
-    width: 20px;
-    height: 3px;
-    border-radius: 1.5px;
-  }
-
-  .legend-label {
-    font-family: var(--font-ui);
-    font-size: var(--text-xs);
-    color: var(--ink-2);
-    letter-spacing: 0.02em;
-  }
-
-  /* ============================================================
-     Selected panel
-     ============================================================ */
-
-  .guide-selected-panel {
-    position: relative;
-  }
-
-  .guide-panel-close {
-    position: absolute;
-    top: var(--space-4);
-    right: var(--space-4);
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: 1px solid var(--street-minor);
-    border-radius: 50%;
-    cursor: pointer;
-    color: var(--ink-2);
-    padding: 0;
-    transition: border-color 0.1s ease, color 0.1s ease;
-  }
-
-  .guide-panel-close:hover {
-    border-color: var(--ink);
-    color: var(--ink);
-  }
-
-  .guide-panel-close:focus-visible {
-    outline: var(--focus-ring);
-    outline-offset: var(--focus-ring-offset);
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .guide-panel-close {
-      transition: none;
-    }
-  }
-
-  .guide-selected-vignette {
-    width: 100%;
-    aspect-ratio: 4 / 3;
-    background-color: var(--street-minor);
-    overflow: hidden;
-  }
-
-  .guide-selected-chip {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
-  .guide-selected-name {
-    font-family: var(--font-heading);
-    font-weight: 700;
-    font-size: var(--text-2xl);
-    line-height: 1.2;
-    color: var(--ink);
-  }
-
-  .guide-selected-preview {
-    font-family: var(--font-body);
-    font-size: var(--text-sm);
-    line-height: 1.6;
-    color: var(--ink-2);
-  }
-
-  .guide-selected-actions {
-    display: flex;
-    gap: var(--space-4);
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  .guide-selected-view-btn {
-    display: inline-block;
-    background-color: var(--threshold);
-    color: var(--paper);
-    font-family: var(--font-ui);
-    font-size: var(--text-sm);
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-decoration: none;
-    padding: var(--space-3) var(--space-6);
-    transition: background-color 0.1s ease;
-  }
-
-  .guide-selected-view-btn:hover {
-    background-color: var(--threshold-active);
-    color: var(--paper);
-  }
-
-  .guide-selected-view-btn:focus-visible {
-    outline: 2px solid var(--ink);
-    outline-offset: 2px;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .guide-selected-view-btn {
-      transition: none;
-    }
-  }
-
-  .guide-selected-maps-link {
-    font-family: var(--font-ui);
-    font-size: var(--text-sm);
-    color: var(--ink-2);
-    text-decoration: underline;
-    text-underline-offset: 3px;
-  }
-
-  .guide-selected-maps-link:hover {
-    color: var(--ink);
-  }
-
-  .guide-selected-maps-link:focus-visible {
-    outline: var(--focus-ring);
-    outline-offset: var(--focus-ring-offset);
   }
 
   /* ============================================================
@@ -695,30 +345,21 @@ const mapLocations = locations.map((loc) => ({
   }
 
   @media (min-width: 1024px) {
-    /* Desktop: the map fills the full viewport height below the header (no
-       peek), so its bottom edge sits at the bottom of the screen on load. */
+    /* The map used to end exactly at the bottom of the viewport, which is a
+       false bottom: the "8 Locations" heading sat 61px below the fold with
+       nothing above it hinting there was anything down there, so the page read
+       as a map and nothing else. Giving back --fg01-map-peek lets the heading
+       and the top of the first card row show, which is what makes the scroll
+       look worth doing. The panel's max-height reads the same variable so the
+       two never drift apart. */
     .guide-map-container {
-      height: calc(100vh - var(--header-h));
+      height: calc(100vh - var(--header-h) - var(--fg01-map-peek));
       min-height: 0;
     }
 
     .guide-map-row {
       position: relative;
     }
-
-    .guide-panel {
-      position: absolute;
-      top: var(--space-8);
-      left: var(--space-8);
-      width: 380px;
-      max-height: calc(100vh - var(--header-h) - var(--space-16));
-      overflow-y: auto;
-      border: 1px solid var(--street-minor);
-      border-top: none;
-      box-shadow: 4px 4px 0 rgba(39, 36, 29, 0.08);
-      z-index: 10;
-    }
-
   }
 
   /* Cards: 1 column on mobile, 2 from 640px (rule above), 4 from 1200px.
