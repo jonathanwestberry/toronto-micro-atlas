@@ -1,0 +1,54 @@
+---
+/**
+ * The body of "How to read this map" for fg01, shared by both routes.
+ *
+ * It carries the glyph specimens because the panel legend explained every
+ * layer except the seven symbols the reader is actually being asked to click.
+ * The disclosure is the right home for them: a key of seven line drawings is
+ * reference you open once, not something that should crowd the resting panel.
+ *
+ * The dt/dd pairs are flat on purpose. map-stage.css already lays out
+ * `.map-stage__howto-body dl` as a two-column grid, so wrapping each pair in a
+ * div would break that grid to no benefit.
+ */
+import ThresholdSymbol from '../../../components/ThresholdSymbol.astro';
+import { thresholdLegend } from './_thresholds';
+
+interface Props {
+  /** True on /map, where Escape has somewhere to return to. */
+  expanded?: boolean;
+}
+
+const { expanded = false } = Astro.props as Props;
+---
+
+<p>
+  Symbols mark thresholds, the points where city fabric gives way to hidden landscape.
+  The shaded layer is the connected valley and ravine system. Select a symbol to preview
+  a location, then open the entry to read it in full.
+</p>
+
+<p>
+  Every symbol has its own shape as well as its own colour, so the map stays readable
+  without relying on colour alone. Hover or tab onto a symbol to read its name; Enter
+  opens the one you are on.{expanded ? ' Escape returns to the guide.' : ''}
+</p>
+
+<dl class="fg01-glyph-key">
+  {
+    thresholdLegend.map((entry) => (
+      <Fragment>
+        <dt><ThresholdSymbol name={entry.name} size={20} /></dt>
+        <dd>{entry.label}</dd>
+      </Fragment>
+    ))
+  }
+</dl>
+
+<style>
+  /* The specimens are the argument of this panel, so they read at full ink
+     rather than the muted body colour the surrounding prose uses. */
+  .fg01-glyph-key dt {
+    color: var(--threshold);
+  }
+</style>
