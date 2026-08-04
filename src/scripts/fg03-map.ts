@@ -948,6 +948,9 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
   );
   const resetButton = root.querySelector<HTMLButtonElement>('[data-fg03-reset]');
   const shareButton = root.querySelector<HTMLButtonElement>('[data-fg03-share]');
+  // Read back from the markup rather than repeating the string here, so the
+  // label restored after a copy cannot drift from Fg03Controls.astro.
+  const shareButtonLabel = shareButton?.textContent?.trim() ?? 'Share this view';
   const detail = root.querySelector<HTMLElement>('[data-fg03-detail]');
   const detailTitle = root.querySelector<HTMLElement>('#fg03-detail-title');
   const detailBody = root.querySelector<HTMLElement>('[data-fg03-detail-body]');
@@ -2198,13 +2201,13 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
     const stopMotion = (): void => {
       map?.stop();
     };
-    for (const type of ['pointerdown', 'wheel', 'touchstart', 'keydown']) {
+    for (const type of ['pointerdown', 'touchstart', 'keydown']) {
       addListener(
         removeListeners,
         mapElement,
         type,
         stopMotion,
-        type === 'wheel' || type === 'touchstart' ? { passive: true } : undefined,
+        type === 'touchstart' ? { passive: true } : undefined,
       );
     }
     addListener(removeListeners, mapElement, 'keydown', (event) => {
@@ -2413,6 +2416,7 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
       text: 'Toronto public washroom access and audited late-night interventions',
       url: window.location.href,
     };
+    let copiedToClipboard = false;
     try {
       if (typeof navigator.share === 'function') {
         await navigator.share(shareData);
@@ -2422,12 +2426,25 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
         });
       } else {
         await navigator.clipboard.writeText(shareData.url);
+        copiedToClipboard = true;
         trackAtlasEvent('fg03_share', {
           method: 'clipboard',
           state_shape: stateShape(currentState),
         });
       }
       trackAtlasEvent('fg03_journey_complete', { outcome: 'share' });
+      // Confirm on the button itself. The aria-live status below already
+      // announced this, but it renders roughly 500px down the panel and is
+      // never on screen at the same time as the button, so a sighted reader
+      // clicked Share and saw nothing happen at all.
+      if (shareButton) {
+        shareButton.textContent = copiedToClipboard ? 'Link copied' : 'Shared';
+        setTimer(() => {
+          if (shareButton) {
+            shareButton.textContent = shareButtonLabel;
+          }
+        }, 2400);
+      }
       if (status) {
         status.textContent = 'Share link ready.';
         setTimer(() => {

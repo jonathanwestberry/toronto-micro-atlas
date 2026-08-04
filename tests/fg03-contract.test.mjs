@@ -23,6 +23,7 @@ const packagePath = new URL('../package.json', import.meta.url);
 const nvmrcPath = new URL('../.nvmrc', import.meta.url);
 const contentConfigPath = new URL('../src/content.config.ts', import.meta.url);
 const fg03StylesPath = new URL('../src/styles/fg03.css', import.meta.url);
+const fg03ScriptPath = new URL('../src/scripts/fg03-map.ts', import.meta.url);
 const readmePath = new URL('../README.md', import.meta.url);
 const maintenancePath = new URL('../docs/fg03-maintenance.md', import.meta.url);
 
@@ -583,4 +584,32 @@ test('release and maintenance docs describe the real production workflow', () =>
   ]) {
     assert.match(maintenance, new RegExp(topic, 'i'), `Missing maintenance topic: ${topic}`);
   }
+});
+
+test('the wheel does not cancel the zoom it just started', () => {
+  const script = readText(fg03ScriptPath);
+  // The map element listens for the gestures that should interrupt an
+  // in-flight camera animation and calls map.stop(). 'wheel' was in that list,
+  // which meant every wheel tick cancelled the eased zoom MapLibre had just
+  // started from that same event: scroll-zoom was dead on the /map route until
+  // the reader happened to click the canvas first. MapLibre already interrupts
+  // its own animations when a gesture begins, so the wheel never belonged here.
+  const stopMotionList = script.match(
+    /for \(const type of \[([^\]]*)\]\) \{\s*addListener\(\s*removeListeners,\s*mapElement,/,
+  );
+  assert.ok(stopMotionList, 'stopMotion listener list not found in fg03-map.ts');
+  assert.doesNotMatch(stopMotionList[1], /'wheel'/);
+  assert.match(stopMotionList[1], /'pointerdown'/);
+});
+
+test('sharing a view confirms on the button, not only in the far-off status line', () => {
+  const script = readText(fg03ScriptPath);
+  // The only success signal used to be status.textContent, which renders about
+  // 500px down the control panel and is never on screen at the same time as the
+  // button. The link copied and the reader saw nothing, which reads as a dead
+  // button. The label now answers where the click happened, then restores.
+  assert.match(script, /shareButton\.textContent = copiedToClipboard \?/);
+  assert.match(script, /shareButton\.textContent = shareButtonLabel;/);
+  // Restored from the markup, so it cannot drift from Fg03Controls.astro.
+  assert.match(script, /const shareButtonLabel = shareButton\?\.textContent\?\.trim\(\)/);
 });
