@@ -1,0 +1,15 @@
+{
+  "resolution_m": 2.0,
+  "window_m": 8000.0,
+  "frames": 15,
+  "casting_frames": 14,
+  "worst_case_buffer_m": 4390.2,
+  "canopy_pixels": 92131943,
+  "raised_pixels": 25108792,
+  "mean_rise_m": 11.262,
+  "max_rise_m": 142.545,
+  "measured_pixels": 25063803,
+  "defaulted_pixels": 44989,
+  "measured_share": 0.9982,
+  "seconds": 13273.2
+}
