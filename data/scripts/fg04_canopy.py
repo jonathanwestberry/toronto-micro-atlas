@@ -47,13 +47,19 @@ def correct_leaf_off(normalised: np.ndarray,
                      canopy_mask: np.ndarray,
                      bare_threshold: float = 3.0,
                      default_height: float = 8.0,
-                     window: int = 51) -> np.ndarray:
+                     window: int = 51,
+                     with_detail: bool = False):
     """Return a surface with bare canopy raised to local crown height.
 
     Only pixels inside `canopy_mask` that stand below `bare_threshold` are
     changed. Their new height is the mean height of nearby canopy pixels that
     did return a crown, falling back to `default_height` where a whole
     neighbourhood is bare.
+
+    With `with_detail`, also return how many raised pixels took a height
+    measured from a neighbouring crown and how many took the assumed
+    default. The two are not equally trustworthy and the guide has to report
+    the split rather than present all of it as a correction from data.
     """
     surface = normalised.astype("float32", copy=True)
     crowns = canopy_mask & (normalised >= bare_threshold)
@@ -66,11 +72,21 @@ def correct_leaf_off(normalised: np.ndarray,
     with np.errstate(invalid="ignore", divide="ignore"):
         local = np.where(counted > 0, summed / np.maximum(counted, 1e-6),
                          default_height)
-    local = np.where(np.isfinite(local) & (local > 0), local, default_height)
+    has_crown = (counted > 0) & np.isfinite(local) & (local > 0)
+    local = np.where(has_crown, local, default_height)
 
     bare = canopy_mask & (normalised < bare_threshold)
     surface[bare] = local[bare]
-    return surface
+    if not with_detail:
+        return surface
+    detail = {
+        "measured_pixels": int((bare & has_crown).sum()),
+        "defaulted_pixels": int((bare & ~has_crown).sum()),
+        "default_height_m": float(default_height),
+        "bare_threshold_m": float(bare_threshold),
+        "window_px": int(window),
+    }
+    return surface, detail
 
 
 def correction_report(before: np.ndarray,

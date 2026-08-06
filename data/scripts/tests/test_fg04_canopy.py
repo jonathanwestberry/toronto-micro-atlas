@@ -116,3 +116,48 @@ class ClassMaskTests(unittest.TestCase):
                                   self.TRANSFORM, "EPSG:2952")
 
         np.testing.assert_array_equal(from_degrees, from_native)
+
+
+class CorrectionSourceTests(unittest.TestCase):
+    """Whether a raised pixel was measured from a neighbour or assumed.
+
+    The difference decides how much of the leaf-on figure is evidence. A
+    correction that mostly fell back to `default_height` is a modelled
+    input wearing a measurement's clothes, and the guide has to say so.
+    """
+
+    def test_detail_counts_pixels_measured_from_a_local_crown(self):
+        surface = np.zeros((100, 100), dtype="float32")
+        canopy = np.zeros((100, 100), dtype=bool)
+        canopy[20:80, 20:80] = True
+        surface[20:80, 20:50] = 12.0      # crowns the flight did catch
+        surface[20:80, 50:80] = 0.4       # bare, but crowns are nearby
+
+        _, detail = correct_leaf_off(surface, canopy, with_detail=True)
+
+        bare = 60 * 30
+        self.assertEqual(detail["measured_pixels"]
+                         + detail["defaulted_pixels"], bare)
+        # Most of the bare patch is within the 51 px window of a crown. The
+        # far edge is not, and takes the default: reach is half the window,
+        # so the last 5 of 30 bare columns are out of range.
+        self.assertEqual(detail["defaulted_pixels"], 5 * 60)
+        self.assertEqual(detail["measured_pixels"], 25 * 60)
+
+    def test_detail_counts_pixels_that_fell_back_to_the_default(self):
+        surface = np.zeros((40, 40), dtype="float32")
+        canopy = np.zeros((40, 40), dtype=bool)
+        canopy[5:35, 5:35] = True         # every canopy pixel is bare
+
+        _, detail = correct_leaf_off(surface, canopy, with_detail=True)
+
+        self.assertEqual(detail["measured_pixels"], 0)
+        self.assertEqual(detail["defaulted_pixels"], 900)
+
+    def test_without_detail_the_return_is_still_a_bare_array(self):
+        surface = np.zeros((20, 20), dtype="float32")
+        canopy = np.zeros((20, 20), dtype=bool)
+
+        result = correct_leaf_off(surface, canopy)
+
+        self.assertIsInstance(result, np.ndarray)
