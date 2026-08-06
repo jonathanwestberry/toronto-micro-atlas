@@ -486,3 +486,25 @@ detail in a later phase, not for these numbers.
 
 Any figure published from this run must be described as computed on a 2 m
 grid.
+
+### FG04 maximum modelled height
+
+The normalised surface is clipped at **600 m**, not the 400 m the
+implementation plan's stub used.
+
+The CN Tower measures **537.0 m** in this lidar, in tile 630000/4833000. A
+400 m ceiling clipped it by 137 m and shortened its 20:00 shadow from 3,930 m
+to 2,928 m, losing a kilometre of shade across the downtown waterfront. Two
+of the twenty-four windows reported a local maximum of exactly 400.0 m, which
+is how the clip was caught: a maximum that lands precisely on the ceiling is
+a truncation, not a measurement.
+
+This also corrects the product plan, which records the downtown peak as
+352.6 m and attributes it to First Canadian Place. That figure is real but it
+comes from tile 630000/4834000, immediately **north** of the CN Tower, which
+the tower does not stand in. A per-tile maximum was recorded as a citywide
+one, because the feasibility run sampled three square kilometres and none of
+them contained the tallest structure in the country.
+
+600 m clears the measured maximum with headroom while still guarding against
+lidar spikes.
