@@ -220,15 +220,29 @@ def accumulate(block, crs, transform, width, height, hoods, nia, segments,
         ground_src.close()
 
 
-def sample_stops(stops, surface):
+def sample_stops(stops, surface, trees=None):
+    """Shaded hours at each transit stop.
+
+    The corrected surface gets the same under-canopy rule as every other
+    corrected statistic. Without it a stop standing under a street tree is
+    reported as sunlit, and "sunniest transit platform" is a superlative the
+    guide intends to print.
+    """
     path = os.path.join(PROCESSED, f"shade-{surface}.tif")
     coords = [(point.x, point.y) for point in stops.geometry]
     with rasterio.open(path) as src:
         values = np.array([v[0] for v in src.sample(coords)], dtype=np.uint16)
-    return shaded_hours(values.reshape(1, -1))[0]
+    hours = shaded_hours(values.reshape(1, -1))[0]
+    if surface == "corrected" and trees is not None and len(trees):
+        under = gpd.sjoin(stops[["geometry"]], trees[["geometry"]],
+                          predicate="within", how="left")
+        under = ~under.index_right.isna().to_numpy()[:len(hours)]
+        hours = np.where(under, FRAMES, hours).astype(np.uint8)
+    return hours
 
 
-def summarise(surface, data, frames, hoods, nia, segments, stops):
+def summarise(surface, data, frames, hoods, nia, segments, stops,
+              trees=None):
     ground_total = data["ground"]
     per_frame = [
         {"hour": int(frame.clock.hour),
@@ -275,7 +289,7 @@ def summarise(surface, data, frames, hoods, nia, segments, stops):
     ranked = np.argsort(np.where(np.isnan(hood_mean[1:]), -np.inf,
                                  hood_mean[1:]))
     named = [i for i in ranked if not np.isnan(hood_mean[i + 1])]
-    stop_hours = sample_stops(stops, surface)
+    stop_hours = sample_stops(stops, surface, trees)
 
     return {
         "surface": surface,
@@ -332,6 +346,8 @@ def main(block: int) -> None:
     hoods, nia, segments, stops = load_layers(crs)
     cover = gpd.read_file(os.path.join(RAW, "landcover", "LandCover2018.gdb"),
                           layer="LandCover2018", columns=["gridcode"])
+    trees = cover[cover["gridcode"] == fg04_canopy.TREE_CODE].to_crs(crs)
+    trees = trees.reset_index(drop=True)
     print(f"{len(hoods)} neighbourhoods, {len(nia)} NIA polygons, "
           f"{len(segments)} segments "
           f"({int((segments['kind'] == 'arterial').sum())} arterial), "
