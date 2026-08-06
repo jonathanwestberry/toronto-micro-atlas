@@ -42,7 +42,13 @@ RAW = os.path.join(DATA, "raw", "fg04")
 OUT = os.path.join(DATA, "processed", "fg04")
 LAND_COVER = os.path.join(RAW, "landcover", "LandCover2018.gdb")
 
-MAX_HEIGHT_M = 400.0        # taller than First Canadian Place with its mast
+# The CN Tower measures 537.0 m in this lidar, in tile 630000/4833000. The
+# product plan records the downtown peak as 352.6 m, but that figure came
+# from the tile immediately north, which the tower does not stand in, so a
+# per-tile maximum was recorded as a citywide one. A 400 m ceiling clipped
+# the tower by 137 m and lost a kilometre of its 20:00 shadow. 600 m clears
+# the real maximum with headroom while still catching lidar spikes.
+MAX_HEIGHT_M = 600.0
 GROUND_MAX_M = 2.0          # the pre-registered definition of a ground pixel
 WINDOW_M = 8000.0
 
