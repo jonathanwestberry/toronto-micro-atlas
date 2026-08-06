@@ -2,7 +2,17 @@
   "pre_registration": {
     "N": 5,
     "X_percent": 25.0,
-    "sidewalk_m": 6.0,
+    "bands_m": {
+      "walk": {
+        "inner": 8.0,
+        "outer": 15.0
+      },
+      "road": {
+        "inner": 0.0,
+        "outer": 6.0
+      }
+    },
+    "primary_band": "walk",
     "frames": 15
   },
   "surfaces": {
@@ -92,10 +102,29 @@
         "altitude_deg": 66.19,
         "shaded_fraction": 0.1073
       },
-      "arterial_km_sampled": 1949.6,
-      "shade_poor_arterial_km": 762.8,
-      "shade_poor_share_percent": 39.13,
-      "shortage_holds": true,
+      "primary_band": "walk",
+      "bands": {
+        "walk": {
+          "inner_m": 8.0,
+          "outer_m": 15.0,
+          "arterial_km_sampled": 1128.6,
+          "shade_poor_arterial_km": 76.6,
+          "shade_poor_share_percent": 6.79,
+          "shortage_holds": false
+        },
+        "road": {
+          "inner_m": 0.0,
+          "outer_m": 6.0,
+          "arterial_km_sampled": 1128.6,
+          "shade_poor_arterial_km": 473.1,
+          "shade_poor_share_percent": 41.92,
+          "shortage_holds": true
+        }
+      },
+      "arterial_km_sampled": 1128.6,
+      "shade_poor_arterial_km": 76.6,
+      "shade_poor_share_percent": 6.79,
+      "shortage_holds": false,
       "nia_mean_shaded_hours": 6.027,
       "non_nia_mean_shaded_hours": 6.246,
       "nia_polygons": 33,
@@ -144,12 +173,12 @@
         }
       ],
       "shadiest_arterial": {
-        "name": "Ted Rogers Way",
-        "mean_shaded_hours": 11.86
+        "name": "York Street",
+        "mean_shaded_hours": 11.7
       },
       "sunniest_arterial": {
         "name": "Staines Road",
-        "mean_shaded_hours": 1.32
+        "mean_shaded_hours": 1.91
       },
       "transit_stops": {
         "count": 8432,
@@ -181,7 +210,7 @@
     "corrected": {
       "surface": "corrected",
       "ground_pixels": 96753711,
-      "citywide_mean_shaded_hours": 5.974,
+      "citywide_mean_shaded_hours": 7.02,
       "per_frame": [
         {
           "hour": 6,
@@ -191,137 +220,156 @@
         {
           "hour": 7,
           "altitude_deg": 9.87,
-          "shaded_fraction": 0.7003
+          "shaded_fraction": 0.7461
         },
         {
           "hour": 8,
           "altitude_deg": 20.33,
-          "shaded_fraction": 0.5219
+          "shaded_fraction": 0.5841
         },
         {
           "hour": 9,
           "altitude_deg": 31.12,
-          "shaded_fraction": 0.3886
+          "shaded_fraction": 0.4603
         },
         {
           "hour": 10,
           "altitude_deg": 41.88,
-          "shaded_fraction": 0.297
+          "shaded_fraction": 0.3736
         },
         {
           "hour": 11,
           "altitude_deg": 52.12,
-          "shaded_fraction": 0.2179
+          "shaded_fraction": 0.2976
         },
         {
           "hour": 12,
           "altitude_deg": 60.88,
-          "shaded_fraction": 0.1407
+          "shaded_fraction": 0.2197
         },
         {
           "hour": 13,
           "altitude_deg": 66.19,
-          "shaded_fraction": 0.1057
+          "shaded_fraction": 0.197
         },
         {
           "hour": 14,
           "altitude_deg": 65.53,
-          "shaded_fraction": 0.1162
+          "shaded_fraction": 0.2081
         },
         {
           "hour": 15,
           "altitude_deg": 59.3,
-          "shaded_fraction": 0.1496
+          "shaded_fraction": 0.2437
         },
         {
           "hour": 16,
           "altitude_deg": 50.12,
-          "shaded_fraction": 0.2283
+          "shaded_fraction": 0.3184
         },
         {
           "hour": 17,
           "altitude_deg": 39.71,
-          "shaded_fraction": 0.3067
+          "shaded_fraction": 0.3913
         },
         {
           "hour": 18,
           "altitude_deg": 28.91,
-          "shaded_fraction": 0.4156
+          "shaded_fraction": 0.4923
         },
         {
           "hour": 19,
           "altitude_deg": 18.15,
-          "shaded_fraction": 0.5841
+          "shaded_fraction": 0.6466
         },
         {
           "hour": 20,
           "altitude_deg": 7.78,
-          "shaded_fraction": 0.8017
+          "shaded_fraction": 0.8417
         }
       ],
       "minimum_frame": {
         "hour": 13,
         "altitude_deg": 66.19,
-        "shaded_fraction": 0.1057
+        "shaded_fraction": 0.197
       },
-      "arterial_km_sampled": 1949.6,
-      "shade_poor_arterial_km": 739.4,
-      "shade_poor_share_percent": 37.92,
-      "shortage_holds": true,
-      "nia_mean_shaded_hours": 5.879,
-      "non_nia_mean_shaded_hours": 5.999,
+      "primary_band": "walk",
+      "bands": {
+        "walk": {
+          "inner_m": 8.0,
+          "outer_m": 15.0,
+          "arterial_km_sampled": 1128.6,
+          "shade_poor_arterial_km": 43.9,
+          "shade_poor_share_percent": 3.89,
+          "shortage_holds": false
+        },
+        "road": {
+          "inner_m": 0.0,
+          "outer_m": 6.0,
+          "arterial_km_sampled": 1128.6,
+          "shade_poor_arterial_km": 447.1,
+          "shade_poor_share_percent": 39.61,
+          "shortage_holds": true
+        }
+      },
+      "arterial_km_sampled": 1128.6,
+      "shade_poor_arterial_km": 43.9,
+      "shade_poor_share_percent": 3.89,
+      "shortage_holds": false,
+      "nia_mean_shaded_hours": 6.855,
+      "non_nia_mean_shaded_hours": 7.064,
       "nia_polygons": 33,
       "shadiest_neighbourhoods": [
         {
-          "name": "Yonge-Bay Corridor",
-          "mean_shaded_hours": 10.88
+          "name": "Rosedale-Moore Park",
+          "mean_shaded_hours": 11.25
+        },
+        {
+          "name": "Mount Pleasant East",
+          "mean_shaded_hours": 11.17
+        },
+        {
+          "name": "Lawrence Park South",
+          "mean_shaded_hours": 11.08
         },
         {
           "name": "Church-Wellesley",
-          "mean_shaded_hours": 10.5
+          "mean_shaded_hours": 11.07
         },
         {
-          "name": "Downtown Yonge East",
-          "mean_shaded_hours": 10.49
-        },
-        {
-          "name": "Wellington Place",
-          "mean_shaded_hours": 10.22
-        },
-        {
-          "name": "North St.James Town",
-          "mean_shaded_hours": 9.8
+          "name": "Yonge-Bay Corridor",
+          "mean_shaded_hours": 11.01
         }
       ],
       "sunniest_neighbourhoods": [
         {
           "name": "Downsview",
-          "mean_shaded_hours": 3.58
+          "mean_shaded_hours": 3.86
         },
         {
           "name": "West Humber-Clairville",
-          "mean_shaded_hours": 4.49
+          "mean_shaded_hours": 4.87
         },
         {
           "name": "South Riverdale",
-          "mean_shaded_hours": 4.52
+          "mean_shaded_hours": 5.41
         },
         {
-          "name": "St Lawrence-East Bayfront-The Islands",
-          "mean_shaded_hours": 4.65
+          "name": "Milliken",
+          "mean_shaded_hours": 5.55
         },
         {
-          "name": "Morningside Heights",
-          "mean_shaded_hours": 5.15
+          "name": "Etobicoke City Centre",
+          "mean_shaded_hours": 5.66
         }
       ],
       "shadiest_arterial": {
-        "name": "Ted Rogers Way",
-        "mean_shaded_hours": 11.91
+        "name": "York Street",
+        "mean_shaded_hours": 11.74
       },
       "sunniest_arterial": {
         "name": "Staines Road",
-        "mean_shaded_hours": 1.32
+        "mean_shaded_hours": 1.91
       },
       "transit_stops": {
         "count": 8432,

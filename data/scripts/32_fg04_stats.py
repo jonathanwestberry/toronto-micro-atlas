@@ -35,7 +35,14 @@ RAW = os.path.join(DATA, "raw", "fg04")
 PROCESSED = os.path.join(DATA, "processed", "fg04")
 PROOF = os.path.join(DATA, "proof", "fg04")
 
-SIDEWALK_M = 6.0            # pre-registered sidewalk sample width
+# Two sampling bands, both reported. "walk" is where people are: an arterial
+# right of way runs 20 to 30 m, so the sidewalk sits 8 to 15 m out from the
+# centreline. "road" is the pre-registered 6 m buffer, which on an arterial
+# lands in the traffic lanes. Only 0.23 per cent of the 6 m band falls under
+# tree canopy against 6.64 per cent of ground generally, because street trees
+# overhang the boulevard and not the middle of the road.
+BANDS = {"walk": (8.0, 15.0), "road": (0.0, 6.0)}
+PRIMARY_BAND = "walk"
 SHADE_POOR_N = 5            # pre-registered N
 SHORTAGE_X = 25.0           # pre-registered X, per cent of arterial kilometres
 SURFACES = ("raw", "corrected")
@@ -66,7 +73,17 @@ def burn_nearby(frame, values, shape, transform, bounds, index,
                 shape, transform, dtype=dtype, fill=fill)
 
 
-def load_layers(crs):
+def clip_to_city(frame, boundary):
+    """Keep only the parts of a layer inside Toronto.
+
+    streets-major.geojson spans the whole GTA: 2,935.3 arterial km of which
+    only 1,128.6 lie in the city. Measuring a Toronto shade shortage against
+    a denominator containing Mississauga and Markham is not a Toronto claim.
+    """
+    return frame.clip(boundary).reset_index(drop=True)
+
+
+def load_layers(crs, clip_city=True):
     hoods = gpd.read_file(
         os.path.join(RAW, "neighbourhoods-4326.geojson")).to_crs(crs)
     hoods = hoods.reset_index(drop=True)
@@ -74,12 +91,23 @@ def load_layers(crs):
 
     nia = gpd.read_file(os.path.join(RAW, "nia-4326.geojson")).to_crs(crs)
 
+    boundary = gpd.read_file(os.path.join(
+        ROOT, "public", "data", "toronto-boundary.geojson")).to_crs(crs)
+    city = boundary.union_all()
+
     major = gpd.read_file(os.path.join(
         ROOT, "public", "data", "streets-major.geojson")).to_crs(crs)
     arterial = major[major["tier"] == "major"].reset_index(drop=True)
     minor = gpd.read_file(os.path.join(
         ROOT, "public", "data", "streets-minor.geojson")).to_crs(crs)
     minor = minor.explode(index_parts=False).reset_index(drop=True)
+    if clip_city:
+        arterial = clip_to_city(arterial, city)
+        minor = clip_to_city(minor, city)
+        arterial = arterial[~arterial.geometry.is_empty]
+        minor = minor[~minor.geometry.is_empty]
+        arterial = arterial.reset_index(drop=True)
+        minor = minor.reset_index(drop=True)
 
     segments = gpd.GeoDataFrame(
         {
@@ -100,10 +128,14 @@ def load_layers(crs):
 
 def accumulate(block, crs, transform, width, height, hoods, nia, segments,
                cover):
-    sidewalks = segments.buffer(SIDEWALK_M)
+    bands = {}
+    for name, (inner, outer) in BANDS.items():
+        shape_ = segments.buffer(outer)
+        if inner > 0:
+            shape_ = shape_.difference(segments.buffer(inner))
+        bands[name] = (shape_, shape_.sindex)
     nia_union = nia.union_all()
     zones_hood, zones_seg = len(hoods) + 1, len(segments) + 1
-    sidewalk_index = sidewalks.sindex
     hood_index = hoods.sindex
     trees = cover[cover["gridcode"] == fg04_canopy.TREE_CODE].to_crs(crs)
     trees = trees.reset_index(drop=True)
@@ -115,7 +147,8 @@ def accumulate(block, crs, transform, width, height, hoods, nia, segments,
             "frame_shaded": np.zeros(FRAMES, dtype=np.int64),
             "hood": np.zeros((zones_hood, HOURS), dtype=np.int64),
             "nia": np.zeros((2, HOURS), dtype=np.int64),
-            "segment": np.zeros((zones_seg, HOURS), dtype=np.int64),
+            "segment": {name: np.zeros((zones_seg, HOURS), dtype=np.int64)
+                        for name in BANDS},
         }
         for surface in SURFACES
     }
@@ -141,12 +174,14 @@ def accumulate(block, crs, transform, width, height, hoods, nia, segments,
                                       win_transform, bounds, hood_index)
             nia_labels = burn([nia_union], [1], shape, win_transform,
                               dtype="uint8")
-            seg_labels = burn_nearby(sidewalks, segments["zone"], shape,
-                                     win_transform, bounds, sidewalk_index)
+            band_labels = {
+                name: burn_nearby(geom, segments["zone"], shape,
+                                  win_transform, bounds, idx)
+                for name, (geom, idx) in bands.items()}
             tree = burn_nearby(trees.geometry, np.ones(len(trees)), shape,
                                win_transform, bounds, tree_index,
                                dtype="uint8").astype(bool)
-            on_street = ground & (seg_labels > 0)
+
 
             # Ground under a leaf-on crown is shaded, and the raster sweep
             # cannot say so. Raising a canopy pixel lifts the sample point
@@ -174,8 +209,9 @@ def accumulate(block, crs, transform, width, height, hoods, nia, segments,
                     data["frame_shaded"][position] += int(lit[ground].sum())
                 histogram(data["hood"], hood_labels, hours, ground, zones_hood)
                 histogram(data["nia"], nia_labels, hours, ground, 2)
-                histogram(data["segment"], seg_labels, hours, on_street,
-                          zones_seg)
+                for name, labels in band_labels.items():
+                    histogram(data["segment"][name], labels, hours,
+                              ground & (labels > 0), zones_seg)
 
             if index % 25 == 0 or index == len(blocks):
                 print(f"  block {index}/{len(blocks)}", flush=True)
@@ -201,14 +237,30 @@ def summarise(surface, data, frames, hoods, nia, segments, stops):
         for frame, count in zip(frames, data["frame_shaded"])
     ]
     hood_mean = mean_from_histogram(data["hood"])
-    seg_mean = mean_from_histogram(data["segment"])
-    seg_median = median_from_histogram(data["segment"])
-
     zones = segments["zone"].to_numpy()
     arterial = segments["kind"].to_numpy() == "arterial"
     lengths = segments["length_m"].to_numpy()
-    share, poor_km, arterial_km = shortage_share(
-        seg_median[zones], lengths, arterial, SHADE_POOR_N)
+
+    bands = {}
+    for name in BANDS:
+        counts = data["segment"][name]
+        b_mean = mean_from_histogram(counts)
+        b_median = median_from_histogram(counts)
+        share, poor_km, arterial_km = shortage_share(
+            b_median[zones], lengths, arterial, SHADE_POOR_N)
+        bands[name] = {
+            "inner_m": BANDS[name][0], "outer_m": BANDS[name][1],
+            "arterial_km_sampled": round(arterial_km, 1),
+            "shade_poor_arterial_km": round(poor_km, 1),
+            "shade_poor_share_percent": round(share, 2),
+            "shortage_holds": bool(share >= SHORTAGE_X),
+            "_mean": b_mean,
+        }
+    seg_mean = bands[PRIMARY_BAND]["_mean"]
+    primary = bands[PRIMARY_BAND]
+    share = primary["shade_poor_share_percent"]
+    poor_km = primary["shade_poor_arterial_km"]
+    arterial_km = primary["arterial_km_sampled"]
 
     citywide = float(mean_from_histogram(
         data["hood"].sum(axis=0, keepdims=True))[0])
@@ -231,9 +283,12 @@ def summarise(surface, data, frames, hoods, nia, segments, stops):
         "citywide_mean_shaded_hours": round(citywide, 3),
         "per_frame": per_frame,
         "minimum_frame": min(per_frame, key=lambda r: r["shaded_fraction"]),
-        "arterial_km_sampled": round(arterial_km, 1),
-        "shade_poor_arterial_km": round(poor_km, 1),
-        "shade_poor_share_percent": round(share, 2),
+        "primary_band": PRIMARY_BAND,
+        "bands": {n: {k: v for k, v in b.items() if k != "_mean"}
+                  for n, b in bands.items()},
+        "arterial_km_sampled": arterial_km,
+        "shade_poor_arterial_km": poor_km,
+        "shade_poor_share_percent": share,
         "shortage_holds": bool(share >= SHORTAGE_X),
         "nia_mean_shaded_hours": round(float(nia_mean[1]), 3),
         "non_nia_mean_shaded_hours": round(float(nia_mean[0]), 3),
@@ -292,7 +347,9 @@ def main(block: int) -> None:
         "pre_registration": {
             "N": SHADE_POOR_N,
             "X_percent": SHORTAGE_X,
-            "sidewalk_m": SIDEWALK_M,
+            "bands_m": {n: {"inner": i, "outer": o}
+                        for n, (i, o) in BANDS.items()},
+            "primary_band": PRIMARY_BAND,
             "frames": FRAMES,
         },
         "surfaces": {
@@ -312,10 +369,13 @@ def main(block: int) -> None:
         print(f"\n[{surface}] citywide mean shaded hours "
               f"{block_report['citywide_mean_shaded_hours']}, "
               f"minimum at {block_report['minimum_frame']['hour']}:00 "
-              f"({block_report['minimum_frame']['shaded_fraction']}), "
-              f"shade-poor {block_report['shade_poor_share_percent']}% "
-              f"of {block_report['arterial_km_sampled']} arterial km, "
-              f"shortage holds: {block_report['shortage_holds']}")
+              f"({block_report['minimum_frame']['shaded_fraction']})")
+        for name, band in block_report["bands"].items():
+            mark = " <- governs the title" if name == PRIMARY_BAND else ""
+            print(f"    {name:5s} band {band['inner_m']:.0f}-{band['outer_m']:.0f} m: "
+                  f"shade-poor {band['shade_poor_share_percent']}% of "
+                  f"{band['arterial_km_sampled']} km, "
+                  f"shortage {band['shortage_holds']}{mark}")
     print(f"\nwrote {out}")
 
 

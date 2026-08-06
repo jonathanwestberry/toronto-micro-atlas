@@ -123,6 +123,43 @@ lowers the shade-poor share, which could carry it under X = 25 and cancel the
 retitle. The direction of the fix was fixed by the physics before the new
 numbers were computed, not chosen after seeing them.
 
+## Change record, 2026-08-06: the sample band, and a denominator error
+
+Two further corrections, both made after seeing results, both recorded in
+full. Jonathan chose the sample band knowing what each choice produced.
+
+**1. The denominator was not Toronto.** The addendum above fixed arterial at
+`tier == "major"`, 2,935.3 km. Only **1,128.6 km of that is inside the city**;
+`streets-major.geojson` spans the whole GTA, so 1,806.7 km runs through
+Mississauga, Vaughan, Markham and Pickering. The tier filter was checked, the
+spatial extent was not. All layers are now clipped to
+`toronto-boundary.geojson`. This correction moved the shade-poor share **up**,
+from 37.92% to 39.61% on the road band, so it was not a change that flattered
+any preferred answer.
+
+**2. The "sidewalk sample" was measuring the roadway.** The pre-registration
+defined it as ground within 6 m of a street centreline. An arterial right of
+way runs 20 to 30 m, so 6 m from the centreline is a traffic lane. Measured:
+**0.23%** of that band falls under tree canopy, against **6.64%** of ground
+generally, because street trees overhang the boulevard and not the middle of
+the road. The name said sidewalk and the radius said asphalt.
+
+Both bands are now computed and reported:
+
+| band | where it is | corrected shade-poor | shortage at X = 25 |
+|---|---|---|---|
+| **walk, 8 to 15 m** | where people walk | **3.89%** | fails |
+| road, 0 to 6 m | traffic lanes | 39.61% | holds |
+
+**The walk band governs the shortage test and the title**, chosen by Jonathan
+on 2026-08-06 because it is what the pre-registration said it was measuring
+and what the guide's stated job asks. The road band ships beside it, because
+"the roadway is shade-poor and the sidewalk is not" is a finding rather than
+a discarded variant.
+
+This choice decides the title, and it was made with both numbers visible.
+That is disclosed here rather than presented as if only one had been computed.
+
 ## Title rule
 
 If the citywide shortage condition holds under the **leaf-on corrected**
