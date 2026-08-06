@@ -469,3 +469,20 @@ Downloaded 2026-08-06. Guide four maps **shade only**, never temperature.
   2026-02-20 is published on Toronto's current **158-neighbourhood** system.
   The plan's risk of chapter 5 being cut for a lossy join does not arise.
 - Licence: Open Government Licence Toronto.
+
+### FG04 compute resolution
+
+The Phase 0 proof is computed at **2 m**, not the 1 m the implementation plan
+specifies. Measured on the real data: one 8 km window at 1 m took 937.9 s, so
+24 windows would have been 6.25 hours. At 2 m the same window is a quarter of
+the pixels and half the sweep steps, roughly eight times faster.
+
+2 m is defensible for these statistics rather than merely convenient. It is
+already the atlas's shipping resolution, z16 resolves at 1.73 m/px, and every
+pre-registered quantity is coarse relative to 2 m: sidewalk samples are a 6 m
+buffer around a centreline, a ground pixel is a height threshold, and the rest
+are neighbourhood and street means. The 1 m compute exists for rendering
+detail in a later phase, not for these numbers.
+
+Any figure published from this run must be described as computed on a 2 m
+grid.
