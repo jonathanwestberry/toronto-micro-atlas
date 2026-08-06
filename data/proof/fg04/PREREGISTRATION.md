@@ -56,6 +56,30 @@ present a shaded-hours count as if all fifteen hours were equivalent.
 This does not change the count that the base layer renders. It changes how
 the shortage threshold is worded and how the number is explained.
 
+## Addendum, 2026-08-06: what "arterial" and "segment" mean
+
+Added after the shade rasters began building but **before any statistic was
+computed**, because the definitions above named two terms the data does not
+define for itself. Fixing them now rather than at reporting time is the whole
+point of this document.
+
+- **Arterial** is `public/data/streets-major.geojson` with `tier == "major"`:
+  334 features, **2,935.3 km**. This is the denominator for X.
+- **Motorways are excluded** (`tier == "motorway"`, 34 features, 1,453.6 km).
+  Highway 401, the Don Valley Parkway and the Gardiner have no sidewalks, so
+  a claim that they are shade-poor for a walker is not false, it is empty.
+  Leaving them in would have inflated the shade-poor share with 1,453 km of
+  road no reader will ever walk.
+- **Segment** is one feature of `streets-major.geojson`, or one exploded part
+  of `streets-minor.geojson`. The minor file ships as a single dissolved
+  MultiLineString and has to be exploded to have segments at all: 25,469
+  parts, 11,318.1 km.
+- The shortage share X is measured in **kilometres of arterial**, not in
+  count of segments, so that one long boulevard is not outweighed by a
+  cluster of short stubs.
+- At X = 25, the shortage condition needs **733.8 km** of the 2,935.3 arterial
+  kilometres to be shade-poor.
+
 ## Title rule
 
 If the citywide shortage condition holds under the **leaf-on corrected**
