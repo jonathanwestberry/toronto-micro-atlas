@@ -407,3 +407,65 @@ and size checks pass.
   archive is approximately 77 MB; it is reproducible and is not committed.
 - Geofabrik Ontario extract was **not** needed; all OSM layers succeeded via
   Overpass with single-bbox queries.
+
+---
+
+## FG04 (shade guide) sources
+
+Downloaded 2026-08-06. Guide four maps **shade only**, never temperature.
+
+### Ontario lidar, GTA 2023
+
+- Digital Surface Model and Digital Terrain Model, LiDAR-derived, 1 km tiles.
+- Tile index: `https://www.publicdocs.mnr.gov.on.ca/mirb/OntarioDSM_LidarDerived_TileIndex.zip`
+  (194,738 rows covering all Ontario lidar projects).
+- Packages: `https://ws.gisetl.lrc.gov.on.ca/fmedatadownload/Packages/GTA2023-{DSM,DTM}-NN.zip`
+  for NN in 04, 05, 08, 09, 10.
+- Tiles are extracted individually by HTTP byte range against the remote zip
+  central directory, so the ~31 GB of packages is never downloaded whole.
+- **727 DSM tiles and 727 matching DTM tiles.** The product plan records 1031;
+  that figure came from intersecting the index with Toronto's bounding box.
+  Selection here is against the real municipal boundary, which drops 304 tiles
+  lying in Lake Ontario, Peel and York. Same five packages either way.
+- Flown April to May 2023, so **leaf-off**. This is the guide's central data
+  risk and the reason `fg04_canopy` exists.
+- 0.5 m, 2000 x 2000 per tile, float32.
+- **CRS is EPSG:6660** (NAD83(CSRS)v6 / UTM 17N) as declared by the tiles
+  themselves, not EPSG:2958 as the product plan states. The two are the same
+  projection under different NAD83(CSRS) realizations and agree far below a
+  centimetre, but they are not interchangeable to rasterio, so anything that
+  merges or reprojects must not hardcode 2958.
+- Licence: Open Government Licence Ontario. Derived products permitted with
+  attribution.
+
+### Toronto Forest and Land Cover, 2018 Tree Canopy Study
+
+- Dataset `61642048-56bb-4050-b7c3-f569fcf94527`,
+  resource `69419e11-2dfa-4bcc-bed0-43a9dd2d0973`, `landcover2018_gdb.zip`.
+- 436,398,730 bytes, downloaded 2026-08-06.
+- Derived from **leaf-on** imagery, 8 classes including tree canopy and
+  buildings as separate classes.
+- Used for two jobs: the leaf-on canopy correction, and the building versus
+  tree split.
+- Vintage gap: land cover is 2018, lidar is 2023. Five years of growth and
+  removal sit between them, in both directions.
+- The implementation plan states this has no stable direct URL and must be
+  fetched by hand. It does have one, via the CKAN resource above.
+- Licence: Open Government Licence Toronto.
+
+### Neighbourhood Improvement Areas
+
+- Dataset `3b471f62-dc01-4a96-bb76-f794e4c6b860`,
+  resource `8b6a2d2a-d398-484f-99b5-f686f31f815d`,
+  `neighbourhood-improvement-areas-4326.geojson`. Downloaded 2026-08-06.
+- Not resource `2937a4ec-...`, which the implementation plan named. That id is
+  the CKAN **datastore dump** endpoint and returns CSV regardless of the
+  filename appended to it, so geopandas cannot read its geometry.
+- **33 live MultiPolygon features**, EPSG:4326, no expired rows
+  (every `DATE_EXPIRY` is the 3000-01-01 sentinel).
+- The product plan records "31 of 140 neighbourhoods, 2011 census tracts".
+  That is stale. `AREA_SHORT_CODE` reaches 141, 142, 154 and 155, which cannot
+  exist in the 140-neighbourhood system, so the layer as refreshed
+  2026-02-20 is published on Toronto's current **158-neighbourhood** system.
+  The plan's risk of chapter 5 being cut for a lossy join does not arise.
+- Licence: Open Government Licence Toronto.

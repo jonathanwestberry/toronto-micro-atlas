@@ -34,3 +34,4 @@ __pycache__/
 
 # Tiling intermediate, 97 MB (recreated by data/scripts/11_process_trees.py)
 data/processed/trees-tiling.ndjson
+data/processed/fg04/*.tif
