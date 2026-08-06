@@ -1,0 +1,2 @@
+rasterio==1.5.0
+pvlib==0.15.2

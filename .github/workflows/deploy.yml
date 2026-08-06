@@ -30,21 +30,26 @@ jobs:
         with:
           python-version: '3.14'
           cache: pip
-          cache-dependency-path: data/scripts/requirements-fg03.txt
+          cache-dependency-path: |
+            data/scripts/requirements-fg03.txt
+            data/scripts/requirements-fg04.txt
 
       - name: Install web dependencies
         run: npm ci
 
-      - name: Install FG03 data dependencies
-        run: python -m pip install -r data/scripts/requirements-fg03.txt
+      - name: Install data pipeline dependencies
+        run: >-
+          python -m pip install
+          -r data/scripts/requirements-fg03.txt
+          -r data/scripts/requirements-fg04.txt
 
-      - name: Test FG03 data pipeline
+      - name: Test data pipelines
         env:
           PYTHONPATH: data/scripts
         run: >-
           python -m unittest discover
           -s data/scripts/tests
-          -p 'test_fg03*.py'
+          -p 'test_fg0*.py'
           -v
 
       - name: Test web logic
