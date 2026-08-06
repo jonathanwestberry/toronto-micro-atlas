@@ -72,6 +72,16 @@ def main() -> None:
           os.path.join(RAW, "nia-4326.geojson"))
     print("NIA downloaded.")
 
+    # The current 158-neighbourhood boundaries, for per-neighbourhood means.
+    # The same dataset also publishes the historical 140, which is not what
+    # the NIA layer is keyed to: NIA area codes reach 155, so both sit on the
+    # current system and the join is clean.
+    fetch(f"{CKAN}/dataset/fc443770-ef0a-4025-9c2c-2cb558bfab00/resource/"
+          "0719053b-28b7-48ea-b863-068823a93aaa/download/"
+          "neighbourhoods-4326.geojson",
+          os.path.join(RAW, "neighbourhoods-4326.geojson"))
+    print("Neighbourhoods downloaded.")
+
     # The 2018 Tree Canopy Study geodatabase does have a stable resource URL,
     # contrary to the implementation plan. 436 MB.
     fetch(f"{CKAN}/dataset/61642048-56bb-4050-b7c3-f569fcf94527/resource/"
