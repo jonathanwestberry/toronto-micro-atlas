@@ -1,8 +1,12 @@
 import unittest
 
+import geopandas as gpd
 import numpy as np
+from rasterio.transform import from_origin
+from shapely.geometry import box
 
-from fg04_canopy import correct_leaf_off, correction_report
+from fg04_canopy import (BUILDING_CODE, TREE_CODE, class_mask,
+                         correct_leaf_off, correction_report)
 
 
 class LeafOnCorrectionTests(unittest.TestCase):
@@ -56,3 +60,59 @@ class LeafOnCorrectionTests(unittest.TestCase):
         self.assertEqual(report["canopy_pixels"], 900)
         self.assertEqual(report["raised_pixels"], 900)
         self.assertGreater(report["mean_rise_m"], 0)
+
+
+def cover_frame(crs="EPSG:2952"):
+    """A tree square on the left, a building square on the right."""
+    return gpd.GeoDataFrame(
+        {
+            "gridcode": [TREE_CODE, BUILDING_CODE],
+            "geometry": [box(0, 0, 10, 20), box(10, 0, 20, 20)],
+        },
+        crs=crs,
+    )
+
+
+class ClassMaskTests(unittest.TestCase):
+    # 20 x 20 metre grid at 1 m, origin at the top left corner
+    SHAPE = (20, 20)
+    TRANSFORM = from_origin(0, 20, 1, 1)
+
+    def test_rasterises_only_the_requested_class(self):
+        mask = class_mask(cover_frame(), {TREE_CODE},
+                          self.SHAPE, self.TRANSFORM, "EPSG:2952")
+
+        self.assertTrue(mask[:, :10].all())      # the tree square
+        self.assertFalse(mask[:, 10:].any())     # the building square
+
+    def test_a_different_class_selects_a_different_square(self):
+        mask = class_mask(cover_frame(), {BUILDING_CODE},
+                          self.SHAPE, self.TRANSFORM, "EPSG:2952")
+
+        self.assertFalse(mask[:, :10].any())
+        self.assertTrue(mask[:, 10:].all())
+
+    def test_several_classes_can_be_requested_at_once(self):
+        mask = class_mask(cover_frame(), {TREE_CODE, BUILDING_CODE},
+                          self.SHAPE, self.TRANSFORM, "EPSG:2952")
+
+        self.assertTrue(mask.all())
+
+    def test_an_absent_class_gives_an_empty_mask(self):
+        mask = class_mask(cover_frame(), {7},
+                          self.SHAPE, self.TRANSFORM, "EPSG:2952")
+
+        self.assertFalse(mask.any())
+        self.assertEqual(mask.dtype, np.dtype(bool))
+
+    def test_source_geometry_is_reprojected_to_the_target_crs(self):
+        # The same ground, described in degrees, must land on the same pixels.
+        native = cover_frame()
+        degrees = native.to_crs("EPSG:4326")
+
+        from_native = class_mask(native, {TREE_CODE}, self.SHAPE,
+                                 self.TRANSFORM, "EPSG:2952")
+        from_degrees = class_mask(degrees, {TREE_CODE}, self.SHAPE,
+                                  self.TRANSFORM, "EPSG:2952")
+
+        np.testing.assert_array_equal(from_degrees, from_native)

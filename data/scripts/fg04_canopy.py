@@ -8,7 +8,39 @@ guide reports corrected and uncorrected figures side by side.
 """
 
 import numpy as np
+from rasterio.features import rasterize
 from scipy.ndimage import uniform_filter
+
+# Class codes in Toronto's 2018 Tree Canopy Study land cover. The full set is
+# 1 tree, 2 grass, 3 bare, 4 water, 5 building, 6 road, 7 other, 8 shrub.
+# Shrub is deliberately not canopy: the guide's argument is about tree cover,
+# and a leaf-off shrub casts little either way.
+TREE_CODE = 1
+BUILDING_CODE = 5
+
+
+def class_mask(cover, codes, out_shape, transform, crs) -> np.ndarray:
+    """Burn the requested land cover classes onto a raster grid.
+
+    `cover` is the land cover polygons, reprojected here if it does not
+    already sit in `crs`. The 2018 study is published in EPSG:2952 while the
+    lidar is EPSG:6660, so this reprojection is the normal case rather than
+    the exception.
+    """
+    wanted = cover[cover["gridcode"].isin(set(codes))]
+    if crs is not None and wanted.crs is not None and wanted.crs != crs:
+        wanted = wanted.to_crs(crs)
+    if wanted.empty:
+        return np.zeros(out_shape, dtype=bool)
+    burned = rasterize(
+        ((geom, 1) for geom in wanted.geometry),
+        out_shape=out_shape,
+        transform=transform,
+        fill=0,
+        dtype="uint8",
+        all_touched=False,
+    )
+    return burned.astype(bool)
 
 
 def correct_leaf_off(normalised: np.ndarray,

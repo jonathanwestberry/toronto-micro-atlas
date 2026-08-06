@@ -57,12 +57,25 @@ def cast_shadow(surface: np.ndarray,
 def hour_bitmask(surface: np.ndarray,
                  frames,
                  resolution: float,
-                 max_distance: float) -> np.ndarray:
+                 max_distance: float | None = None,
+                 max_height: float | None = None) -> np.ndarray:
+    """Pack one shadow mask per frame into a 16 bit raster.
+
+    Give either `max_distance`, a single sweep length used for every frame,
+    or `max_height`, the tallest object in the surface, from which each
+    frame's sweep is sized to its own sun angle. The second is the same
+    answer for a fraction of the work, because a shadow at 66 degrees cannot
+    reach as far as one at 8 and there is no point sweeping as if it could.
+    """
+    if (max_distance is None) == (max_height is None):
+        raise ValueError("pass exactly one of max_distance or max_height")
     if len(frames) > 16:
         raise ValueError(f"{len(frames)} frames will not fit a 16 bit mask")
     bits = np.zeros(surface.shape, dtype=np.uint16)
     for position, frame in enumerate(frames):
+        reach = (max_distance if max_height is None
+                 else max_height * shadow_ratio(frame.altitude))
         mask = cast_shadow(surface, frame.altitude, frame.azimuth,
-                           resolution, max_distance)
+                           resolution, reach)
         bits |= (mask.astype(np.uint16) << position)
     return bits
