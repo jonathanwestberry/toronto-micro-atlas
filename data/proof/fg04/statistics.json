@@ -1,0 +1,354 @@
+{
+  "pre_registration": {
+    "N": 5,
+    "X_percent": 25.0,
+    "sidewalk_m": 6.0,
+    "frames": 15
+  },
+  "surfaces": {
+    "raw": {
+      "surface": "raw",
+      "ground_pixels": 96753711,
+      "citywide_mean_shaded_hours": 6.201,
+      "per_frame": [
+        {
+          "hour": 6,
+          "altitude_deg": 0.38,
+          "shaded_fraction": 1.0
+        },
+        {
+          "hour": 7,
+          "altitude_deg": 9.87,
+          "shaded_fraction": 0.7351
+        },
+        {
+          "hour": 8,
+          "altitude_deg": 20.33,
+          "shaded_fraction": 0.5519
+        },
+        {
+          "hour": 9,
+          "altitude_deg": 31.12,
+          "shaded_fraction": 0.4086
+        },
+        {
+          "hour": 10,
+          "altitude_deg": 41.88,
+          "shaded_fraction": 0.3099
+        },
+        {
+          "hour": 11,
+          "altitude_deg": 52.12,
+          "shaded_fraction": 0.2244
+        },
+        {
+          "hour": 12,
+          "altitude_deg": 60.88,
+          "shaded_fraction": 0.1474
+        },
+        {
+          "hour": 13,
+          "altitude_deg": 66.19,
+          "shaded_fraction": 0.1073
+        },
+        {
+          "hour": 14,
+          "altitude_deg": 65.53,
+          "shaded_fraction": 0.1172
+        },
+        {
+          "hour": 15,
+          "altitude_deg": 59.3,
+          "shaded_fraction": 0.1553
+        },
+        {
+          "hour": 16,
+          "altitude_deg": 50.12,
+          "shaded_fraction": 0.2343
+        },
+        {
+          "hour": 17,
+          "altitude_deg": 39.71,
+          "shaded_fraction": 0.3195
+        },
+        {
+          "hour": 18,
+          "altitude_deg": 28.91,
+          "shaded_fraction": 0.4364
+        },
+        {
+          "hour": 19,
+          "altitude_deg": 18.15,
+          "shaded_fraction": 0.6155
+        },
+        {
+          "hour": 20,
+          "altitude_deg": 7.78,
+          "shaded_fraction": 0.8377
+        }
+      ],
+      "minimum_frame": {
+        "hour": 13,
+        "altitude_deg": 66.19,
+        "shaded_fraction": 0.1073
+      },
+      "arterial_km_sampled": 1949.6,
+      "shade_poor_arterial_km": 762.8,
+      "shade_poor_share_percent": 39.13,
+      "shortage_holds": true,
+      "nia_mean_shaded_hours": 6.027,
+      "non_nia_mean_shaded_hours": 6.246,
+      "nia_polygons": 33,
+      "shadiest_neighbourhoods": [
+        {
+          "name": "Yonge-Bay Corridor",
+          "mean_shaded_hours": 10.9
+        },
+        {
+          "name": "Downtown Yonge East",
+          "mean_shaded_hours": 10.6
+        },
+        {
+          "name": "Church-Wellesley",
+          "mean_shaded_hours": 10.58
+        },
+        {
+          "name": "Wellington Place",
+          "mean_shaded_hours": 10.24
+        },
+        {
+          "name": "North St.James Town",
+          "mean_shaded_hours": 9.81
+        }
+      ],
+      "sunniest_neighbourhoods": [
+        {
+          "name": "Downsview",
+          "mean_shaded_hours": 3.57
+        },
+        {
+          "name": "West Humber-Clairville",
+          "mean_shaded_hours": 4.46
+        },
+        {
+          "name": "South Riverdale",
+          "mean_shaded_hours": 4.52
+        },
+        {
+          "name": "St Lawrence-East Bayfront-The Islands",
+          "mean_shaded_hours": 4.8
+        },
+        {
+          "name": "Milliken",
+          "mean_shaded_hours": 5.15
+        }
+      ],
+      "shadiest_arterial": {
+        "name": "Ted Rogers Way",
+        "mean_shaded_hours": 11.86
+      },
+      "sunniest_arterial": {
+        "name": "Staines Road",
+        "mean_shaded_hours": 1.32
+      },
+      "transit_stops": {
+        "count": 8432,
+        "mean_shaded_hours": 6.15,
+        "sunniest": [
+          {
+            "name": "Pharmacy Ave at Princeway Dr",
+            "shaded_hours": 1
+          },
+          {
+            "name": "Canmore Blvd at Charcoal Dr (West) East Side",
+            "shaded_hours": 1
+          },
+          {
+            "name": "Dupont St at Davenport Rd",
+            "shaded_hours": 1
+          },
+          {
+            "name": "Northover St at Giltspur Dr",
+            "shaded_hours": 1
+          },
+          {
+            "name": "Weston Rd at Northland Ave",
+            "shaded_hours": 1
+          }
+        ]
+      }
+    },
+    "corrected": {
+      "surface": "corrected",
+      "ground_pixels": 96753711,
+      "citywide_mean_shaded_hours": 5.974,
+      "per_frame": [
+        {
+          "hour": 6,
+          "altitude_deg": 0.38,
+          "shaded_fraction": 1.0
+        },
+        {
+          "hour": 7,
+          "altitude_deg": 9.87,
+          "shaded_fraction": 0.7003
+        },
+        {
+          "hour": 8,
+          "altitude_deg": 20.33,
+          "shaded_fraction": 0.5219
+        },
+        {
+          "hour": 9,
+          "altitude_deg": 31.12,
+          "shaded_fraction": 0.3886
+        },
+        {
+          "hour": 10,
+          "altitude_deg": 41.88,
+          "shaded_fraction": 0.297
+        },
+        {
+          "hour": 11,
+          "altitude_deg": 52.12,
+          "shaded_fraction": 0.2179
+        },
+        {
+          "hour": 12,
+          "altitude_deg": 60.88,
+          "shaded_fraction": 0.1407
+        },
+        {
+          "hour": 13,
+          "altitude_deg": 66.19,
+          "shaded_fraction": 0.1057
+        },
+        {
+          "hour": 14,
+          "altitude_deg": 65.53,
+          "shaded_fraction": 0.1162
+        },
+        {
+          "hour": 15,
+          "altitude_deg": 59.3,
+          "shaded_fraction": 0.1496
+        },
+        {
+          "hour": 16,
+          "altitude_deg": 50.12,
+          "shaded_fraction": 0.2283
+        },
+        {
+          "hour": 17,
+          "altitude_deg": 39.71,
+          "shaded_fraction": 0.3067
+        },
+        {
+          "hour": 18,
+          "altitude_deg": 28.91,
+          "shaded_fraction": 0.4156
+        },
+        {
+          "hour": 19,
+          "altitude_deg": 18.15,
+          "shaded_fraction": 0.5841
+        },
+        {
+          "hour": 20,
+          "altitude_deg": 7.78,
+          "shaded_fraction": 0.8017
+        }
+      ],
+      "minimum_frame": {
+        "hour": 13,
+        "altitude_deg": 66.19,
+        "shaded_fraction": 0.1057
+      },
+      "arterial_km_sampled": 1949.6,
+      "shade_poor_arterial_km": 739.4,
+      "shade_poor_share_percent": 37.92,
+      "shortage_holds": true,
+      "nia_mean_shaded_hours": 5.879,
+      "non_nia_mean_shaded_hours": 5.999,
+      "nia_polygons": 33,
+      "shadiest_neighbourhoods": [
+        {
+          "name": "Yonge-Bay Corridor",
+          "mean_shaded_hours": 10.88
+        },
+        {
+          "name": "Church-Wellesley",
+          "mean_shaded_hours": 10.5
+        },
+        {
+          "name": "Downtown Yonge East",
+          "mean_shaded_hours": 10.49
+        },
+        {
+          "name": "Wellington Place",
+          "mean_shaded_hours": 10.22
+        },
+        {
+          "name": "North St.James Town",
+          "mean_shaded_hours": 9.8
+        }
+      ],
+      "sunniest_neighbourhoods": [
+        {
+          "name": "Downsview",
+          "mean_shaded_hours": 3.58
+        },
+        {
+          "name": "West Humber-Clairville",
+          "mean_shaded_hours": 4.49
+        },
+        {
+          "name": "South Riverdale",
+          "mean_shaded_hours": 4.52
+        },
+        {
+          "name": "St Lawrence-East Bayfront-The Islands",
+          "mean_shaded_hours": 4.65
+        },
+        {
+          "name": "Morningside Heights",
+          "mean_shaded_hours": 5.15
+        }
+      ],
+      "shadiest_arterial": {
+        "name": "Ted Rogers Way",
+        "mean_shaded_hours": 11.91
+      },
+      "sunniest_arterial": {
+        "name": "Staines Road",
+        "mean_shaded_hours": 1.32
+      },
+      "transit_stops": {
+        "count": 8432,
+        "mean_shaded_hours": 6.3,
+        "sunniest": [
+          {
+            "name": "Pharmacy Ave at Princeway Dr",
+            "shaded_hours": 1
+          },
+          {
+            "name": "Birchmount Rd at Parnell Ave",
+            "shaded_hours": 1
+          },
+          {
+            "name": "Jones Ave at Boultbee Ave",
+            "shaded_hours": 1
+          },
+          {
+            "name": "Sheppard Ave West at Arrow Rd",
+            "shaded_hours": 1
+          },
+          {
+            "name": "Lawrence Ave East at Bellamy Rd North",
+            "shaded_hours": 1
+          }
+        ]
+      }
+    }
+  }
+}

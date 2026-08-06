@@ -80,6 +80,49 @@ point of this document.
 - At X = 25, the shortage condition needs **733.8 km** of the 2,935.3 arterial
   kilometres to be shade-poor.
 
+## Change record, 2026-08-06: ground under a leaf-on crown counts as shaded
+
+**This change was made after seeing a first set of results.** It is recorded
+here in full, with what the numbers were before it, because a method changed
+after the fact is exactly what this document exists to catch.
+
+**What the first run reported.** Citywide mean shaded hours: raw 6.201,
+corrected **5.974**. Shade-poor arterial share: raw 39.13%, corrected 37.92%.
+The leaf-on correction appeared to *reduce* shade.
+
+**Why that is impossible.** The correction only ever raises canopy height. It
+adds obstruction and removes none, so it cannot lower shade anywhere.
+
+**The cause, measured on a midtown block rather than assumed:**
+
+| ground sample | raw | corrected | change |
+|---|---|---|---|
+| under 2018 tree canopy | 8.909 | 6.441 | **-2.468** |
+| open ground | 5.090 | 5.281 | +0.191 |
+
+Raising a canopy pixel lifts the sample point from the sidewalk to the top of
+the crown, and the top of a crown is in full sun. The model was measuring how
+lit a treetop is and reporting it as how shaded a sidewalk is. Open ground
+moved the right way, +0.191, which is the real leaf-on effect: taller crowns
+throwing further onto their neighbours.
+
+**The change.** On the corrected surface only, a ground pixel lying under
+2018 tree canopy is counted as shaded in every modelled daylight hour.
+
+**The leaf-off surface is deliberately left alone.** In April the bare crown
+really does let light through, so its lower figure is not an error to fix. The
+gap between the two surfaces is the leaf-off bias this guide exists to report.
+
+**Modelled assumption, to be stated in the guide:** a closed leaf-on crown is
+treated as blocking the sun for the whole modelled day. Real crowns are not
+opaque and low sun arrives sideways beneath them, so this is the generous end
+of the estimate for canopy shade.
+
+**This may change the headline.** Correcting it raises corrected shade, which
+lowers the shade-poor share, which could carry it under X = 25 and cancel the
+retitle. The direction of the fix was fixed by the physics before the new
+numbers were computed, not chosen after seeing them.
+
 ## Title rule
 
 If the citywide shortage condition holds under the **leaf-on corrected**

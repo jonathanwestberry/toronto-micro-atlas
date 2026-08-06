@@ -23,6 +23,7 @@ import rasterio
 from rasterio.features import rasterize
 from rasterio.windows import Window
 
+import fg04_canopy
 import fg04_solar as solar
 from fg04_stats import (FRAMES, HOURS, histogram, mean_from_histogram,
                         median_from_histogram, shaded_hours, shortage_share)
@@ -38,6 +39,7 @@ SIDEWALK_M = 6.0            # pre-registered sidewalk sample width
 SHADE_POOR_N = 5            # pre-registered N
 SHORTAGE_X = 25.0           # pre-registered X, per cent of arterial kilometres
 SURFACES = ("raw", "corrected")
+ALL_HOURS = 0x7FFF          # bits 0 to 14 set, every modelled daylight hour
 
 
 def burn(geometries, values, shape, transform, dtype="int32", fill=0):
@@ -47,6 +49,21 @@ def burn(geometries, values, shape, transform, dtype="int32", fill=0):
         return np.full(shape, fill, dtype=dtype)
     return rasterize(pairs, out_shape=shape, transform=transform,
                      fill=fill, dtype=dtype, all_touched=False)
+
+
+def burn_nearby(frame, values, shape, transform, bounds, index,
+                dtype="int32", fill=0):
+    """Rasterise only the geometries that reach this block.
+
+    There are 25,803 street segments and 88 blocks. Handing every segment to
+    every block would rasterise two and a quarter million geometries to fill
+    a raster where almost all of them fall outside the block entirely.
+    """
+    hits = list(index.intersection(bounds))
+    if not hits:
+        return np.full(shape, fill, dtype=dtype)
+    return burn(frame.iloc[hits].to_numpy(), np.asarray(values)[hits],
+                shape, transform, dtype=dtype, fill=fill)
 
 
 def load_layers(crs):
@@ -81,10 +98,16 @@ def load_layers(crs):
     return hoods, nia, segments, stops
 
 
-def accumulate(block, crs, transform, width, height, hoods, nia, segments):
+def accumulate(block, crs, transform, width, height, hoods, nia, segments,
+               cover):
     sidewalks = segments.buffer(SIDEWALK_M)
     nia_union = nia.union_all()
     zones_hood, zones_seg = len(hoods) + 1, len(segments) + 1
+    sidewalk_index = sidewalks.sindex
+    hood_index = hoods.sindex
+    trees = cover[cover["gridcode"] == fg04_canopy.TREE_CODE].to_crs(crs)
+    trees = trees.reset_index(drop=True)
+    tree_index = trees.sindex
 
     accum = {
         surface: {
@@ -112,17 +135,37 @@ def accumulate(block, crs, transform, width, height, hoods, nia, segments):
                 continue
             shape = (int(window.height), int(window.width))
             win_transform = rasterio.windows.transform(window, transform)
+            bounds = rasterio.windows.bounds(window, transform)
 
-            hood_labels = burn(hoods.geometry, hoods["zone"], shape,
-                               win_transform)
+            hood_labels = burn_nearby(hoods.geometry, hoods["zone"], shape,
+                                      win_transform, bounds, hood_index)
             nia_labels = burn([nia_union], [1], shape, win_transform,
                               dtype="uint8")
-            seg_labels = burn(sidewalks, segments["zone"], shape,
-                              win_transform)
+            seg_labels = burn_nearby(sidewalks, segments["zone"], shape,
+                                     win_transform, bounds, sidewalk_index)
+            tree = burn_nearby(trees.geometry, np.ones(len(trees)), shape,
+                               win_transform, bounds, tree_index,
+                               dtype="uint8").astype(bool)
             on_street = ground & (seg_labels > 0)
+
+            # Ground under a leaf-on crown is shaded, and the raster sweep
+            # cannot say so. Raising a canopy pixel lifts the sample point
+            # from the sidewalk to the treetop, and a treetop is in full sun,
+            # so the corrected surface reads 2.47 fewer shaded hours under
+            # canopy than the leaf-off one. That is an artefact of where the
+            # surface sits, not a finding about shade.
+            #
+            # The leaf-off surface is left alone on purpose. In April the
+            # bare crown really does let light through, and that gap between
+            # the two surfaces is the leaf-off bias this guide exists to
+            # report rather than something to paper over.
+            under_canopy = ground & tree
 
             for surface in SURFACES:
                 bits = sources[surface].read(1, window=window)
+                if surface == "corrected":
+                    bits = np.where(under_canopy, ALL_HOURS,
+                                    bits).astype(np.uint16)
                 hours = shaded_hours(bits)
                 data = accum[surface]
                 data["ground"] += int(ground.sum())
@@ -232,13 +275,15 @@ def main(block: int) -> None:
 
     print(f"grid {width} x {height} in {crs}")
     hoods, nia, segments, stops = load_layers(crs)
+    cover = gpd.read_file(os.path.join(RAW, "landcover", "LandCover2018.gdb"),
+                          layer="LandCover2018", columns=["gridcode"])
     print(f"{len(hoods)} neighbourhoods, {len(nia)} NIA polygons, "
           f"{len(segments)} segments "
           f"({int((segments['kind'] == 'arterial').sum())} arterial), "
           f"{len(stops)} transit stops")
 
     accum, sources = accumulate(block, crs, transform, width, height,
-                                hoods, nia, segments)
+                                hoods, nia, segments, cover)
     for handle in sources.values():
         handle.close()
 
