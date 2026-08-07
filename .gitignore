@@ -35,3 +35,13 @@ __pycache__/
 # Tiling intermediate, 97 MB (recreated by data/scripts/11_process_trees.py)
 data/processed/trees-tiling.ndjson
 data/processed/fg04/*.tif
+
+# The shade tile pyramid, 9,555 files and ~320 MB, hosted on R2 rather than
+# deployed with the site. Two reasons it is not committed. Cloudflare Pages
+# allows 20,000 files per deployment and this one guide is half of them, so
+# committing it would spend the atlas's whole future map budget here. And
+# WebP is already compressed, so git cannot delta it: every rebuild, and the
+# January frame is a rebuild, would add the full 320 MB to history for good.
+# Recreated by data/scripts/33_fg04_tiles.py, published by 34_fg04_upload.py.
+# manifest.json IS committed: the site reads it at build time.
+public/data/fg04/tiles/

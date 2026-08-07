@@ -31,19 +31,20 @@ byte parked in alpha comes back rounded, and comes back destroyed where
 alpha is zero. A bitmask that survives Python and corrupts in `getImageData`
 would look like a rendering bug for a week.
 
-That invariant decides the layout, because the two cannot both hold in one
-pixel: fifteen bits on two surfaces is thirty bits and RGB carries
-twenty-four. So a tile is one image of **stacked halves**, the measured
-surface above the corrected one, three channels each:
+Fifteen bits on two surfaces is thirty bits and RGB carries twenty-four, so
+the two surfaces get **a square tile each** at the same coordinates under
+different prefixes. Square matters: MapLibre colourises the count with a
+`raster-dem` source and a `color-relief` layer, and a `raster-dem` source
+cannot read a tile that is not square. Three channels:
 
     R  mask bits 0 to 7
     G  mask bits 8 to 14, top bit unused
     B  shaded-hours count, 0 to 15
 
 B is derived from R and G and is redundant on purpose. The count layer is
-what the reader sees first, and making it a channel read rather than a
-population count in a shader is worth one third of a tile. It is pinned
-here as equal to the population count so the two can never drift.
+what the reader sees first, and MapLibre reads B directly as the value its
+colour ramp interpolates over. It is pinned here as equal to the population
+count so the two can never drift.
 """
 
 import os
@@ -161,12 +162,12 @@ class BitRangeTests(unittest.TestCase):
             pyramid.check_bits(bits)
 
     def test_the_encoder_refuses_a_mask_it_cannot_carry(self):
-        raw, corrected = sample_masks()
+        raw, _ = sample_masks()
         raw = raw.copy()
         raw[0, 0] = 1 << 15
 
         with self.assertRaises(ValueError):
-            pyramid.encode_tile(raw, corrected)
+            pyramid.encode_tile(raw)
 
     @unittest.skipUnless(
         os.path.exists(os.path.join(PROCESSED, "shade-raw.tif")),
@@ -216,128 +217,129 @@ class DawnTests(unittest.TestCase):
 
 
 class TileEncodingTests(unittest.TestCase):
-    """One raster, two surfaces, and nothing hiding in the alpha channel."""
+    """One square tile per surface, and nothing hiding in an alpha channel."""
 
     def test_a_tile_is_a_single_array_not_one_band_per_hour(self):
-        height, width = 8, 8
-        raw, corrected = sample_masks(height, width)
+        raw, _ = sample_masks(8, 8)
 
-        pixels = pyramid.encode_tile(raw, corrected)
+        pixels = pyramid.encode_tile(raw)
 
         self.assertIsInstance(pixels, np.ndarray)
         self.assertEqual(pixels.dtype, np.dtype("uint8"))
-        self.assertEqual(pixels.shape, (height * 2, width, pyramid.CHANNELS))
+        self.assertEqual(pixels.shape, (8, 8, pyramid.CHANNELS))
+
+    def test_a_tile_is_square_so_a_raster_dem_source_can_read_it(self):
+        raw, _ = sample_masks(pyramid.TILE_SIZE, pyramid.TILE_SIZE)
+
+        pixels = pyramid.encode_tile(raw)
+
+        self.assertEqual(pixels.shape[0], pixels.shape[1])
 
     def test_the_channel_count_does_not_track_the_number_of_hours(self):
-        raw, corrected = sample_masks()
+        raw, _ = sample_masks()
 
-        pixels = pyramid.encode_tile(raw, corrected)
+        pixels = pyramid.encode_tile(raw)
 
         self.assertLess(pixels.shape[2], len(pyramid.HOUR_BITS),
                         "fifteen channels would be one band per hour, which "
                         "is the encoding this contract exists to forbid")
 
-    def test_the_measured_surface_is_the_top_half(self):
-        raw, corrected = sample_masks(8, 8)
-
-        pixels = pyramid.encode_tile(raw, corrected)
-
-        top = pyramid.decode_half(pixels[:8])
-        bottom = pyramid.decode_half(pixels[8:])
-        np.testing.assert_array_equal(top, raw)
-        np.testing.assert_array_equal(bottom, corrected)
-
     def test_the_blue_channel_is_the_shaded_hour_count(self):
-        raw, corrected = sample_masks(8, 8)
+        raw, _ = sample_masks(8, 8)
 
-        pixels = pyramid.encode_tile(raw, corrected)
+        pixels = pyramid.encode_tile(raw)
 
-        np.testing.assert_array_equal(pixels[:8, :, 2],
+        np.testing.assert_array_equal(pixels[:, :, 2],
                                       pyramid.shaded_hours(raw))
-        np.testing.assert_array_equal(pixels[8:, :, 2],
-                                      pyramid.shaded_hours(corrected))
 
-    def test_the_count_channel_can_never_disagree_with_the_mask(self):
-        raw, corrected = sample_masks(8, 8)
-        pixels = pyramid.encode_tile(raw, corrected)
+    def test_the_mask_survives_the_round_trip(self):
+        raw, corrected = sample_masks()
 
-        decoded = pyramid.decode_tile(pixels)
+        for surface in (raw, corrected):
+            with self.subTest():
+                np.testing.assert_array_equal(
+                    pyramid.decode_tile(pyramid.encode_tile(surface)), surface)
 
-        for half, surface in ((slice(0, 8), "raw"), (slice(8, 16), "corrected")):
-            np.testing.assert_array_equal(
-                pixels[half, :, 2], pyramid.shaded_hours(decoded[surface]))
+    def test_every_hour_survives_the_round_trip(self):
+        raw, _ = sample_masks()
+
+        decoded = pyramid.decode_tile(pyramid.encode_tile(raw))
+
+        for hour in pyramid.HOUR_BITS:
+            with self.subTest(hour=hour):
+                np.testing.assert_array_equal(pyramid.hour_mask(decoded, hour),
+                                              pyramid.hour_mask(raw, hour))
 
     def test_a_tampered_count_channel_is_caught(self):
-        raw, corrected = sample_masks(8, 8)
-        pixels = pyramid.encode_tile(raw, corrected)
+        raw, _ = sample_masks(8, 8)
+        pixels = pyramid.encode_tile(raw)
         pixels[0, 0, 2] = (int(pixels[0, 0, 2]) + 1) % 16
 
         with self.assertRaises(ValueError):
             pyramid.decode_tile(pixels, verify=True)
 
-    def test_both_surfaces_survive_the_round_trip(self):
-        raw, corrected = sample_masks()
-
-        decoded = pyramid.decode_tile(pyramid.encode_tile(raw, corrected))
-
-        self.assertEqual(set(decoded), set(pyramid.SURFACES))
-        np.testing.assert_array_equal(decoded["raw"], raw)
-        np.testing.assert_array_equal(decoded["corrected"], corrected)
-
-    def test_the_two_surfaces_are_separately_addressable(self):
-        raw, corrected = sample_masks()
-        changed = raw.copy()
-        changed[0, 0] ^= np.uint16(1 << pyramid.hour_bit(12))
-
-        first = pyramid.decode_tile(pyramid.encode_tile(raw, corrected))
-        second = pyramid.decode_tile(pyramid.encode_tile(changed, corrected))
-
-        self.assertNotEqual(int(first["raw"][0, 0]), int(second["raw"][0, 0]))
-        np.testing.assert_array_equal(first["corrected"], second["corrected"])
-
-    def test_every_hour_survives_the_round_trip_on_both_surfaces(self):
-        raw, corrected = sample_masks()
-
-        decoded = pyramid.decode_tile(pyramid.encode_tile(raw, corrected))
-
-        for hour in pyramid.HOUR_BITS:
-            with self.subTest(hour=hour):
-                np.testing.assert_array_equal(
-                    pyramid.hour_mask(decoded["raw"], hour),
-                    pyramid.hour_mask(raw, hour))
-                np.testing.assert_array_equal(
-                    pyramid.hour_mask(decoded["corrected"], hour),
-                    pyramid.hour_mask(corrected, hour))
-
     def test_no_payload_is_parked_in_the_alpha_channel(self):
         """Canvas unpremultiplies on read, so alpha cannot carry data."""
-        raw, corrected = sample_masks()
+        raw, _ = sample_masks()
 
-        pixels = pyramid.encode_tile(raw, corrected)
+        pixels = pyramid.encode_tile(raw)
 
         if pixels.shape[2] < 4:
             self.skipTest("the encoding has no alpha channel to misuse")
-        self.assertEqual(set(np.unique(pixels[:, :, 3]).tolist()), {255},
-                         "alpha must be a constant 255. Canvas stores pixels "
-                         "premultiplied and rounds them back on read, so a "
-                         "byte in alpha decodes wrong and decodes to nothing "
-                         "wherever alpha is zero.")
+        self.assertEqual(set(np.unique(pixels[:, :, 3]).tolist()), {255})
 
     def test_an_all_zero_tile_round_trips_as_all_zero(self):
         empty = np.zeros((4, 4), dtype=np.uint16)
 
-        decoded = pyramid.decode_tile(pyramid.encode_tile(empty, empty))
-
-        self.assertFalse(decoded["raw"].any())
-        self.assertFalse(decoded["corrected"].any())
+        self.assertFalse(pyramid.decode_tile(pyramid.encode_tile(empty)).any())
 
     def test_a_fully_shaded_tile_round_trips_at_the_top_of_the_range(self):
         full = np.full((4, 4), pyramid.ALL_HOURS, dtype=np.uint16)
 
-        decoded = pyramid.decode_tile(pyramid.encode_tile(full, full))
+        decoded = pyramid.decode_tile(pyramid.encode_tile(full))
 
-        self.assertTrue((decoded["raw"] == pyramid.ALL_HOURS).all())
-        self.assertTrue((decoded["corrected"] == pyramid.ALL_HOURS).all())
+        self.assertTrue((decoded == pyramid.ALL_HOURS).all())
+
+
+class SeparateAddressingTests(unittest.TestCase):
+    """Both surfaces present, and reachable independently."""
+
+    def test_each_surface_has_its_own_url_template(self):
+        templates = pyramid.tile_url_templates()
+
+        self.assertEqual(set(templates), set(pyramid.SURFACES))
+        self.assertNotEqual(templates["raw"], templates["corrected"])
+        for surface, template in templates.items():
+            for placeholder in ("{z}", "{x}", "{y}"):
+                self.assertIn(placeholder, template)
+            self.assertIn(surface, template)
+            self.assertTrue(template.endswith(f".{pyramid.TILE_FORMAT}"))
+
+    def test_an_unknown_surface_has_no_url(self):
+        with self.assertRaises(ValueError):
+            pyramid.tile_url_template("cooler")
+
+    def test_the_dem_encoding_makes_elevation_the_shade_count(self):
+        """blueFactor 1 and the rest zero, so ["elevation"] is the count."""
+        encoding = pyramid.DEM_ENCODING
+
+        self.assertEqual(encoding["encoding"], "custom")
+        self.assertEqual(encoding["blueFactor"], 1)
+        self.assertEqual(encoding["redFactor"], 0)
+        self.assertEqual(encoding["greenFactor"], 0)
+        self.assertEqual(encoding["baseShift"], 0)
+
+    def test_the_encoding_recovers_the_count_the_way_maplibre_would(self):
+        raw, _ = sample_masks(8, 8)
+        pixels = pyramid.encode_tile(raw)
+        e = pyramid.DEM_ENCODING
+
+        elevation = (pixels[:, :, 0].astype(int) * e["redFactor"]
+                     + pixels[:, :, 1].astype(int) * e["greenFactor"]
+                     + pixels[:, :, 2].astype(int) * e["blueFactor"]
+                     - e["baseShift"])
+
+        np.testing.assert_array_equal(elevation, pyramid.shaded_hours(raw))
 
 
 class SurfaceNamingTests(unittest.TestCase):

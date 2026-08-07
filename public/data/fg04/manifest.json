@@ -1,0 +1,88 @@
+{
+  "bounds": [
+    -79.64997808473584,
+    43.57147812837858,
+    -79.10860313445477,
+    43.867051319436264
+  ],
+  "bytesTotal": 420458836,
+  "channels": 3,
+  "dawnHour": 6,
+  "dawnNote": "The 06:00 frame sits at 0.38 degrees above the horizon and is shaded everywhere by construction, so every pixel scores at least one shaded hour. Read the count as frames of the modelled day, not as hours of shade.",
+  "demEncoding": {
+    "baseShift": 0,
+    "blueFactor": 1,
+    "encoding": "custom",
+    "greenFactor": 0,
+    "redFactor": 0
+  },
+  "firstHour": 6,
+  "flightSeason": "April to May 2023",
+  "format": "webp",
+  "gridResolutionM": 2.0,
+  "hosting": "r2",
+  "hourBits": {
+    "10": 4,
+    "11": 5,
+    "12": 6,
+    "13": 7,
+    "14": 8,
+    "15": 9,
+    "16": 10,
+    "17": 11,
+    "18": 12,
+    "19": 13,
+    "20": 14,
+    "6": 0,
+    "7": 1,
+    "8": 2,
+    "9": 3
+  },
+  "lastHour": 20,
+  "layout": "One square image per surface per tile coordinate, at /<surface>/{z}/{x}/{y}. R is mask bits 0 to 7, G is bits 8 to 14, B is the shaded-hours count. Nothing is in alpha, because canvas rounds alpha on read.",
+  "localTileUrlTemplates": {
+    "corrected": "/data/fg04/tiles/corrected/{z}/{x}/{y}.webp",
+    "raw": "/data/fg04/tiles/raw/{z}/{x}/{y}.webp"
+  },
+  "lossless": true,
+  "maxBit": 14,
+  "maxZoom": 16,
+  "minZoom": 12,
+  "modelledDate": "2026-07-21",
+  "nativeZoom": 16,
+  "schemaVersion": 1,
+  "surfaceLabels": {
+    "corrected": "Leaf-on corrected",
+    "raw": "Measured, leaf-off"
+  },
+  "surfaceOrder": [
+    "raw",
+    "corrected"
+  ],
+  "surfaces": [
+    "raw",
+    "corrected"
+  ],
+  "tileSize": 256,
+  "tileUrlTemplates": {
+    "corrected": "https://tiles.torontomicroatlas.com/fg04/corrected/{z}/{x}/{y}.webp",
+    "raw": "https://tiles.torontomicroatlas.com/fg04/raw/{z}/{x}/{y}.webp"
+  },
+  "tilesProjected": 20318,
+  "tilesProjectedByZoom": {
+    "12": 84,
+    "13": 286,
+    "14": 1000,
+    "15": 3900,
+    "16": 15048
+  },
+  "tilesWritten": 19110,
+  "tilesWrittenByZoom": {
+    "12": 84,
+    "13": 262,
+    "14": 942,
+    "15": 3632,
+    "16": 14190
+  },
+  "timezone": "America/Toronto"
+}
