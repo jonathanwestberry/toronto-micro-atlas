@@ -178,6 +178,87 @@
 }
 
 /* ============================================================
+   Ranked pair: the same league table, read twice.
+
+   Same rule as .fg04-pair and the same reason. A ranking is the most
+   quotable thing a guide like this produces and the easiest to lift out of
+   context, so the measured order and the corrected order are one object.
+   ============================================================ */
+
+.fg04-ranking {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+  margin-block: var(--space-8);
+  padding: var(--space-6);
+  background-color: var(--atlas-surface);
+  border-left: 3px solid var(--atlas-accent);
+  max-width: var(--measure);
+}
+
+.fg04-ranking__col h4 {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--atlas-ink-faint);
+  margin-bottom: var(--space-3);
+}
+
+.fg04-ranking ol {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.fg04-ranking li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  line-height: 1.35;
+  color: var(--atlas-ink-muted);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--atlas-line);
+}
+
+.fg04-ranking li:last-child {
+  border-bottom: 0;
+}
+
+/* The rows that changed places carry the argument, so they get ink weight and
+   the rows that did not stay muted. De-emphasising the rest is cheaper than
+   shouting at these. */
+.fg04-ranking li[data-moved] {
+  color: var(--atlas-ink);
+  font-weight: 600;
+}
+
+.fg04-ranking__value {
+  font-family: var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.fg04-ranking__col--raw .fg04-ranking__value {
+  color: var(--atlas-marker);
+}
+
+.fg04-ranking__col--corrected .fg04-ranking__value {
+  color: var(--atlas-marker-alt);
+}
+
+@media (max-width: 600px) {
+  .fg04-ranking {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-6);
+  }
+}
+
+/* ============================================================
    Ramp legend
    ============================================================ */
 

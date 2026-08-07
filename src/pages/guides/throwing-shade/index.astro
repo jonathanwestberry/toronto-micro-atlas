@@ -162,6 +162,123 @@ import '../../../styles/fg04.css';
         </p>
       </section>
 
+      <!-- ============================================================
+           Chapter three. The reversal, and the reason the whole correction
+           apparatus exists. The claim is narrow on purpose: the order of the
+           league table changes, the distances between its top entries do not
+           open up, and downtown keeps fourth and fifth. Anything stronger
+           than that is not in the data.
+           ============================================================ -->
+      <section class="fg04-chapter" id="the-month-the-plane-flew">
+        <span class="fg04-kicker">Chapter three</span>
+        <h2>The month the plane flew</h2>
+
+        <p>
+          Ask which part of Toronto sits in the most shade and the measured
+          surface answers immediately: downtown. Towers throw long shadows and
+          there are a great many towers in a small space. The three shadiest
+          neighbourhoods are all tower districts, and the ranking looks
+          settled.
+        </p>
+
+        <p>
+          Correct the same surface for summer leaves and the top of the table
+          turns over. All three of the new leaders are leafy midtown
+          neighbourhoods, and downtown leaves the top three entirely.
+        </p>
+
+        <div class="fg04-ranking">
+          <div class="fg04-ranking__col fg04-ranking__col--raw">
+            <h4>Measured, leaf-off</h4>
+            <ol>
+              <li data-moved><span>Yonge-Bay Corridor</span><span class="fg04-ranking__value">10.90</span></li>
+              <li data-moved><span>Downtown Yonge East</span><span class="fg04-ranking__value">10.60</span></li>
+              <li data-moved><span>Church-Wellesley</span><span class="fg04-ranking__value">10.58</span></li>
+              <li><span>Wellington Place</span><span class="fg04-ranking__value">10.24</span></li>
+              <li><span>North St. James Town</span><span class="fg04-ranking__value">9.81</span></li>
+            </ol>
+          </div>
+          <div class="fg04-ranking__col fg04-ranking__col--corrected">
+            <h4>Leaf-on corrected</h4>
+            <ol>
+              <li data-moved><span>Rosedale-Moore Park</span><span class="fg04-ranking__value">11.25</span></li>
+              <li data-moved><span>Mount Pleasant East</span><span class="fg04-ranking__value">11.17</span></li>
+              <li data-moved><span>Lawrence Park South</span><span class="fg04-ranking__value">11.08</span></li>
+              <li><span>Church-Wellesley</span><span class="fg04-ranking__value">11.07</span></li>
+              <li><span>Yonge-Bay Corridor</span><span class="fg04-ranking__value">11.01</span></li>
+            </ol>
+          </div>
+        </div>
+
+        <p>
+          The reason is the aircraft. Every lidar flight ever flown over
+          Toronto has been flown in spring, when the ground is visible and the
+          survey is cheap to fly. This one flew <strong>April to May
+          2023</strong>. A building looks the same in April as it does in July.
+          A tree does not. So the measured surface records every tower at its
+          full height and every deciduous crown as a bare frame, and the
+          ranking it produces is partly a picture of the month the plane flew.
+        </p>
+
+        <p>
+          That is the whole argument for correcting it, and it is why this
+          guide publishes two numbers everywhere instead of one.
+        </p>
+
+        <h3 class="fg04-kicker">How big is the reversal, honestly</h3>
+
+        <p>
+          Small, and worth saying so. Church-Wellesley and Yonge-Bay Corridor
+          are still fourth and fifth once corrected, and the whole corrected
+          top five spans <strong>0.24 hours</strong>, about fifteen minutes of
+          the modelled day. The order changed. The distances did not open up.
+          Downtown did not stop being shady, and on the other end of the table
+          it beats Downsview on either surface by a wide margin.
+        </p>
+
+        <p>
+          The correction is also the generous end of the range. Ground under a
+          leaf-on crown is counted as shaded for the whole modelled day, and
+          real crowns are not solid: light comes through them, and low sun
+          arrives sideways underneath them. The true answer sits somewhere
+          between these two columns, nearer the right one in July. That is the
+          honest claim, and it is smaller than a headline would like.
+        </p>
+
+        <h3 class="fg04-kicker">Towers still work</h3>
+
+        <p>
+          The shadiest single arterial in Toronto is <strong>York
+          Street</strong>, and it barely moves between the two surfaces.
+        </p>
+
+        <div class="fg04-pair">
+          <div class="fg04-pair__half fg04-pair__half--raw">
+            <span class="fg04-pair__label">Measured, leaf-off</span>
+            <span class="fg04-pair__value">11.70</span>
+            <span class="fg04-pair__note">
+              York Street, mean shaded hours of fifteen
+            </span>
+          </div>
+          <div class="fg04-pair__half fg04-pair__half--corrected">
+            <span class="fg04-pair__label">Leaf-on corrected</span>
+            <span class="fg04-pair__value">11.74</span>
+            <span class="fg04-pair__note">
+              York Street again, moved by four hundredths of an hour
+            </span>
+          </div>
+        </div>
+
+        <p>
+          York Street sits in a trench of towers and almost none of its shade
+          comes from trees, so the correction has nothing to add. The point of
+          this chapter is not that towers fail to shade a street. They shade it
+          reliably, and the aircraft measured them correctly the first time.
+          The point is that towers and trees buy shade differently, and a
+          spring flight can only see one of them properly.
+        </p>
+      </section>
+
     </article>
   </div>
 </Base>
