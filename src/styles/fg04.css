@@ -287,6 +287,26 @@
   border: 1px solid var(--fg04-swatch-edge);
 }
 
+/* Named places called out in the prose. A list of addresses reads as a list,
+   not as a paragraph with commas in it. */
+.fg04-places {
+  list-style: none;
+  padding: 0;
+  margin-block: var(--space-6);
+  max-width: var(--measure);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.fg04-places li {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--atlas-ink);
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--atlas-surface);
+  border-left: 3px solid var(--atlas-accent-2);
+}
+
 /* ============================================================
    The standing note about what this guide measures.
 
