@@ -19,12 +19,12 @@
      to decode the hue, and the only hue axis anyone expects on a map like this
      is the one this guide is not entitled to draw.
      ---------------------------------------------------------- */
-  --fg04-shade-1: #FBF8C8;   /* Pale Lemon -- one shaded hour, sun nearly all day */
-  --fg04-shade-2: #D3CFA6;   /* Kraft      -- 2 to 4 */
-  --fg04-shade-3: #C9A52E;   /* Mustard    -- 5 to 7 */
-  --fg04-shade-4: #8A4A70;   /* Mauve      -- 8 to 10 */
-  --fg04-shade-5: #4A1F3F;   /* Plum       -- 11 to 13 */
-  --fg04-shade-6: #1A1F2A;   /* Contour    -- 14 to 15, blocked almost throughout */
+  --fg04-shade-1: var(--c-pale-lemon);   /* one shaded hour, sun nearly all day */
+  --fg04-shade-2: var(--c-kraft);        /* 2 to 4 */
+  --fg04-shade-3: var(--c-mustard);      /* 5 to 7 */
+  --fg04-shade-4: var(--c-mauve);        /* 8 to 10 */
+  --fg04-shade-5: var(--c-plum);         /* 11 to 13 */
+  --fg04-shade-6: var(--c-contour);      /* 14 to 15, blocked almost throughout */
 
   /* The first three stops sit at 1.08, 1.36 and 2.02 against the Cream ground,
      which is under the 3:1 a legend swatch needs to be found at all. They are
@@ -37,18 +37,43 @@
   font-family: var(--font-body);
 }
 
+/* This guide has no map. The other three hand the empty half of a wide page
+   to a sticky map stage; here there is nothing to put there, and a 66ch
+   column parked at the left edge of a 1200px frame reads as a page that
+   failed to load rather than as an editorial one. The frame is a reading
+   frame instead, and the exhibits break out of the text column inside it. */
 .fg04-container {
-  width: min(100% - 2.5rem, var(--container));
+  width: min(100% - 2.5rem, 52rem);
   margin-inline: auto;
-}
-
-.fg04-measure {
-  max-width: var(--measure);
 }
 
 /* ============================================================
    Chapters
+
+   Three columns: the middle one holds the reading measure, and the two
+   flanking ones exist so a figure can span the whole frame. Prose and
+   headings share one left edge; only the paired figures break out, which is
+   what makes them read as exhibits rather than as indented paragraphs.
    ============================================================ */
+
+.fg04-chapter,
+.fg04-limits {
+  display: grid;
+  grid-template-columns:
+    [wide-start] 1fr
+    [text-start] min(var(--measure), 100%) [text-end]
+    1fr [wide-end];
+}
+
+.fg04-chapter > *,
+.fg04-limits > * {
+  grid-column: text;
+}
+
+.fg04-pair,
+.fg04-ranking {
+  grid-column: wide;
+}
 
 .fg04-chapter {
   padding-block: var(--space-16);
@@ -57,6 +82,19 @@
 
 .fg04-chapter:first-of-type {
   border-top: 0;
+}
+
+/* The guide's title is the strongest thing on the page, so it speaks in the
+   atlas display voice its own chapter headings use. Left to the global
+   stylesheet it rendered as a 32px serif against 32px Bebas chapter
+   headings: a different voice from its own sections, and no rank over them. */
+.fg04 h1 {
+  font-family: var(--font-heading);
+  font-size: clamp(2.75rem, 7vw, var(--text-5xl));
+  line-height: 0.95;
+  letter-spacing: 0.01em;
+  color: var(--atlas-ink);
+  margin-bottom: var(--space-4);
 }
 
 /* Hierarchy here is carried by weight, colour and letter-spacing, not by size
@@ -129,7 +167,6 @@
   padding: var(--space-6);
   background-color: var(--atlas-surface);
   border-left: 3px solid var(--atlas-accent);
-  max-width: var(--measure);
 }
 
 .fg04-pair__half {
@@ -193,7 +230,6 @@
   padding: var(--space-6);
   background-color: var(--atlas-surface);
   border-left: 3px solid var(--atlas-accent);
-  max-width: var(--measure);
 }
 
 /* Not a heading. These label the two columns of a comparison figure, and
@@ -296,7 +332,6 @@
   list-style: none;
   padding: 0;
   margin-block: var(--space-6);
-  max-width: var(--measure);
   display: grid;
   gap: var(--space-2);
 }
@@ -322,7 +357,6 @@
   padding: var(--space-4) var(--space-6);
   border-left: 3px solid var(--atlas-accent-2);
   background-color: var(--atlas-surface);
-  max-width: var(--measure);
 }
 
 .fg04-scope-note p {
@@ -351,7 +385,6 @@
 }
 
 .fg04-limits ol {
-  max-width: var(--measure);
   padding-left: var(--space-6);
   display: grid;
   gap: var(--space-4);

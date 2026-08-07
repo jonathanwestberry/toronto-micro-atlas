@@ -151,6 +151,7 @@
   --c-kelly-text:       #32744C;   /* Kelly on Cream:      2.71 -> 4.81 */
   --c-hot-orange-text:  #A94C0A;   /* Hot Orange on Cream: 2.49 -> 4.80 */
   --c-tomato-text:      #CB3510;   /* Tomato on --paper:   4.12 -> 4.80 */
+  --c-mustard-text:     #7D651C;   /* Mustard on Cream:    2.02 -> 4.79 */
   --c-control-line:     #8F836B;   /* control boundary: 3.46 --paper, 3.19 Cream */
 
   /* Cream lifted toward white for a raised card, and Contour lightened for
@@ -369,27 +370,27 @@
  * deeper", which is exactly what the correction does to the data.
  */
 [data-guide-theme='fg04'] {
-  --atlas-ground:      #F3EDDD;                  /* Cream */
-  --atlas-surface:     #FFFAF0;
-  --atlas-ink:         #1A1F2A;                  /* Contour: 14.11 on Cream */
-  --atlas-ink-muted:   #565A63;                  /* 5.91 */
-  --atlas-ink-faint:   #6B6558;                  /* 4.95 */
-  --atlas-line:        rgba(26, 31, 42, 0.3);
-  --atlas-line-strong: rgba(26, 31, 42, 0.72);
-  --atlas-accent:      #4A1F3F;                  /* Plum: the shadow */
-  --atlas-accent-2:    #C9A52E;                  /* Mustard: ground the sun reaches */
+  --atlas-ground:      var(--c-cream);
+  --atlas-surface:     var(--c-cream-raised);
+  --atlas-ink:         var(--c-contour);           /* 14.11 on Cream */
+  --atlas-ink-muted:   var(--c-contour-muted);     /* 5.91 */
+  --atlas-line:        rgba(26, 31, 42, 0.3);      /* Contour at 30% */
+  --atlas-line-strong: rgba(26, 31, 42, 0.72);     /* Contour at 72% */
+  --atlas-accent:      var(--c-plum);              /* the shadow */
+  --atlas-accent-2:    var(--c-mustard);           /* ground the sun reaches */
   /* Plum clears 11.53 on Cream, so it carries type as it stands. Mustard is a
-     fill at 2.02 and never carries type; its sibling is Mustard held at the
-     same hue and saturation with lightness dropped to 30%, measured at 4.79 on
-     Cream and 5.38 on the raised surface. */
-  --atlas-accent-text:   #4A1F3F;
-  --atlas-accent-2-text: #7D651C;
-  --atlas-control-line: #8F836B;                 /* 3.19 on Cream, 3.59 on surface */
-  --atlas-focus:       #4A1F3F;
-  --atlas-hover:       #4A1F3F;
-  --atlas-active:      #C9A52E;
-  --atlas-marker:      #8A4A70;                  /* Mauve: the measured surface */
-  --atlas-marker-alt:  #4A1F3F;                  /* Plum: leaf-on corrected */
-  --atlas-layer:       #8A4A70;
-  --atlas-rule-header: #1A1F2A;                  /* Contour */
+     fill at 2.02 and never carries type, so it has a derived sibling like
+     Kelly and Hot Orange do. */
+  --atlas-accent-text:   var(--c-plum);
+  --atlas-accent-2-text: var(--c-mustard-text);
+  --atlas-focus:       var(--c-plum);
+  --atlas-hover:       var(--c-plum);
+  --atlas-active:      var(--c-mustard);
+  --atlas-marker:      var(--c-mauve);             /* the measured surface */
+  --atlas-marker-alt:  var(--c-plum);              /* leaf-on corrected */
+  --atlas-layer:       var(--c-mauve);
+  --atlas-rule-header: var(--c-contour);
+  /* --atlas-ink-faint and --atlas-control-line are inherited from :root, the
+     same as fg01 and fg03: --ink-3 measures 4.95 on Cream and
+     --c-control-line 3.19, so neither needs a theme-specific value. */
 }
