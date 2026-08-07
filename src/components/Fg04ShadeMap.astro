@@ -149,6 +149,76 @@ const SURFACES = [
       0.38&deg; above the horizon and is shaded everywhere by construction.
     </p>
   </div>
+
+  <section class="fg04-point" data-fg04-point aria-labelledby={`${id}-point-title`}>
+    <div class="fg04-point__head">
+      <div>
+        <h3 class="fg04-point__title" id={`${id}-point-title`}>Inspect a point</h3>
+        <p class="fg04-point__instructions">
+          Click or tap either map to inspect a point. With a keyboard, focus a
+          map and press Enter to inspect its centre.
+        </p>
+      </div>
+      <p
+        class="fg04-point__coordinate"
+        data-fg04-point-coordinate
+        aria-label="Selected coordinate"
+        hidden
+      />
+    </div>
+
+    <p
+      class="fg04-point__status"
+      data-fg04-point-status
+      role="status"
+      aria-live="polite"
+    >
+      Select a point to see its shade profile from 06:00 to 20:00 EDT.
+    </p>
+
+    <div class="fg04-point__profile" data-fg04-point-profile hidden>
+      <div class="fg04-point__selected" aria-live="polite">
+        <p class="fg04-point__selected-time" data-fg04-point-selected-time>
+          Selected hour, 13:00 EDT
+        </p>
+        <div class="fg04-point__selected-pair">
+          <p>
+            <span>Measured, leaf-off</span>
+            <strong data-fg04-point-selected-measured>Unknown</strong>
+          </p>
+          <p>
+            <span>Leaf-on corrected</span>
+            <strong data-fg04-point-selected-corrected>Unknown</strong>
+          </p>
+        </div>
+      </div>
+
+      <p class="fg04-point__strip-key">
+        Each hour has two bars: measured above, corrected below.
+      </p>
+      <ol
+        class="fg04-point__strip"
+        data-fg04-point-strip
+        aria-label="Shade profile from 06:00 to 20:00 EDT"
+      />
+
+      <details class="fg04-point__details">
+        <summary>Read the profile as a table</summary>
+        <div class="fg04-point__table-wrap">
+          <table class="fg04-point__table">
+            <thead>
+              <tr>
+                <th scope="col">Clock hour</th>
+                <th scope="col">Measured, leaf-off</th>
+                <th scope="col">Leaf-on corrected</th>
+              </tr>
+            </thead>
+            <tbody data-fg04-point-table />
+          </table>
+        </div>
+      </details>
+    </div>
+  </section>
 </section>
 
 <script>

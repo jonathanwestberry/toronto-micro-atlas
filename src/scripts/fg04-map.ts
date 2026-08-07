@@ -5,6 +5,11 @@ import {
   resolveFg04TileTemplate,
   selectedHourLayerContracts,
 } from './fg04-core.mjs';
+import {
+  createLatestPointRequest,
+  loadPointProfile,
+  pointStateAtHour,
+} from './fg04-point.mjs';
 import { parseFg04State, serializeFg04State } from './fg04-state.mjs';
 
 /**
@@ -57,6 +62,7 @@ interface Manifest {
   bounds: [number, number, number, number];
   minZoom: number;
   maxZoom: number;
+  nativeZoom: number;
   tileSize: number;
   surfaces: string[];
   surfaceLabels: Record<string, string>;
@@ -66,6 +72,8 @@ interface Manifest {
   countBandStarts: Record<string, number>;
   dawnHour: number;
   dawnNote: string;
+  firstHour: number;
+  lastHour: number;
   hourBits: Record<string, number>;
   classification: {
     tileUrlTemplate: string;
@@ -347,6 +355,126 @@ function updateHourChrome(root: HTMLElement, hour: number): void {
   if (legend) legend.textContent = `Shade state at ${text}`;
 }
 
+interface PointProfile {
+  status: 'ground' | 'non-ground' | 'missing' | 'error';
+  coordinate: [number, number];
+  underCanopy: boolean;
+  measured: boolean[] | null;
+  corrected: boolean[] | null;
+}
+
+function shadeStateLabel(shaded: boolean): string {
+  return shaded ? 'Shaded' : 'Direct sun';
+}
+
+function renderPointSelection(
+  root: HTMLElement,
+  profile: PointProfile,
+  hour: number,
+  manifest: Manifest,
+): void {
+  const selected = pointStateAtHour(profile, hour, manifest);
+  if (!selected) return;
+  const time = root.querySelector<HTMLElement>('[data-fg04-point-selected-time]');
+  const measured = root.querySelector<HTMLElement>(
+    '[data-fg04-point-selected-measured]',
+  );
+  const corrected = root.querySelector<HTMLElement>(
+    '[data-fg04-point-selected-corrected]',
+  );
+  if (time) time.textContent = `Selected hour, ${formatHour(hour)}`;
+  if (measured) measured.textContent = shadeStateLabel(selected.measured);
+  if (corrected) corrected.textContent = shadeStateLabel(selected.corrected);
+}
+
+function renderPointProfile(
+  root: HTMLElement,
+  profile: PointProfile,
+  hour: number,
+  manifest: Manifest,
+): void {
+  const status = root.querySelector<HTMLElement>('[data-fg04-point-status]');
+  const panel = root.querySelector<HTMLElement>('[data-fg04-point-profile]');
+  const coordinate = root.querySelector<HTMLElement>('[data-fg04-point-coordinate]');
+  const strip = root.querySelector<HTMLOListElement>('[data-fg04-point-strip]');
+  const table = root.querySelector<HTMLTableSectionElement>('[data-fg04-point-table]');
+
+  if (coordinate) {
+    coordinate.textContent = `${profile.coordinate[1].toFixed(5)}, ${profile.coordinate[0].toFixed(5)}`;
+    coordinate.hidden = false;
+  }
+  if (profile.status !== 'ground' || !profile.measured || !profile.corrected) {
+    if (panel) panel.hidden = true;
+    if (status) {
+      if (profile.status === 'non-ground') {
+        status.textContent = 'This point is not sampled ground. Choose a nearby point.';
+      } else if (profile.status === 'missing') {
+        status.textContent = 'This point is outside the lidar coverage. Choose another point.';
+      } else {
+        status.textContent = 'The point profile could not load. Try another point.';
+      }
+    }
+    return;
+  }
+
+  if (status) {
+    status.textContent = profile.underCanopy
+      ? 'Profile loaded. The corrected surface treats this point as ground under leaf-on canopy.'
+      : 'Profile loaded.';
+  }
+  if (panel) panel.hidden = false;
+  if (strip) strip.replaceChildren();
+  if (table) table.replaceChildren();
+
+  for (let current = manifest.firstHour; current <= manifest.lastHour; current += 1) {
+    const index = current - manifest.firstHour;
+    const measured = shadeStateLabel(profile.measured[index]);
+    const corrected = shadeStateLabel(profile.corrected[index]);
+
+    const item = document.createElement('li');
+    item.className = 'fg04-point__strip-hour';
+    if (current === hour) item.dataset.selected = 'true';
+    const label = document.createElement('span');
+    label.className = 'fg04-point__strip-label';
+    label.textContent = `${String(current).padStart(2, '0')}:00`;
+    const pair = document.createElement('span');
+    pair.className = 'fg04-point__strip-pair';
+    const rawCell = document.createElement('span');
+    rawCell.className = `fg04-point__strip-cell fg04-point__strip-cell--${profile.measured[index] ? 'shaded' : 'sunlit'}`;
+    rawCell.textContent = `Measured: ${measured}`;
+    const correctedCell = document.createElement('span');
+    correctedCell.className = `fg04-point__strip-cell fg04-point__strip-cell--${profile.corrected[index] ? 'shaded' : 'sunlit'}`;
+    correctedCell.textContent = `Corrected: ${corrected}`;
+    pair.append(rawCell, correctedCell);
+    item.append(label, pair);
+    strip?.append(item);
+
+    const row = document.createElement('tr');
+    const hourCell = document.createElement('th');
+    hourCell.scope = 'row';
+    hourCell.textContent = formatHour(current);
+    const measuredCell = document.createElement('td');
+    measuredCell.textContent = measured;
+    const correctedTableCell = document.createElement('td');
+    correctedTableCell.textContent = corrected;
+    row.append(hourCell, measuredCell, correctedTableCell);
+    table?.append(row);
+  }
+  renderPointSelection(root, profile, hour, manifest);
+}
+
+function renderPointLoading(root: HTMLElement, coordinate: [number, number]): void {
+  const status = root.querySelector<HTMLElement>('[data-fg04-point-status]');
+  const panel = root.querySelector<HTMLElement>('[data-fg04-point-profile]');
+  const label = root.querySelector<HTMLElement>('[data-fg04-point-coordinate]');
+  if (status) status.textContent = 'Loading the point profile.';
+  if (panel) panel.hidden = true;
+  if (label) {
+    label.textContent = `${coordinate[1].toFixed(5)}, ${coordinate[0].toFixed(5)}`;
+    label.hidden = false;
+  }
+}
+
 function localTileOptIn(): boolean {
   const localHost = window.location.hostname === 'localhost'
     || window.location.hostname === '127.0.0.1';
@@ -392,6 +520,11 @@ export async function initShadeMap(): Promise<void> {
     throw error;
   }
 
+  if (state.point !== null && state.map === null) {
+    state = { ...state, map: [state.point[0], state.point[1], manifest.nativeZoom] };
+    committedState = { ...state };
+  }
+
   const ramp = readRamp(root);
   const colors = readSelectedColors(root);
   const maps: Array<{ map: maplibregl.Map; surface: string }> = [];
@@ -426,6 +559,83 @@ export async function initShadeMap(): Promise<void> {
   });
   fillLegend(root, manifest);
 
+  const pointManifest = {
+    ...manifest,
+    tileUrlTemplates: {
+      raw: tileTemplate(manifest, 'raw'),
+      corrected: tileTemplate(manifest, 'corrected'),
+    },
+    classification: {
+      ...manifest.classification,
+      tileUrlTemplate: classificationTemplate(manifest),
+    },
+  };
+  const pointCache = new Map();
+  let activePoint: PointProfile | null = null;
+  let pointMarkers: maplibregl.Marker[] = [];
+
+  const placePointMarkers = (coordinate: [number, number]): void => {
+    pointMarkers.forEach((marker) => marker.remove());
+    pointMarkers = maps.map(({ map, surface }) => {
+      const marker = document.createElement('span');
+      marker.className = 'fg04-point-marker';
+      marker.setAttribute('role', 'img');
+      marker.setAttribute('aria-label', `Selected point, ${manifest.surfaceLabels[surface]}`);
+      return new maplibregl.Marker({ element: marker, anchor: 'center' })
+        .setLngLat(coordinate)
+        .addTo(map);
+    });
+  };
+
+  const loadLatestPoint = createLatestPointRequest(
+    (coordinate: [number, number]) => loadPointProfile(
+      coordinate, pointManifest, pointCache,
+    ),
+    (profile: PointProfile) => {
+      activePoint = profile;
+      renderPointProfile(root, profile, state.hour, manifest);
+    },
+  );
+
+  const selectPoint = (
+    coordinate: [number, number],
+    historyMode: 'none' | 'push' = 'push',
+  ): void => {
+    const rounded: [number, number] = [
+      Number(coordinate[0].toFixed(5)),
+      Number(coordinate[1].toFixed(5)),
+    ];
+    const centre = maps[0]?.map.getCenter();
+    const camera: [number, number, number] | null = centre
+      ? [centre.lng, centre.lat, maps[0].map.getZoom()]
+      : state.map;
+    state = { ...state, map: camera, point: rounded, street: null };
+    activePoint = null;
+    renderPointLoading(root, rounded);
+    placePointMarkers(rounded);
+    if (historyMode === 'push') {
+      window.history.pushState(null, '', stateUrl(state));
+      committedState = { ...state };
+    }
+    void loadLatestPoint(rounded);
+  };
+
+  maps.forEach(({ map }) => {
+    map.on('click', (event) => {
+      selectPoint([event.lngLat.lng, event.lngLat.lat]);
+    });
+    map.getCanvas().addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      const centre = map.getCenter();
+      selectPoint([centre.lng, centre.lat]);
+    });
+  });
+
+  if (state.point !== null) {
+    selectPoint([state.point[0], state.point[1]], 'none');
+  }
+
   const applyHour = (hour: number): void => {
     state = { ...state, hour };
     maps.forEach(({ map, surface }) => {
@@ -441,6 +651,7 @@ export async function initShadeMap(): Promise<void> {
       });
     });
     updateHourChrome(root, hour);
+    if (activePoint) renderPointProfile(root, activePoint, hour, manifest);
   };
 
   input?.addEventListener('input', () => {
@@ -461,9 +672,16 @@ export async function initShadeMap(): Promise<void> {
       __fg04Explorer?: {
         maps: Array<{ map: maplibregl.Map; surface: string }>;
         errors: string[];
+        getPointResult: () => PointProfile | null;
+        getPointCacheSize: () => number;
       };
     };
-    diagnosticWindow.__fg04Explorer = { maps, errors: diagnosticErrors };
+    diagnosticWindow.__fg04Explorer = {
+      maps,
+      errors: diagnosticErrors,
+      getPointResult: () => activePoint,
+      getPointCacheSize: () => pointCache.size,
+    };
   }
 }
 

@@ -73,6 +73,27 @@ test('point selections are canonical and exclude street selections', () => {
   );
   assert.equal(ambiguous.point, null);
   assert.equal(ambiguous.street, null);
+
+  const repeated = parseFg04State(
+    '?point=-79.38320%2C43.65321&point=-79.38320%2C43.65321',
+  );
+  assert.equal(repeated.point, null);
+});
+
+test('a point, hour, and camera make one canonical shareable state', () => {
+  const state = parseFg04State(
+    '?point=-79.384449%2C43.653954&hour=16&map=-79.384449%2C43.653954%2C16',
+  );
+  assert.deepEqual(state, {
+    hour: 16,
+    map: [-79.38445, 43.65395, 16],
+    point: [-79.38445, 43.65395],
+    street: null,
+  });
+  assert.equal(
+    serializeFg04State(state),
+    '?hour=16&map=-79.38445%2C43.65395%2C16.00&point=-79.38445%2C43.65395',
+  );
 });
 
 test('street ids accept only the stable public wire format', () => {

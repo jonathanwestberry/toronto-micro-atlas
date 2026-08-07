@@ -370,6 +370,19 @@ test('the selected-hour legend and no-script state explain the binary map', () =
   assert.match(copy, /JavaScript is required to change the clock hour/);
 });
 
+test('point inspection has instructions, paired states, and a table alternative', () => {
+  const html = readRoute();
+  const copy = readCopy();
+
+  assert.match(copy, /Click or tap either map to inspect a point/);
+  assert.match(copy, /focus a map and press Enter/);
+  assert.match(html, /data-fg04-point-status/);
+  assert.match(html, /data-fg04-point-profile/);
+  assert.match(html, /<th[^>]*>Measured, leaf-off<\/th>/);
+  assert.match(html, /<th[^>]*>Leaf-on corrected<\/th>/);
+  assert.match(html, /<th[^>]*>Clock hour<\/th>/);
+});
+
 test('the selected-hour legend uses declared shade tokens, not a second copy', () => {
   const html = readRoute();
 

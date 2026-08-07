@@ -156,6 +156,8 @@ const proofExpression = `(() => {
   const explorer = window.__fg04Explorer;
   if (!explorer || explorer.maps.length !== 2) return { ready: false };
   if (!explorer.maps.every(({ map }) => map.isStyleLoaded())) return { ready: false };
+  const pointProfile = explorer.getPointResult();
+  if (!pointProfile) return { ready: false };
 
   const evaluate = (expression, elevation, scope = new Map()) => {
     if (!Array.isArray(expression)) return expression;
@@ -198,6 +200,14 @@ const proofExpression = `(() => {
   const initialOutput = output.value;
   const defaultUrlHasNoHour = !new URL(location.href).searchParams.has('hour');
   const initialHistoryLength = history.length;
+  const pointCacheBeforeHour = explorer.getPointCacheSize();
+  const expectedProfile = Array.from(
+    { length: 15 }, (_, bit) => ((0x70ff >> bit) & 1) === 1,
+  );
+  const selectedPointBeforeHour = {
+    measured: document.querySelector('[data-fg04-point-selected-measured]')?.textContent,
+    corrected: document.querySelector('[data-fg04-point-selected-corrected]')?.textContent,
+  };
 
   const centres = explorer.maps.map(({ map }) => {
     const center = map.getCenter();
@@ -231,11 +241,23 @@ const proofExpression = `(() => {
     selectedUrl: new URL(location.href).searchParams.get('hour') === '16',
     historyPushed: history.length === initialHistoryLength + 1,
     stagesReady: Array.from(document.querySelectorAll('[data-map-stage]')).every((stage) => stage.dataset.mapState === 'ready'),
+    pointIsGround: pointProfile.status === 'ground' && pointProfile.underCanopy === false,
+    pointProfileMatchesPython: JSON.stringify(pointProfile.measured) === JSON.stringify(expectedProfile)
+      && JSON.stringify(pointProfile.corrected) === JSON.stringify(expectedProfile),
+    selectedPointAt13: selectedPointBeforeHour.measured === 'Shaded'
+      && selectedPointBeforeHour.corrected === 'Shaded',
+    pairedPointMarkers: document.querySelectorAll('.fg04-point-marker').length === 2,
+    profileHasFifteenRows: document.querySelectorAll('[data-fg04-point-table] tr').length === 15,
+    pointUrlRestored: new URL(location.href).searchParams.get('point') === '-79.38445,43.65395',
+    pointTilesCachedAcrossHour: pointCacheBeforeHour === 3
+      && explorer.getPointCacheSize() === pointCacheBeforeHour,
+    profileSelectedHourChanged: document.querySelectorAll('[data-fg04-point-strip] [data-selected="true"]').length === 1
+      && document.querySelector('[data-fg04-point-selected-time]')?.textContent === 'Selected hour, 16:00 EDT',
   };
   const passed = Object.entries(checks).every(([key, value]) => (
     key === 'known13Pixels' || value === true
   ));
-  return { ready: true, passed, checks, centres };
+  return { ready: true, passed, checks, centres, pointProfile };
 })()`;
 
 async function runBrowser(executable, url, profile) {
@@ -327,6 +349,7 @@ try {
   const query = new URLSearchParams({
     tiles: 'local',
     map: '-79.38445,43.65395,16',
+    point: '-79.38445,43.65395',
   });
   const url = `http://127.0.0.1:${address.port}`
     + `/guides/throwing-shade/?${query}`;
