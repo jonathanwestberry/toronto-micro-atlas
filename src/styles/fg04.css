@@ -196,7 +196,10 @@
   max-width: var(--measure);
 }
 
-.fg04-ranking__col h4 {
+/* Not a heading. These label the two columns of a comparison figure, and
+   marking them up as headings put an h4 directly under the chapter's h2,
+   which reads to a screen reader as a missing level. */
+.fg04-ranking__head {
   font-family: var(--font-ui);
   font-size: var(--text-xs);
   font-weight: 700;

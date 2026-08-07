@@ -189,7 +189,7 @@ import '../../../styles/fg04.css';
 
         <div class="fg04-ranking">
           <div class="fg04-ranking__col fg04-ranking__col--raw">
-            <h4>Measured, leaf-off</h4>
+            <p class="fg04-ranking__head">Measured, leaf-off</p>
             <ol>
               <li data-moved><span>Yonge-Bay Corridor</span><span class="fg04-ranking__value">10.90</span></li>
               <li data-moved><span>Downtown Yonge East</span><span class="fg04-ranking__value">10.60</span></li>
@@ -199,7 +199,7 @@ import '../../../styles/fg04.css';
             </ol>
           </div>
           <div class="fg04-ranking__col fg04-ranking__col--corrected">
-            <h4>Leaf-on corrected</h4>
+            <p class="fg04-ranking__head">Leaf-on corrected</p>
             <ol>
               <li data-moved><span>Rosedale-Moore Park</span><span class="fg04-ranking__value">11.25</span></li>
               <li data-moved><span>Mount Pleasant East</span><span class="fg04-ranking__value">11.17</span></li>
@@ -491,6 +491,87 @@ import '../../../styles/fg04.css';
             now.
           </p>
         </div>
+      </section>
+
+      <!-- ============================================================
+           Limits.
+
+           A reader has to be able to disagree with this guide for a stated
+           reason, so each item names what it would change if it mattered to
+           you, rather than hedging in general. The two sentences about
+           temperature are reproduced here verbatim because this is the
+           section a sceptical reader opens first, and the copy contract
+           matches them exactly.
+           ============================================================ -->
+      <section class="fg04-limits" id="limits">
+        <h2>What this map cannot tell you</h2>
+
+        <ol>
+          <li>
+            <strong>This guide maps shade, not temperature.</strong>
+            A shaded asphalt lot can be hotter than a sunny lawn, and nothing
+            here measures heat. Every figure above says where the sun was
+            blocked and nothing at all about what standing there is like.
+          </li>
+
+          <li>
+            <strong>The correction is the generous end of the range.</strong>
+            Ground under a leaf-on crown is counted as shaded for the whole
+            modelled day. Real crowns are not solid: light comes through them,
+            and low sun arrives sideways underneath them. Wherever this guide
+            prints two figures, the truthful answer sits between them, nearer
+            the corrected one in July.
+          </li>
+
+          <li>
+            <strong>The correction is measured, not assumed.</strong> It raises
+            bare canopy by a step at 3 m, and <strong>99.8%</strong> of the
+            pixels it raised took a height measured from a neighbouring crown
+            rather than a default. It still fixes canopy the flight missed
+            entirely better than canopy the flight caught halfway.
+          </li>
+
+          <li>
+            <strong>The land cover is 2018 and the lidar is 2023.</strong> They
+            disagree in places. The largest single correction raised a pixel by
+            142.5 m, which is a 2018 tree polygon standing over a tower built
+            since.
+          </li>
+
+          <li>
+            <strong>Fifteen frames are not fifteen equal hours.</strong> The
+            06:00 frame sits at 0.38&deg; above the horizon and counts the
+            whole city as shaded. Read every count in this guide as frames of
+            the modelled day, not as hours of usable shade.
+          </li>
+
+          <li>
+            <strong>One day of one year.</strong> Everything here is 21 July
+            2026, 06:00 to 20:00 EDT. Nothing generalises across seasons, and
+            chapter six is an argument rather than a measurement until the
+            January frame exists.
+          </li>
+
+          <li>
+            <strong>The flight has a date.</strong> The lidar was flown
+            April to May 2023, so anything built or felled since is missing.
+            Roofs are inferred rather than measured, which matters most for
+            shade cast from the tops of buildings.
+          </li>
+
+          <li>
+            <strong>The grid is 2 m.</strong> A single narrow tree, a
+            bus shelter, or a gap between two towers can fall between samples.
+            The original plan called for 1 m and this run did not reach it.
+          </li>
+
+          <li>
+            <strong>The walk band was chosen after both bands were
+            computed</strong>, and that choice decides the title. Chapter four
+            publishes the road band beside it so the choice can be checked
+            rather than taken on trust.
+          </li>
+        </ol>
       </section>
 
     </article>
