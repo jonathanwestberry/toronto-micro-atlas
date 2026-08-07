@@ -1,8 +1,14 @@
 """Compute citywide hour bitmasks, uncorrected and leaf-on corrected.
 
-Tiles are processed as an 8 km windowed mosaic with a margin, because a
-352 m tower throws 2.5 km at 20:00 and unbuffered per-tile processing
-silently truncates long shadows while still looking plausible.
+Tiles are resampled once into one mosaic per surface, then processed as an
+8 km windowed read from that mosaic with a margin, because a 352 m tower
+throws 2.5 km at 20:00 and unbuffered per-tile processing silently truncates
+long shadows while still looking plausible.
+
+Calling `rasterio.merge` per window re-decompressed every overlapped tile
+about 3.9 times. The mosaic pays that once instead. It is worth about 207 s
+of a 3.69 hour run rather than the bulk of it, and `fg04_mosaic` carries the
+measurement and the proof that the two paths return the same array.
 
 The margin is sized from the tallest object actually present near each
 window, not from a citywide worst case. Most of Toronto tops out around
@@ -20,7 +26,6 @@ Usage: python 31_build_shade.py [--resolution 1.0] [--window 8000] [--limit N]
 """
 
 import argparse
-import glob
 import json
 import os
 import time
@@ -29,10 +34,10 @@ import geopandas as gpd
 import numpy as np
 import rasterio
 from affine import Affine
-from rasterio.merge import merge
 from rasterio.windows import Window, from_bounds
 
 import fg04_canopy as canopy
+import fg04_mosaic as mosaic
 import fg04_shadow as shadow
 import fg04_solar as solar
 
@@ -48,22 +53,22 @@ LAND_COVER = os.path.join(RAW, "landcover", "LandCover2018.gdb")
 # per-tile maximum was recorded as a citywide one. A 400 m ceiling clipped
 # the tower by 137 m and lost a kilometre of its 20:00 shadow. 600 m clears
 # the real maximum with headroom while still catching lidar spikes.
-MAX_HEIGHT_M = 600.0
+MAX_HEIGHT_M = mosaic.MAX_HEIGHT_M
 GROUND_MAX_M = 2.0          # the pre-registered definition of a ground pixel
 WINDOW_M = 8000.0
 
-# The tiles carry float32-extreme nodata: -3.4e38 on the DSM, +3.4e38 on the
-# DTM. rasterio.merge silently returns an all-zero mosaic when it is left to
-# infer nodata from those, so it is given an ordinary sentinel instead and
-# validity is decided here by range. Real Toronto elevations are 65 to 450 m
-# above CGVD2013, so anything outside a very generous window is a sentinel.
-MERGE_FILL = -9999.0
-MIN_REAL_M = -1000.0
-MAX_REAL_M = 10000.0
+# The nodata sentinel the mosaics carry, and the range that decides which
+# values are real elevations rather than sentinels. Both live in fg04_mosaic
+# now, because the mosaic is where they are written.
+MERGE_FILL = mosaic.FILL
+MIN_REAL_M = mosaic.MIN_REAL_M
+MAX_REAL_M = mosaic.MAX_REAL_M
 
-
-def real(values: np.ndarray) -> np.ndarray:
-    return (values > MIN_REAL_M) & (values < MAX_REAL_M)
+real = mosaic.real
+snap = mosaic.snap
+tile_index = mosaic.tile_index
+intersecting = mosaic.intersecting
+union_bounds = mosaic.union_bounds
 
 
 def casting_frames(frames):
@@ -77,38 +82,6 @@ def casting_frames(frames):
     return [f for f in frames if f.altitude > shadow.HORIZON_DEG]
 
 
-def tile_index(folder):
-    """[(path, (left, bottom, right, top))] for every tile in a folder."""
-    index = []
-    for path in sorted(glob.glob(os.path.join(folder, "*.tif"))):
-        with rasterio.open(path) as src:
-            index.append((path, tuple(src.bounds), src.crs))
-    return index
-
-
-def intersecting(index, bounds):
-    left, bottom, right, top = bounds
-    return [p for p, (l, b, r, t), _ in index
-            if l < right and r > left and b < top and t > bottom]
-
-
-def union_bounds(index):
-    lefts = [b[0] for _, b, _ in index]
-    bottoms = [b[1] for _, b, _ in index]
-    rights = [b[2] for _, b, _ in index]
-    tops = [b[3] for _, b, _ in index]
-    return min(lefts), min(bottoms), max(rights), max(tops)
-
-
-def snap(bounds, resolution):
-    """Grow bounds outward to whole pixels so every window shares one grid."""
-    left, bottom, right, top = bounds
-    return (np.floor(left / resolution) * resolution,
-            np.floor(bottom / resolution) * resolution,
-            np.ceil(right / resolution) * resolution,
-            np.ceil(top / resolution) * resolution)
-
-
 def core_windows(city, window_m):
     left, bottom, right, top = city
     xs = np.arange(left, right, window_m)
@@ -117,28 +90,22 @@ def core_windows(city, window_m):
             for y in ys for x in xs]
 
 
-def read_mosaic(index, bounds, resolution):
-    paths = intersecting(index, bounds)
-    if not paths:
-        return None, None
-    array, transform = merge(paths, bounds=bounds, res=resolution,
-                             nodata=MERGE_FILL)
-    return array[0], transform
+def mosaic_paths(resolution):
+    return (os.path.join(OUT, f"mosaic-dsm-{resolution:g}m.tif"),
+            os.path.join(OUT, f"mosaic-dtm-{resolution:g}m.tif"))
 
 
-def normalised(dsm_index, dtm_index, bounds, resolution):
-    """DSM minus DTM, with nodata on either side knocked out to zero."""
-    dsm, transform = read_mosaic(dsm_index, bounds, resolution)
-    if dsm is None:
+def normalised(dsm_path, dtm_path, bounds, resolution):
+    """DSM minus DTM, with nodata on either side knocked out to zero.
+
+    Returns (None, None, None) where the window falls entirely outside the
+    lidar, which the old per-window merge signalled by having no tiles to
+    merge and the mosaic signals by reading back all fill.
+    """
+    height, transform, valid = mosaic.normalised_window(
+        dsm_path, dtm_path, bounds, resolution)
+    if not valid.any():
         return None, None, None
-    dtm, _ = read_mosaic(dtm_index, bounds, resolution)
-    if dtm is None:
-        return None, None, None
-
-    valid = real(dsm) & real(dtm)
-    height = np.where(valid, dsm - dtm, 0.0).astype("float32")
-    np.clip(height, 0.0, MAX_HEIGHT_M, out=height)
-    del dsm, dtm
     return height, transform, valid
 
 
@@ -174,6 +141,22 @@ def build(resolution: float, window_m: float, limit: int | None) -> None:
     print(f"city {city[2]-city[0]:,.0f} x {city[3]-city[1]:,.0f} m, "
           f"{len(windows)} window(s) of {window_m:.0f} m")
 
+    # Pay the decompress-and-resample cost once. Every window after this is
+    # a read from a tiled 2 m mosaic rather than a fresh merge of about 119
+    # source tiles: 1.9 s instead of 14.1 s, against 85 s spent here.
+    os.makedirs(OUT, exist_ok=True)
+    dsm_mosaic, dtm_mosaic = mosaic_paths(resolution)
+    for name, index, path in (("dsm", dsm_index, dsm_mosaic),
+                              ("dtm", dtm_index, dtm_mosaic)):
+        if mosaic.mosaic_is_current(path, index, city, resolution):
+            print(f"{name} mosaic already current: {os.path.basename(path)}")
+            continue
+        started_mosaic = time.time()
+        mosaic.build_mosaic(index, city, resolution, path)
+        print(f"{name} mosaic: {len(index)} tiles into "
+              f"{os.path.basename(path)} in "
+              f"{time.time() - started_mosaic:.0f} s", flush=True)
+
     cover = gpd.read_file(LAND_COVER, layer="LandCover2018",
                           columns=["gridcode"])
     print(f"land cover: {len(cover)} polygons in {cover.crs}")
@@ -206,7 +189,7 @@ def build(resolution: float, window_m: float, limit: int | None) -> None:
             padded = (core[0] - worst_buffer, core[1] - worst_buffer,
                       core[2] + worst_buffer, core[3] + worst_buffer)
             surface, padded_transform, valid = normalised(
-                dsm_index, dtm_index, snap(padded, resolution), resolution)
+                dsm_mosaic, dtm_mosaic, snap(padded, resolution), resolution)
             if surface is None:
                 print(f"  window {number}/{len(windows)}: no coverage, skipped")
                 continue
