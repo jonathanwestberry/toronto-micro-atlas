@@ -345,17 +345,41 @@ test('the map legend states the instrument, and does not invent one', () => {
   );
 });
 
-test('the map ramp is the one declared in fg04.css, not a second copy', () => {
+test('the clock is native, labelled, and shared by both maps', () => {
+  const html = readRoute();
+  const copy = readCopy();
+
+  assert.match(
+    html,
+    /<input[^>]+type="range"[^>]+min="6"[^>]+max="20"[^>]+step="1"[^>]+value="13"/,
+  );
+  assert.match(html, /<output[^>]+for="fg04-shade-hour"/);
+  assert.match(copy, /Clock hour/);
+  assert.match(copy, /13:00 EDT/);
+  assert.match(copy, /Both maps use the same selected hour/);
+});
+
+test('the selected-hour legend and no-script state explain the binary map', () => {
+  const html = readRoute();
+  const copy = readCopy();
+
+  assert.match(copy, /Shaded at the selected hour/);
+  assert.match(copy, /Direct sun at the selected hour/);
+  assert.match(copy, /Not sampled ground/);
+  assert.match(html, /<noscript>/);
+  assert.match(copy, /JavaScript is required to change the clock hour/);
+});
+
+test('the selected-hour legend uses declared shade tokens, not a second copy', () => {
   const html = readRoute();
 
   const invented = html.match(/#[0-9a-f]{6}/gi) ?? [];
-  const rampTokens = html.match(/--fg04-shade-[1-6]/g) ?? [];
+  const shadeTokens = html.match(/--fg04-selected-(?:shaded|sunlit)/g) ?? [];
 
   assert.ok(
-    new Set(rampTokens).size >= 6,
-    'The legend swatches must reference --fg04-shade-1 to -6 rather than '
-    + 'hard-coded hex. The ramp was decided in src/styles/fg04.css and the '
-    + 'map reads it; a second copy is a second thing to keep in step.',
+    new Set(shadeTokens).size >= 2,
+    'The binary legend must reference the declared selected-hour tokens rather '
+    + 'than hard-coded colours.',
   );
   assert.ok(
     invented.length === 0,

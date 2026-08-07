@@ -25,6 +25,9 @@
   --fg04-shade-4: var(--c-mauve);        /* 8 to 10 */
   --fg04-shade-5: var(--c-plum);         /* 11 to 13 */
   --fg04-shade-6: var(--c-contour);      /* 14 to 15, blocked almost throughout */
+  --fg04-selected-shaded: var(--c-contour);
+  --fg04-selected-sunlit: var(--c-pale-lemon);
+  --fg04-selected-no-data: transparent;
 
   /* The first three stops sit at 1.08, 1.36 and 2.02 against the Cream ground,
      which is under the 3:1 a legend swatch needs to be found at all. They are
@@ -482,6 +485,58 @@
   margin-bottom: var(--space-6);
 }
 
+.fg04-clock {
+  margin-bottom: var(--space-6);
+  padding: var(--space-4);
+  border-block: 1px solid var(--atlas-line);
+}
+
+.fg04-clock__label,
+.fg04-clock__output {
+  font-family: var(--font-ui);
+  font-weight: 700;
+}
+
+.fg04-clock__label {
+  display: block;
+  margin-bottom: var(--space-3);
+  font-size: var(--text-xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.fg04-clock__control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.fg04-clock__range {
+  width: 100%;
+  min-height: 2.75rem;
+  accent-color: var(--atlas-ink);
+  cursor: pointer;
+}
+
+.fg04-clock__range:focus-visible {
+  outline: 3px solid var(--atlas-focus);
+  outline-offset: 3px;
+}
+
+.fg04-clock__output {
+  min-width: 7.5ch;
+  font-size: var(--text-lg);
+  font-variant-numeric: tabular-nums;
+}
+
+.fg04-clock__help,
+.fg04-clock__no-script {
+  margin: var(--space-2) 0 0;
+  color: var(--atlas-ink-muted);
+  font-size: var(--text-sm);
+}
+
 .fg04-maps__pair {
   display: grid;
   gap: var(--space-6);
@@ -577,6 +632,23 @@
   width: 1.75rem;
   height: 0.9rem;
   border: 1px solid var(--fg04-swatch-edge);
+}
+
+.fg04-legend__swatch--shaded {
+  background: var(--fg04-selected-shaded);
+}
+
+.fg04-legend__swatch--sunlit {
+  background: var(--fg04-selected-sunlit);
+}
+
+.fg04-legend__swatch--no-data {
+  background:
+    repeating-linear-gradient(
+      135deg,
+      transparent 0 4px,
+      var(--atlas-line) 4px 5px
+    );
 }
 
 .fg04-legend__facts {

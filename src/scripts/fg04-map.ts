@@ -1,6 +1,11 @@
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { createMapStage } from './map-stage';
+import {
+  resolveFg04TileTemplate,
+  selectedHourLayerContracts,
+} from './fg04-core.mjs';
+import { parseFg04State, serializeFg04State } from './fg04-state.mjs';
 
 /**
  * The shade map: two surfaces, side by side, always both.
@@ -62,6 +67,11 @@ interface Manifest {
   dawnHour: number;
   dawnNote: string;
   hourBits: Record<string, number>;
+  classification: {
+    tileUrlTemplate: string;
+    localTileUrlTemplate: string;
+    classBandStarts: Record<string, number>;
+  };
 }
 
 const MANIFEST_URL = '/data/fg04/manifest.json';
@@ -100,6 +110,28 @@ function readRamp(scope: Element): string[] {
   });
 }
 
+interface SelectedColors {
+  shaded: string;
+  sunlit: string;
+  noData: string;
+  background: string;
+}
+
+function readColor(scope: Element, token: string): string {
+  const value = getComputedStyle(scope).getPropertyValue(token).trim();
+  if (!value) throw new Error(`${token} is not defined on the .fg04 scope`);
+  return value;
+}
+
+function readSelectedColors(scope: Element): SelectedColors {
+  return {
+    shaded: readColor(scope, '--fg04-selected-shaded'),
+    sunlit: readColor(scope, '--fg04-selected-sunlit'),
+    noData: 'rgba(0, 0, 0, 0)',
+    background: readColor(scope, '--atlas-ground'),
+  };
+}
+
 /**
  * A `color-relief-color` ramp with hard edges between the six bands.
  *
@@ -131,14 +163,22 @@ function reliefRamp(ramp: string[], bandStart: (count: number) => number): unkno
 }
 
 function tileTemplate(manifest: Manifest, surface: string): string {
-  // Local dev serves the same tree out of public/, so the map works before
-  // anything reaches R2. Anywhere else, the CDN copy.
-  const local = window.location.hostname === 'localhost'
-    || window.location.hostname === '127.0.0.1';
-  const templates = local
-    ? manifest.localTileUrlTemplates
-    : manifest.tileUrlTemplates;
-  return templates[surface];
+  return resolveFg04TileTemplate(manifest, surface, window.location);
+}
+
+function classificationTemplate(manifest: Manifest): string {
+  return resolveFg04TileTemplate(
+    {
+      tileUrlTemplates: {
+        classification: manifest.classification.tileUrlTemplate,
+      },
+      localTileUrlTemplates: {
+        classification: manifest.classification.localTileUrlTemplate,
+      },
+    },
+    'classification',
+    window.location,
+  );
 }
 
 function buildMap(
@@ -146,6 +186,9 @@ function buildMap(
   manifest: Manifest,
   surface: string,
   ramp: string[],
+  colors: SelectedColors,
+  hour: number,
+  camera: [number, number, number] | null,
 ): maplibregl.Map {
   const [west, south, east, north] = manifest.bounds;
   const bandStart = (count: number): number => {
@@ -156,39 +199,65 @@ function buildMap(
     return value;
   };
 
+  const sources: Record<string, unknown> = {
+    shade: {
+      type: 'raster-dem',
+      tiles: [tileTemplate(manifest, surface)],
+      tileSize: manifest.tileSize,
+      minzoom: manifest.minZoom,
+      maxzoom: manifest.maxZoom,
+      encoding: 'mapbox',
+    },
+  };
+  if (surface === 'corrected') {
+    sources.classification = {
+      type: 'raster-dem',
+      tiles: [classificationTemplate(manifest)],
+      tileSize: manifest.tileSize,
+      minzoom: manifest.minZoom,
+      maxzoom: manifest.maxZoom,
+      encoding: 'mapbox',
+    };
+  }
+  const selectedLayers = selectedHourLayerContracts(
+    surface, hour, manifest, colors,
+  );
+  const view = camera === null
+    ? {
+        bounds: [[west, south], [east, north]] as [
+          [number, number], [number, number],
+        ],
+        fitBoundsOptions: { padding: 12 },
+      }
+    : {
+        center: [camera[0], camera[1]] as [number, number],
+        zoom: camera[2],
+      };
+
   const map = new maplibregl.Map({
     container,
     style: {
       version: 8,
-      sources: {
-        shade: {
-          type: 'raster-dem',
-          tiles: [tileTemplate(manifest, surface)],
-          tileSize: manifest.tileSize,
-          minzoom: manifest.minZoom,
-          maxzoom: manifest.maxZoom,
-          // Default encoding on purpose. See the note at the top of the file.
-          encoding: 'mapbox',
-        } as never,
-      },
+      sources: sources as never,
       layers: [
         {
           id: 'background',
           type: 'background',
-          paint: { 'background-color': '#FAF6EC' },
+          paint: { 'background-color': colors.background },
         },
         {
           id: 'shade-count',
           type: 'color-relief',
           source: 'shade',
+          layout: { visibility: 'none' },
           paint: {
             'color-relief-color': reliefRamp(ramp, bandStart) as never,
           },
         },
+        ...(selectedLayers as never[]),
       ],
     },
-    bounds: [[west, south], [east, north]],
-    fitBoundsOptions: { padding: 12 },
+    ...view,
     minZoom: manifest.minZoom,
     maxZoom: manifest.maxZoom,
     dragRotate: false,
@@ -217,9 +286,16 @@ function buildMap(
  * like a comparison and is not. The guard stops the echo: A moves B, B fires
  * its own move event, B moves A, forever.
  */
-function syncCameras(maps: maplibregl.Map[]): void {
+function syncCameras(
+  maps: maplibregl.Map[],
+  onUserCamera: (camera: [number, number, number]) => void,
+): void {
   let syncing = false;
   maps.forEach((source) => {
+    let userMove = false;
+    source.on('movestart', (event: { originalEvent?: unknown }) => {
+      if (event.originalEvent) userMove = true;
+    });
     source.on('move', () => {
       if (syncing) return;
       syncing = true;
@@ -231,26 +307,16 @@ function syncCameras(maps: maplibregl.Map[]): void {
       });
       syncing = false;
     });
+    source.on('moveend', () => {
+      if (!userMove) return;
+      userMove = false;
+      const centre = source.getCenter();
+      onUserCamera([centre.lng, centre.lat, source.getZoom()]);
+    });
   });
 }
 
 function fillLegend(root: HTMLElement, manifest: Manifest): void {
-  const swatches = root.querySelector('[data-fg04-legend-swatches]');
-  if (swatches) {
-    swatches.innerHTML = '';
-    BANDS.forEach(({ token, label }) => {
-      const item = document.createElement('li');
-      item.className = 'fg04-legend__item';
-      const chip = document.createElement('span');
-      chip.className = 'fg04-legend__swatch';
-      chip.style.background = `var(${token})`;
-      const text = document.createElement('span');
-      text.textContent = label;
-      item.append(chip, text);
-      swatches.append(item);
-    });
-  }
-
   // Every fact in the legend comes from the manifest the tiles were written
   // with, so the legend and the layers cannot disagree about the instrument.
   const facts = root.querySelector('[data-fg04-legend-facts]');
@@ -263,10 +329,37 @@ function fillLegend(root: HTMLElement, manifest: Manifest): void {
     const first = `${String(hours[0]).padStart(2, '0')}:00`;
     const last = `${String(hours[hours.length - 1]).padStart(2, '0')}:00`;
     facts.textContent =
-      `Shaded frames of ${hours.length}, ${readable}, ${first} to ${last} EDT, `
+      `Selected from ${hours.length} frames, ${readable}, ${first} to ${last} EDT, `
       + `on a ${manifest.gridResolutionM} m grid. Lidar flown `
       + `${manifest.flightSeason}. ${manifest.dawnNote}`;
   }
+}
+
+function formatHour(hour: number): string {
+  return `${String(hour).padStart(2, '0')}:00 EDT`;
+}
+
+function updateHourChrome(root: HTMLElement, hour: number): void {
+  const text = formatHour(hour);
+  const output = root.querySelector<HTMLOutputElement>('[data-fg04-hour-output]');
+  const legend = root.querySelector<HTMLElement>('[data-fg04-hour-legend]');
+  if (output) output.value = text;
+  if (legend) legend.textContent = `Shade state at ${text}`;
+}
+
+function localTileOptIn(): boolean {
+  const localHost = window.location.hostname === 'localhost'
+    || window.location.hostname === '127.0.0.1';
+  const params = new URLSearchParams(window.location.search);
+  return localHost && params.getAll('tiles').length === 1
+    && params.get('tiles') === 'local';
+}
+
+function stateUrl(state: ReturnType<typeof parseFg04State>): string {
+  const params = new URLSearchParams(serializeFg04State(state));
+  if (localTileOptIn()) params.set('tiles', 'local');
+  const query = params.toString();
+  return `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`;
 }
 
 export async function initShadeMap(): Promise<void> {
@@ -276,6 +369,13 @@ export async function initShadeMap(): Promise<void> {
   const shells = Array.from(
     root.querySelectorAll<HTMLElement>('[data-map-stage]'),
   );
+  const input = root.querySelector<HTMLInputElement>('[data-fg04-hour]');
+  root.querySelector<HTMLFormElement>('[data-fg04-clock]')
+    ?.addEventListener('submit', (event) => event.preventDefault());
+  let state = parseFg04State(window.location.search);
+  let committedState = { ...state };
+  if (input) input.value = String(state.hour);
+  updateHourChrome(root, state.hour);
 
   let manifest: Manifest;
   try {
@@ -293,7 +393,9 @@ export async function initShadeMap(): Promise<void> {
   }
 
   const ramp = readRamp(root);
-  const maps: maplibregl.Map[] = [];
+  const colors = readSelectedColors(root);
+  const maps: Array<{ map: maplibregl.Map; surface: string }> = [];
+  const diagnosticErrors: string[] = [];
 
   manifest.surfaces.forEach((surface) => {
     const container = root.querySelector<HTMLElement>(
@@ -304,18 +406,65 @@ export async function initShadeMap(): Promise<void> {
 
     // The map is built before the stage wraps it: the stage holds scroll-zoom
     // back until the reader interacts, and it needs a live map to hold.
-    const map = buildMap(container, manifest, surface, ramp);
-    maps.push(map);
+    const map = buildMap(
+      container, manifest, surface, ramp, colors, state.hour, state.map,
+    );
+    maps.push({ map, surface });
 
     const stage = createMapStage({ root: shell, map });
     map.on('load', () => stage?.setState('ready'));
-    map.on('error', () => stage?.setState(
-      'error', 'The shade tiles could not load.',
-    ));
+    map.on('error', (event) => {
+      diagnosticErrors.push(event.error?.message ?? 'unknown map error');
+      stage?.setState('error', 'The shade tiles could not load.');
+    });
   });
 
-  syncCameras(maps);
+  syncCameras(maps.map(({ map }) => map), (camera) => {
+    state = { ...state, map: camera };
+    committedState = { ...committedState, map: camera };
+    window.history.replaceState(null, '', stateUrl(state));
+  });
   fillLegend(root, manifest);
+
+  const applyHour = (hour: number): void => {
+    state = { ...state, hour };
+    maps.forEach(({ map, surface }) => {
+      const layers = selectedHourLayerContracts(
+        surface, hour, manifest, colors,
+      );
+      layers.forEach((layer) => {
+        map.setPaintProperty(
+          layer.id,
+          'color-relief-color',
+          layer.paint['color-relief-color'] as never,
+        );
+      });
+    });
+    updateHourChrome(root, hour);
+  };
+
+  input?.addEventListener('input', () => {
+    const hour = Number(input.value);
+    applyHour(hour);
+    window.history.replaceState(null, '', stateUrl(state));
+  });
+  input?.addEventListener('change', () => {
+    if (state.hour === committedState.hour) return;
+    const finalState = { ...state };
+    window.history.replaceState(null, '', stateUrl(committedState));
+    window.history.pushState(null, '', stateUrl(finalState));
+    committedState = finalState;
+  });
+
+  if (localTileOptIn()) {
+    const diagnosticWindow = window as typeof window & {
+      __fg04Explorer?: {
+        maps: Array<{ map: maplibregl.Map; surface: string }>;
+        errors: string[];
+      };
+    };
+    diagnosticWindow.__fg04Explorer = { maps, errors: diagnosticErrors };
+  }
 }
 
 if (typeof window !== 'undefined') {

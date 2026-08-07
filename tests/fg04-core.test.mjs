@@ -2,9 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  classificationReliefExpression,
   decodePackedElevation,
   decodeTilePixel,
   hourBit,
+  resolveFg04TileTemplate,
+  selectedHourLayerContracts,
   selectedHourReliefExpression,
   tileAddressForLngLat,
 } from '../src/scripts/fg04-core.mjs';
@@ -32,6 +35,9 @@ function evaluate(expression, elevation, scope = new Map()) {
     case 'round': return Math.round(evaluate(args[0], elevation, scope));
     case 'floor': return Math.floor(evaluate(args[0], elevation, scope));
     case '==': return evaluate(args[0], elevation, scope) === evaluate(args[1], elevation, scope);
+    case '>=': return evaluate(args[0], elevation, scope) >= evaluate(args[1], elevation, scope);
+    case '<': return evaluate(args[0], elevation, scope) < evaluate(args[1], elevation, scope);
+    case 'all': return args.every((value) => evaluate(value, elevation, scope));
     case 'var': return scope.get(args[0]);
     case 'case': {
       for (let index = 0; index < args.length - 1; index += 2) {
@@ -132,4 +138,92 @@ test('tile addressing rejects unsafe coordinates and zooms', () => {
   ]) {
     assert.throws(() => tileAddressForLngLat(...args), RangeError);
   }
+});
+
+test('the corrected canopy expression shades only class three', () => {
+  const expression = classificationReliefExpression(
+    {
+      0: -10000,
+      1: -3446.4,
+      2: 3107.2,
+      3: 9660.8,
+      4: 16214.4,
+    },
+    { shaded: 'blocked', other: 'clear' },
+  );
+
+  assert.equal(evaluate(expression, -10000), 'clear');
+  assert.equal(evaluate(expression, -3446.4), 'clear');
+  assert.equal(evaluate(expression, 3107.2), 'clear');
+  assert.equal(evaluate(expression, 9660.8), 'blocked');
+});
+
+test('both surfaces receive the same hour and only corrected gets canopy', () => {
+  const manifest = {
+    hourBits: HOURS,
+    demUnpack: UNPACK,
+    classification: {
+      classBandStarts: {
+        0: -10000,
+        1: -3446.4,
+        2: 3107.2,
+        3: 9660.8,
+        4: 16214.4,
+      },
+    },
+  };
+  const colors = {
+    shaded: 'blocked', sunlit: 'sunlit', noData: 'clear',
+  };
+
+  const measured = selectedHourLayerContracts('raw', 16, manifest, colors);
+  const corrected = selectedHourLayerContracts(
+    'corrected', 16, manifest, colors,
+  );
+
+  assert.deepEqual(measured.map((layer) => layer.id), ['shade-selected-hour']);
+  assert.deepEqual(
+    corrected.map((layer) => layer.id),
+    ['shade-selected-hour', 'shade-under-canopy'],
+  );
+  assert.deepEqual(
+    measured[0].paint['color-relief-color'],
+    corrected[0].paint['color-relief-color'],
+  );
+  assert.equal(
+    evaluate(measured[0].paint['color-relief-color'], 71499.9),
+    'blocked',
+  );
+});
+
+test('R2 is the default even on localhost and local tiles require opt in', () => {
+  const manifest = {
+    tileUrlTemplates: { raw: 'https://tiles.example/raw/{z}/{x}/{y}.webp' },
+    localTileUrlTemplates: { raw: '/data/raw/{z}/{x}/{y}.webp' },
+  };
+
+  assert.equal(
+    resolveFg04TileTemplate(manifest, 'raw', {
+      hostname: 'localhost', search: '',
+    }),
+    manifest.tileUrlTemplates.raw,
+  );
+  assert.equal(
+    resolveFg04TileTemplate(manifest, 'raw', {
+      hostname: 'localhost', search: '?tiles=local',
+    }),
+    manifest.localTileUrlTemplates.raw,
+  );
+  assert.equal(
+    resolveFg04TileTemplate(manifest, 'raw', {
+      hostname: 'torontomicroatlas.com', search: '?tiles=local',
+    }),
+    manifest.tileUrlTemplates.raw,
+  );
+  assert.equal(
+    resolveFg04TileTemplate(manifest, 'raw', {
+      hostname: '127.0.0.1', search: '?tiles=local&tiles=local',
+    }),
+    manifest.tileUrlTemplates.raw,
+  );
 });

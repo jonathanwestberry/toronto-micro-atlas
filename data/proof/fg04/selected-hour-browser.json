@@ -1,0 +1,71 @@
+{
+  "browser": "Google Chrome headless",
+  "builtAt": "2026-08-07",
+  "camera": [
+    -79.38445,
+    43.65395,
+    16
+  ],
+  "checks": {
+    "correctedCanopyLayerOnly": true,
+    "countLayerHidden": true,
+    "defaultOutput": "13:00 EDT",
+    "defaultUrlOmitsHour": true,
+    "historyEntryPushed": true,
+    "mapsReady": 2,
+    "nativeRange": {
+      "max": 20,
+      "min": 6,
+      "step": 1
+    },
+    "sameCamera": true,
+    "sameHour13Expression": true,
+    "sameHour16Expression": true,
+    "selectedOutput": "16:00 EDT",
+    "selectedUrlHour": 16
+  },
+  "knownRealPixelsAt13": [
+    {
+      "expected": "shaded",
+      "mapColor": "#1a1f2a",
+      "maplibreElevation": 64982.3,
+      "mask": "0x70ff",
+      "rgb": [
+        11,
+        112,
+        255
+      ],
+      "tilePixel": [
+        128,
+        128
+      ]
+    },
+    {
+      "expected": "direct sun",
+      "mapColor": "#fbf8c8",
+      "maplibreElevation": 58720.7,
+      "mask": "0x7c67",
+      "rgb": [
+        10,
+        124,
+        103
+      ],
+      "tilePixel": [
+        127,
+        126
+      ]
+    }
+  ],
+  "network": {
+    "classificationV2Requests": 9,
+    "correctedV3Requests": 9,
+    "measuredV3Requests": 9,
+    "proofMode": "same-origin local proxy of live R2 bytes",
+    "productionCorsStillMissing": true
+  },
+  "tile": [
+    16,
+    18316,
+    23917
+  ]
+}

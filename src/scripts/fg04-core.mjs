@@ -84,19 +84,97 @@ export function selectedHourReliefExpression(hour, hourBits, unpack, colors) {
   return [
     'let',
     'packed', ['round', ['/', ['+', ['elevation'], baseShift], blueFactor]],
-    'count', ['floor', ['/', ['var', 'packed'], countStep]],
-    'mask', ['%', ['var', 'packed'], countStep],
     [
-      'case',
-      ['==', ['var', 'count'], 0], noData,
+      'let',
+      'count', ['floor', ['/', ['var', 'packed'], countStep]],
       [
-        '==',
-        ['%', ['floor', ['/', ['var', 'mask'], 2 ** position]], 2],
-        1,
-      ], shaded,
-      sunlit,
+        'let',
+        'mask', ['%', ['var', 'packed'], countStep],
+        [
+          'case',
+          ['==', ['var', 'count'], 0], noData,
+          [
+            '==',
+            ['%', ['floor', ['/', ['var', 'mask'], 2 ** position]], 2],
+            1,
+          ], shaded,
+          sunlit,
+        ],
+      ],
     ],
   ];
+}
+
+export function classificationReliefExpression(classBandStarts, colors) {
+  const shaded = colors?.shaded;
+  const other = colors?.other;
+  const classThree = Number(classBandStarts?.[3]);
+  const classFour = Number(classBandStarts?.[4]);
+  if (typeof shaded !== 'string' || typeof other !== 'string') {
+    throw new TypeError('classification colors must be strings');
+  }
+  if (!Number.isFinite(classThree) || !Number.isFinite(classFour)) {
+    throw new TypeError('classification band starts are incomplete');
+  }
+  return [
+    'case',
+    [
+      'all',
+      ['>=', ['elevation'], classThree],
+      ['<', ['elevation'], classFour],
+    ],
+    shaded,
+    other,
+  ];
+}
+
+export function selectedHourLayerContracts(
+  surface,
+  hour,
+  manifest,
+  colors,
+) {
+  if (surface !== 'raw' && surface !== 'corrected') {
+    throw new RangeError('unknown fg04 surface');
+  }
+  const layers = [{
+    id: 'shade-selected-hour',
+    type: 'color-relief',
+    source: 'shade',
+    paint: {
+      'color-relief-color': selectedHourReliefExpression(
+        hour, manifest?.hourBits, manifest?.demUnpack, colors,
+      ),
+    },
+  }];
+  if (surface === 'corrected') {
+    layers.push({
+      id: 'shade-under-canopy',
+      type: 'color-relief',
+      source: 'classification',
+      paint: {
+        'color-relief-color': classificationReliefExpression(
+          manifest?.classification?.classBandStarts,
+          { shaded: colors?.shaded, other: colors?.noData },
+        ),
+      },
+    });
+  }
+  return layers;
+}
+
+export function resolveFg04TileTemplate(manifest, surface, location) {
+  const remote = manifest?.tileUrlTemplates?.[surface];
+  const local = manifest?.localTileUrlTemplates?.[surface];
+  if (typeof remote !== 'string' || typeof local !== 'string') {
+    throw new TypeError(`missing tile template for ${surface}`);
+  }
+  const hostname = location?.hostname;
+  const localHost = hostname === 'localhost' || hostname === '127.0.0.1';
+  const params = new URLSearchParams(location?.search ?? '');
+  const localOptIn = params.getAll('tiles').length === 1
+    && params.get('tiles') === 'local';
+  return localHost && localOptIn ? local : remote;
 }
 
 export function tileAddressForLngLat(longitude, latitude, zoom, tileSize = 256) {
