@@ -24,6 +24,9 @@ const MIME = new Map([
   ['.woff2', 'font/woff2'],
 ]);
 const tileRequests = { raw: 0, corrected: 0, classification: 0 };
+let failureScenario = null;
+let scenarioPageLoads = 0;
+let scenarioStreetRequests = 0;
 
 function browserPath() {
   const candidates = [
@@ -66,8 +69,35 @@ function remoteTile(pathname) {
 
 async function serve(request, response) {
   const pathname = new URL(request.url, 'http://127.0.0.1').pathname;
+  if (pathname === '/guides/throwing-shade/') scenarioPageLoads += 1;
+  if (
+    failureScenario === 'manifest-retry'
+    && scenarioPageLoads === 1
+    && pathname === '/data/fg04/manifest.json'
+  ) {
+    response.writeHead(503).end('Intentional manifest proof failure');
+    return;
+  }
+  if (
+    failureScenario === 'street-retry'
+    && pathname === '/data/fg04/street-profiles.json'
+  ) {
+    scenarioStreetRequests += 1;
+    if (scenarioStreetRequests === 1) {
+      response.writeHead(503).end('Intentional street proof failure');
+      return;
+    }
+  }
   const upstream = remoteTile(pathname);
   if (upstream) {
+    const failMeasured = failureScenario === 'measured-retry'
+      && scenarioPageLoads === 1 && upstream.kind === 'raw';
+    const failClassification = failureScenario === 'classification-retry'
+      && scenarioPageLoads === 1 && upstream.kind === 'classification';
+    if (failMeasured || failClassification) {
+      response.writeHead(503).end('Intentional tile proof failure');
+      return;
+    }
     try {
       tileRequests[upstream.kind] += 1;
       const tile = await fetch(upstream.url, {
@@ -156,6 +186,8 @@ const proofExpression = `(() => {
   const explorer = window.__fg04Explorer;
   if (!explorer || explorer.maps.length !== 2) return { ready: false };
   if (!explorer.maps.every(({ map }) => map.isStyleLoaded())) return { ready: false };
+  if (!Array.from(document.querySelectorAll('[data-map-stage]'))
+    .every((stage) => stage.dataset.mapState === 'ready')) return { ready: false };
   const pointProfile = explorer.getPointResult();
   if (!pointProfile) return { ready: false };
 
@@ -249,6 +281,7 @@ const proofExpression = `(() => {
     pairedPointMarkers: document.querySelectorAll('.fg04-point-marker').length === 2,
     profileHasFifteenRows: document.querySelectorAll('[data-fg04-point-table] tr').length === 15,
     pointUrlRestored: new URL(location.href).searchParams.get('point') === '-79.38445,43.65395',
+    malformedStateCleaned: !new URL(location.href).searchParams.has('junk'),
     pointTilesCachedAcrossHour: pointCacheBeforeHour === 3
       && explorer.getPointCacheSize() === pointCacheBeforeHour,
     profileSelectedHourChanged: document.querySelectorAll('[data-fg04-point-strip] [data-selected="true"]').length === 1
@@ -257,10 +290,17 @@ const proofExpression = `(() => {
   const passed = Object.entries(checks).every(([key, value]) => (
     key === 'known13Pixels' || value === true
   ));
-  return { ready: true, passed, checks, centres, pointProfile };
+  return {
+    ready: true, passed, checks, centres, pointProfile,
+    debug: {
+      errors: explorer.errors,
+      stages: Array.from(document.querySelectorAll('[data-map-stage]'))
+        .map((stage) => stage.dataset.mapState),
+    },
+  };
 })()`;
 
-const streetProofExpression = `(() => {
+const streetProofExpression = `(async () => {
   const explorer = window.__fg04Explorer;
   if (!explorer || explorer.maps.length !== 2) return { ready: false };
   if (!explorer.maps.every(({ map }) => map.isStyleLoaded())) return { ready: false };
@@ -291,6 +331,48 @@ const streetProofExpression = `(() => {
   hour.value = '16';
   hour.dispatchEvent(new Event('input', { bubbles: true }));
   hour.dispatchEvent(new Event('change', { bubbles: true }));
+  const historyLengthBeforeReplay = history.length;
+  const waitFor = async (predicate) => {
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      if (predicate()) return true;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    return false;
+  };
+  history.back();
+  const backUrlReached = await waitFor(() => (
+    document.querySelector('[data-fg04-hour-output]')?.value === '13:00 EDT'
+    && !new URL(location.href).searchParams.has('hour')
+  ));
+  await new Promise((resolve) => setTimeout(resolve, 750));
+  const backReplayed = backUrlReached && await waitFor(() => (
+    document.querySelector('[data-fg04-hour-output]')?.value === '13:00 EDT'
+    && document.querySelectorAll('[data-fg04-street-table] tr').length === 15
+    && window.__fg04Explorer?.getStreetResult()?.id === 'york-street'
+  ));
+  history.forward();
+  const forwardUrlReached = await waitFor(() => (
+    document.querySelector('[data-fg04-hour-output]')?.value === '16:00 EDT'
+    && new URL(location.href).searchParams.get('hour') === '16'
+  ));
+  await new Promise((resolve) => setTimeout(resolve, 750));
+  const forwardReplayed = forwardUrlReached && await waitFor(() => (
+    document.querySelector('[data-fg04-hour-output]')?.value === '16:00 EDT'
+    && document.querySelectorAll('[data-fg04-street-table] tr').length === 15
+    && window.__fg04Explorer?.getStreetResult()?.id === 'york-street'
+  ));
+
+  let copiedUrl = null;
+  try {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: async (value) => { copiedUrl = value; } },
+    });
+  } catch {}
+  const share = document.querySelector('[data-fg04-share]');
+  share.focus();
+  share.click();
+  const shareFinished = await waitFor(() => !share.hasAttribute('aria-busy'));
 
   const checks = {
     streetCount: explorer.getStreetCount() === 8507,
@@ -308,6 +390,12 @@ const streetProofExpression = `(() => {
     oneSelectedHour: document.querySelectorAll('[data-fg04-street-strip] [data-selected="true"]').length === 1,
     pointCleared: explorer.getPointResult() === null
       && document.querySelectorAll('.fg04-point-marker').length === 0,
+    backForwardReplay: backReplayed && forwardReplayed
+      && history.length === historyLengthBeforeReplay,
+    shareCopiesCanonicalUrl: shareFinished && copiedUrl === location.href
+      && share.textContent.trim() === 'Copied'
+      && document.activeElement === share
+      && document.querySelector('[data-fg04-share-status]')?.textContent === 'View link copied.',
   };
   return {
     ready: true,
@@ -315,7 +403,113 @@ const streetProofExpression = `(() => {
     checks,
     centres,
     street,
+    debug: {
+      url: location.href,
+      historyLength: history.length,
+      historyLengthBeforeReplay,
+      hourOutput: document.querySelector('[data-fg04-hour-output]')?.value,
+      streetStatus: document.querySelector('[data-fg04-street-status]')?.textContent,
+      tableRows: document.querySelectorAll('[data-fg04-street-table] tr').length,
+      profileHidden: document.querySelector('[data-fg04-street-profile]')?.hidden,
+      shareText: share.textContent,
+      shareStatus: document.querySelector('[data-fg04-share-status]')?.textContent,
+      copiedUrl,
+    },
   };
+})()`;
+
+const manifestRetryExpression = `(() => {
+  const key = 'fg04-manifest-retry';
+  if (!sessionStorage.getItem(key)) {
+    const stages = Array.from(document.querySelectorAll('[data-map-stage]'));
+    const status = document.querySelector('[data-fg04-street-status]');
+    const retry = document.querySelector('[data-fg04-street-retry]');
+    if (
+      stages.length !== 2
+      || !stages.every((stage) => stage.dataset.mapState === 'error')
+      || status?.textContent?.trim() !== 'The explorer data could not load. Try again.'
+      || !retry || retry.hidden
+    ) return { ready: false };
+    sessionStorage.setItem(key, 'saw-error');
+    retry.click();
+    return { ready: false };
+  }
+  const explorer = window.__fg04Explorer;
+  if (!explorer || explorer.getStreetCount() !== 8507) return { ready: false };
+  const mapsReady = Array.from(document.querySelectorAll('[data-map-stage]'))
+    .every((stage) => stage.dataset.mapState === 'ready');
+  if (!mapsReady) return { ready: false };
+  const checks = {
+    recoveredMaps: mapsReady,
+    recoveredStreetIndex: document.querySelector('[data-fg04-street-search]')?.disabled === false,
+  };
+  return { ready: true, passed: Object.values(checks).every(Boolean), checks };
+})()`;
+
+function mapRetryExpression(failedSurface) {
+  return `(() => {
+    const key = 'fg04-${failedSurface}-retry';
+    const explorer = window.__fg04Explorer;
+    const failed = document.querySelector('[data-fg04-map="${failedSurface}"]')
+      ?.closest('[data-map-stage]');
+    const otherSurface = '${failedSurface}' === 'raw' ? 'corrected' : 'raw';
+    const other = document.querySelector('[data-fg04-map="' + otherSurface + '"]')
+      ?.closest('[data-map-stage]');
+    if (!sessionStorage.getItem(key)) {
+      if (!explorer || failed?.dataset.mapState !== 'error'
+        || other?.dataset.mapState !== 'ready') return { ready: false };
+      const retry = failed.querySelector('[data-map-retry]');
+      if (!retry || retry.hidden) return { ready: false };
+      sessionStorage.setItem(key, 'saw-error');
+      retry.click();
+      return { ready: false };
+    }
+    if (!explorer || explorer.getStreetCount() !== 8507
+      || failed?.dataset.mapState !== 'ready'
+      || other?.dataset.mapState !== 'ready') return { ready: false };
+    const checks = {
+      recoveredFailedSurface: failed?.dataset.mapState === 'ready',
+      otherSurfaceStayedUseful: other?.dataset.mapState === 'ready',
+      noDiagnosticErrorsAfterReload: explorer.errors.length === 0,
+    };
+    return { ready: true, passed: Object.values(checks).every(Boolean), checks };
+  })()`;
+}
+
+const streetRetryExpression = `(() => {
+  const key = 'fg04-street-retry';
+  const explorer = window.__fg04Explorer;
+  if (!explorer) return { ready: false };
+  const status = document.querySelector('[data-fg04-street-status]');
+  const retry = document.querySelector('[data-fg04-street-retry]');
+  if (!sessionStorage.getItem(key)) {
+    if (status?.textContent?.trim() !== 'The street index could not load. Try again.'
+      || !retry || retry.hidden) return { ready: false };
+    sessionStorage.setItem(key, 'saw-error');
+    retry.click();
+    return { ready: false };
+  }
+  if (explorer.getStreetCount() !== 8507) return { ready: false };
+  const checks = {
+    recoveredStreetIndex: document.querySelector('[data-fg04-street-search]')?.disabled === false,
+    retryHidden: retry.hidden === true,
+    readyMessage: status?.textContent?.trim() === 'Search 8,507 named streets.',
+  };
+  return { ready: true, passed: Object.values(checks).every(Boolean), checks };
+})()`;
+
+const missingStreetExpression = `(() => {
+  const explorer = window.__fg04Explorer;
+  if (!explorer || explorer.getStreetCount() !== 8507) return { ready: false };
+  const status = document.querySelector('[data-fg04-street-status]');
+  const profile = document.querySelector('[data-fg04-street-profile]');
+  const checks = {
+    explicitNoData: status?.textContent?.trim()
+      === 'The linked street is not in this edition. Search another street.',
+    noInventedProfile: profile?.hidden === true && explorer.getStreetResult() === null,
+    searchStillAvailable: document.querySelector('[data-fg04-street-search]')?.disabled === false,
+  };
+  return { ready: true, passed: Object.values(checks).every(Boolean), checks };
 })()`;
 
 async function runBrowser(executable, url, profile, expression, label) {
@@ -398,6 +592,9 @@ if (!existsSync(resolve(DIST, 'guides/throwing-shade/index.html'))) {
 const server = createServer(serve);
 const pointBrowserProfile = mkdtempSync(join(tmpdir(), 'fg04-point-proof-'));
 const streetBrowserProfile = mkdtempSync(join(tmpdir(), 'fg04-street-proof-'));
+const recoveryProfiles = Array.from({ length: 5 }, (_, index) => (
+  mkdtempSync(join(tmpdir(), `fg04-recovery-${index}-`))
+));
 try {
   await new Promise((resolveListen, rejectListen) => {
     server.once('error', rejectListen);
@@ -409,6 +606,7 @@ try {
     tiles: 'local',
     map: '-79.38445,43.65395,16',
     point: '-79.38445,43.65395',
+    junk: 'drop-me',
   });
   const url = `http://127.0.0.1:${address.port}`
     + `/guides/throwing-shade/?${query}`;
@@ -425,11 +623,32 @@ try {
     browserPath(), streetUrl, streetBrowserProfile,
     streetProofExpression, 'street-profile',
   );
+  const recoveryCases = [
+    ['manifest-retry', manifestRetryExpression, ''],
+    ['measured-retry', mapRetryExpression('raw'), ''],
+    ['classification-retry', mapRetryExpression('corrected'), ''],
+    ['street-retry', streetRetryExpression, ''],
+    ['missing-street', missingStreetExpression, '&street=not-in-this-edition'],
+  ];
+  const recoveryResults = {};
+  for (let index = 0; index < recoveryCases.length; index += 1) {
+    const [scenario, expression, extraQuery] = recoveryCases[index];
+    failureScenario = scenario === 'missing-street' ? null : scenario;
+    scenarioPageLoads = 0;
+    scenarioStreetRequests = 0;
+    const recoveryUrl = `http://127.0.0.1:${address.port}`
+      + `/guides/throwing-shade/?tiles=local${extraQuery}`;
+    recoveryResults[scenario] = await runBrowser(
+      browserPath(), recoveryUrl, recoveryProfiles[index], expression, scenario,
+    );
+  }
+  failureScenario = null;
   if (Object.values(tileRequests).some((count) => count === 0)) {
     throw new Error(`browser did not request every tile product: ${JSON.stringify(tileRequests)}`);
   }
   result.tileRequests = tileRequests;
   result.streetProof = streetResult;
+  result.recoveryProofs = recoveryResults;
   console.log(`FG04 selected-hour browser proof passed: ${JSON.stringify(result)}`);
 } finally {
   await new Promise((resolveClose) => server.close(resolveClose));
@@ -439,4 +658,7 @@ try {
   rmSync(streetBrowserProfile, {
     recursive: true, force: true, maxRetries: 5, retryDelay: 100,
   });
+  recoveryProfiles.forEach((profile) => rmSync(profile, {
+    recursive: true, force: true, maxRetries: 5, retryDelay: 100,
+  }));
 }

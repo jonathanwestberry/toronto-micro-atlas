@@ -10,7 +10,12 @@ import {
   loadPointProfile,
   pointStateAtHour,
 } from './fg04-point.mjs';
-import { parseFg04State, serializeFg04State } from './fg04-state.mjs';
+import {
+  canonicalFg04Path,
+  copyFg04Url,
+  writeFg04History,
+} from './fg04-runtime.mjs';
+import { parseFg04State } from './fg04-state.mjs';
 import {
   parseStreetProfiles,
   profileAtHour,
@@ -584,15 +589,19 @@ function localTileOptIn(): boolean {
 }
 
 function stateUrl(state: ReturnType<typeof parseFg04State>): string {
-  const params = new URLSearchParams(serializeFg04State(state));
-  if (localTileOptIn()) params.set('tiles', 'local');
-  const query = params.toString();
-  return `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`;
+  return canonicalFg04Path(
+    window.location.pathname,
+    window.location.hash,
+    state,
+    localTileOptIn(),
+  );
 }
 
 export async function initShadeMap(): Promise<void> {
   const root = document.querySelector<HTMLElement>('[data-fg04-maps]');
   if (!root) return;
+  if (root.dataset.fg04Initialized === 'true') return;
+  root.dataset.fg04Initialized = 'true';
 
   const shells = Array.from(
     root.querySelectorAll<HTMLElement>('[data-map-stage]'),
@@ -602,6 +611,11 @@ export async function initShadeMap(): Promise<void> {
     ?.addEventListener('submit', (event) => event.preventDefault());
   let state = parseFg04State(window.location.search);
   let committedState = { ...state };
+  const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  const canonicalPath = stateUrl(state);
+  if (currentPath !== canonicalPath) {
+    writeFg04History(window.history, 'replace', canonicalPath, state);
+  }
   if (input) input.value = String(state.hour);
   updateHourChrome(root, state.hour);
 
@@ -617,7 +631,16 @@ export async function initShadeMap(): Promise<void> {
         'error', 'The shade map could not load.',
       );
     });
-    throw error;
+    const streetStatus = root.querySelector<HTMLElement>('[data-fg04-street-status]');
+    const streetRetry = root.querySelector<HTMLButtonElement>('[data-fg04-street-retry]');
+    if (streetStatus) {
+      streetStatus.textContent = 'The explorer data could not load. Try again.';
+    }
+    if (streetRetry) {
+      streetRetry.hidden = false;
+      streetRetry.addEventListener('click', () => window.location.reload());
+    }
+    return;
   }
 
   if (state.point !== null && state.map === null) {
@@ -628,6 +651,7 @@ export async function initShadeMap(): Promise<void> {
   const ramp = readRamp(root);
   const colors = readSelectedColors(root);
   const maps: Array<{ map: maplibregl.Map; surface: string }> = [];
+  const stages: Array<NonNullable<ReturnType<typeof createMapStage>>> = [];
   const diagnosticErrors: string[] = [];
 
   manifest.surfaces.forEach((surface) => {
@@ -644,9 +668,18 @@ export async function initShadeMap(): Promise<void> {
     );
     maps.push({ map, surface });
 
-    const stage = createMapStage({ root: shell, map });
-    map.on('load', () => stage?.setState('ready'));
+    const stage = createMapStage({
+      root: shell,
+      map,
+      onRetry: () => window.location.reload(),
+    });
+    if (stage) stages.push(stage);
+    let surfaceFailed = false;
+    map.on('load', () => {
+      if (!surfaceFailed) stage?.setState('ready');
+    });
     map.on('error', (event) => {
+      surfaceFailed = true;
       diagnosticErrors.push(event.error?.message ?? 'unknown map error');
       stage?.setState('error', 'The shade tiles could not load.');
     });
@@ -655,7 +688,7 @@ export async function initShadeMap(): Promise<void> {
   syncCameras(maps.map(({ map }) => map), (camera) => {
     state = { ...state, map: camera };
     committedState = { ...committedState, map: camera };
-    window.history.replaceState(null, '', stateUrl(state));
+    writeFg04History(window.history, 'replace', stateUrl(state), state);
   });
   fillLegend(root, manifest);
 
@@ -721,7 +754,7 @@ export async function initShadeMap(): Promise<void> {
     renderPointLoading(root, rounded);
     placePointMarkers(rounded);
     if (historyMode === 'push') {
-      window.history.pushState(null, '', stateUrl(state));
+      writeFg04History(window.history, 'push', stateUrl(state), state);
       committedState = { ...state };
     }
     void loadLatestPoint(rounded);
@@ -838,7 +871,7 @@ export async function initShadeMap(): Promise<void> {
     }
     state = { ...state, map: camera, point: null, street: street.id };
     if (historyMode === 'push') {
-      window.history.pushState(null, '', stateUrl(state));
+      writeFg04History(window.history, 'push', stateUrl(state), state);
       committedState = { ...state };
     }
   };
@@ -922,14 +955,85 @@ export async function initShadeMap(): Promise<void> {
   input?.addEventListener('input', () => {
     const hour = Number(input.value);
     applyHour(hour);
-    window.history.replaceState(null, '', stateUrl(state));
+    writeFg04History(window.history, 'replace', stateUrl(state), state);
   });
   input?.addEventListener('change', () => {
     if (state.hour === committedState.hour) return;
     const finalState = { ...state };
-    window.history.replaceState(null, '', stateUrl(committedState));
-    window.history.pushState(null, '', stateUrl(finalState));
+    writeFg04History(
+      window.history, 'replace', stateUrl(committedState), committedState,
+    );
+    writeFg04History(window.history, 'push', stateUrl(finalState), finalState);
     committedState = finalState;
+  });
+
+  const replayUrlState = (): void => {
+    const next = parseFg04State(window.location.search);
+    state = next;
+    committedState = { ...next };
+    if (input) input.value = String(next.hour);
+    applyHour(next.hour);
+
+    if (next.point !== null) {
+      const camera = next.map
+        ?? [next.point[0], next.point[1], manifest.nativeZoom] as [number, number, number];
+      maps[0]?.map.jumpTo({ center: [camera[0], camera[1]], zoom: camera[2] });
+      selectPoint([next.point[0], next.point[1]], 'none');
+      return;
+    }
+
+    if (next.street !== null) {
+      clearPointSelection();
+      const linked = streetData
+        ? streetById(streetData.streets, next.street) as StreetRecord | null
+        : null;
+      if (linked) {
+        if (next.map !== null) {
+          maps[0]?.map.jumpTo({
+            center: [next.map[0], next.map[1]], zoom: next.map[2],
+          });
+        }
+        selectStreet(linked, 'none', next.map === null);
+      } else if (streetStatus && streetData) {
+        clearStreetSelection();
+        streetStatus.textContent = 'The linked street is not in this edition. Search another street.';
+      }
+      return;
+    }
+
+    clearPointSelection();
+    clearStreetSelection();
+    if (next.map !== null) {
+      maps[0]?.map.jumpTo({
+        center: [next.map[0], next.map[1]], zoom: next.map[2],
+      });
+    } else {
+      maps[0]?.map.fitBounds(
+        [[manifest.bounds[0], manifest.bounds[1]], [manifest.bounds[2], manifest.bounds[3]]],
+        { padding: 12, duration: 0 },
+      );
+    }
+  };
+  window.addEventListener('popstate', replayUrlState);
+
+  const shareButton = root.querySelector<HTMLButtonElement>('[data-fg04-share]');
+  const shareStatus = root.querySelector<HTMLElement>('[data-fg04-share-status]');
+  let shareRestoreTimer = 0;
+  shareButton?.addEventListener('click', async () => {
+    window.clearTimeout(shareRestoreTimer);
+    shareButton.setAttribute('aria-busy', 'true');
+    const result = await copyFg04Url(window.location.href);
+    const copied = result !== 'error';
+    shareButton.textContent = copied ? 'Copied' : 'Copy failed';
+    if (shareStatus) {
+      shareStatus.textContent = copied
+        ? 'View link copied.'
+        : 'The view link could not be copied. Copy it from the address bar.';
+    }
+    shareButton.removeAttribute('aria-busy');
+    shareRestoreTimer = window.setTimeout(() => {
+      shareButton.textContent = 'Copy this view';
+    }, 2500);
   });
 
   if (localTileOptIn()) {
@@ -952,9 +1056,34 @@ export async function initShadeMap(): Promise<void> {
       getStreetCount: () => streetData?.streets.length ?? 0,
     };
   }
+
+  const cleanupWindow = window as typeof window & {
+    __fg04Cleanup?: () => void;
+    __fg04Explorer?: unknown;
+  };
+  cleanupWindow.__fg04Cleanup = () => {
+    window.removeEventListener('popstate', replayUrlState);
+    window.clearTimeout(shareRestoreTimer);
+    streetLoadGeneration += 1;
+    stages.forEach((stage) => stage.destroy());
+    maps.forEach(({ map }) => map.remove());
+    delete cleanupWindow.__fg04Explorer;
+    delete cleanupWindow.__fg04Cleanup;
+  };
 }
 
 if (typeof window !== 'undefined') {
+  const lifecycleWindow = window as typeof window & {
+    __fg04Cleanup?: () => void;
+    __fg04Lifecycle?: boolean;
+  };
+  if (!lifecycleWindow.__fg04Lifecycle) {
+    lifecycleWindow.__fg04Lifecycle = true;
+    document.addEventListener('astro:before-swap', () => {
+      lifecycleWindow.__fg04Cleanup?.();
+    });
+    document.addEventListener('astro:page-load', () => void initShadeMap());
+  }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => void initShadeMap());
   } else {

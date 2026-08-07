@@ -32,7 +32,10 @@
     "pairedPointMarkers": 2,
     "profileRows": 15,
     "pointUrlRestored": true,
-    "pointTilesCachedAcrossHourChange": true
+    "pointTilesCachedAcrossHourChange": true,
+    "malformedStateCleaned": true,
+    "backForwardReplay": true,
+    "shareCopiesCanonicalUrlWithoutMovingFocus": true
   },
   "knownRealPixelsAt13": [
     {
@@ -67,9 +70,9 @@
     }
   ],
   "network": {
-    "classificationV2Requests": 33,
-    "correctedV3Requests": 45,
-    "measuredV3Requests": 54,
+    "classificationV2Requests": 132,
+    "correctedV3Requests": 159,
+    "measuredV3Requests": 159,
     "proofMode": "same-origin local proxy of live R2 bytes",
     "productionCorsStillMissing": true
   },
@@ -116,5 +119,29 @@
     },
     "sameCamera": true,
     "shareableUrlRestored": true
+  },
+  "recoveryProofs": {
+    "manifest": {
+      "errorVisible": true,
+      "retryRecoveredMaps": true,
+      "retryRecoveredStreetIndex": true
+    },
+    "measuredTiles": {
+      "onlyMeasuredSurfaceFailed": true,
+      "retryRecovered": true
+    },
+    "classificationTiles": {
+      "onlyCorrectedSurfaceFailed": true,
+      "retryRecovered": true
+    },
+    "streetAsset": {
+      "errorVisible": true,
+      "retryRecovered": true
+    },
+    "unknownStreet": {
+      "explicitNoData": true,
+      "inventedProfile": false,
+      "searchRemainedAvailable": true
+    }
   }
 }

@@ -370,6 +370,16 @@ test('the selected-hour legend and no-script state explain the binary map', () =
   assert.match(copy, /JavaScript is required to change the clock hour/);
 });
 
+test('the explorer exposes a labelled share action and live result', () => {
+  const html = readRoute();
+  const copy = readCopy();
+
+  assert.match(copy, /Copy this view/);
+  assert.match(html, /data-fg04-share/);
+  assert.match(html, /data-fg04-share-status[^>]+role="status"/);
+  assert.match(html, /data-fg04-share-status[^>]+aria-live="polite"/);
+});
+
 test('point inspection has instructions, paired states, and a table alternative', () => {
   const html = readRoute();
   const copy = readCopy();
