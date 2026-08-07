@@ -1,7 +1,25 @@
 {
+  "date": "2026-07-21",
   "resolution_m": 2.0,
   "window_m": 8000.0,
   "frames": 15,
+  "hours": [
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+  ],
   "casting_frames": 14,
   "worst_case_buffer_m": 4390.2,
   "canopy_pixels": 92131943,
@@ -11,5 +29,5 @@
   "measured_pixels": 25063803,
   "defaulted_pixels": 44989,
   "measured_share": 0.9982,
-  "seconds": 13273.2
+  "seconds": 6455.0
 }

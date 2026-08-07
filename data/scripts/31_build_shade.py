@@ -22,7 +22,14 @@ Outputs, all uint16 or uint8 in EPSG:6660 at the requested resolution:
   ground.tif           1 where the measured surface is under 2 m
   correction-report.json
 
-Usage: python 31_build_shade.py [--resolution 1.0] [--window 8000] [--limit N]
+`--date` and `--hours` exist for chapter six's winter figure. Any run that
+is not the full July day writes to tagged filenames, because the July
+rasters are what every published number was measured from and a rerun that
+lands on top of them would move a published figure silently. The default
+invocation is byte-for-byte the July one.
+
+Usage: python 31_build_shade.py [--resolution 1.0] [--window 8000]
+                                [--limit N] [--date 2026-01-21] [--hours 12]
 """
 
 import argparse
@@ -82,6 +89,43 @@ def casting_frames(frames):
     return [f for f in frames if f.altitude > shadow.HORIZON_DEG]
 
 
+def output_tag(date, hours):
+    """The filename suffix for a run. Empty only for the published July day.
+
+    Anything else gets its own name. Selecting hours matters as much as
+    changing the date, because bit 0 means 06:00 in the July raster and
+    would mean the first selected hour in a partial one, and two rasters
+    that disagree about what a bit means must not share a filename.
+    """
+    if date == solar.MODEL_DATE and not hours:
+        return ""
+    if not hours:
+        return f"-{date}"
+    return f"-{date}-h" + "-".join(f"{h:02d}" for h in sorted(hours))
+
+
+def output_name(stem, tag):
+    return f"{stem}{tag}.tif"
+
+
+def report_name(tag):
+    return f"correction-report{tag}.json"
+
+
+def select_frames(frames, hours):
+    """Keep the requested clock hours, in order, or every frame."""
+    if not hours:
+        return frames
+    wanted = sorted(set(hours))
+    chosen = [f for f in frames if f.clock.hour in wanted]
+    missing = set(wanted) - {f.clock.hour for f in chosen}
+    if missing:
+        raise SystemExit(
+            f"no daylight frame at {sorted(missing)}; the sun is below the "
+            f"horizon at those hours on this date")
+    return chosen
+
+
 def core_windows(city, window_m):
     left, bottom, right, top = city
     xs = np.arange(left, right, window_m)
@@ -109,20 +153,55 @@ def normalised(dsm_path, dtm_path, bounds, resolution):
     return height, transform, valid
 
 
-def crop_margin(array, margin_px):
-    if margin_px <= 0:
-        return array
-    return array[margin_px:-margin_px, margin_px:-margin_px]
+def core_block(array, transform, core, resolution):
+    """Cut the core window out of a padded array by its own georeference.
+
+    Deriving this from the buffers instead put every window a pixel out of
+    place. `snap` floors the padded edge to a whole pixel, so the true offset
+    is `floor((core_left - buffer) / res)` pixels from the core, while the
+    old path removed `round(trim) + round(margin_px)`: two separately
+    rounded halves of a fractional buffer, which sum to one less whenever
+    both fractions round down. Fourteen of the nineteen covered windows were
+    written 2 m south-east of their coordinates and five were not, so the
+    citywide raster carried a one-pixel seam at most window boundaries.
+
+    Nothing about that raised or looked wrong. It was found by recomputing
+    ground, which does not depend on the sun, and noticing that two runs of
+    different dates disagreed on 11.3% of pixels while agreeing on the total
+    to 0.01%.
+
+    The array's transform is exact and the core bounds are on the grid, so
+    this cannot drift with the margin, the sun angle or the window.
+    """
+    window = from_bounds(core[0], core[1], core[2], core[3], transform)
+    row = int(round(window.row_off))
+    col = int(round(window.col_off))
+    height = int(round(window.height))
+    width = int(round(window.width))
+    if (row < 0 or col < 0
+            or row + height > array.shape[0]
+            or col + width > array.shape[1]):
+        raise ValueError(
+            f"core window ({row}, {col}, {height}, {width}) does not fit a "
+            f"{array.shape} array; the padded read was too small")
+    return array[row:row + height, col:col + width]
 
 
-def build(resolution: float, window_m: float, limit: int | None) -> None:
-    frames = solar.hourly_frames()
+def build(resolution: float, window_m: float, limit: int | None,
+          date: str = solar.MODEL_DATE, hours: list[int] | None = None) -> None:
+    tag = output_tag(date, hours)
+    frames = select_frames(solar.hourly_frames(date), hours)
     casting = casting_frames(frames)
+    if not casting:
+        raise SystemExit(f"no casting frames on {date} at hours {hours}")
     lowest = min(frame.altitude for frame in casting)
     worst_buffer = shadow.required_buffer(MAX_HEIGHT_M, lowest)
-    print(f"{len(frames)} frames, {len(casting)} of them casting, "
+    print(f"{date}, {len(frames)} frames, {len(casting)} of them casting, "
           f"lowest casting sun {lowest:.2f} deg, "
           f"worst-case buffer {worst_buffer:.0f} m")
+    if tag:
+        print(f"tagged run, writing *{tag}.tif; the July rasters are "
+              f"untouched")
 
     dsm_index = tile_index(os.path.join(RAW, "dsm"))
     dtm_index = tile_index(os.path.join(RAW, "dtm"))
@@ -178,11 +257,11 @@ def build(resolution: float, window_m: float, limit: int | None) -> None:
               "measured_pixels": 0, "defaulted_pixels": 0}
     started = time.time()
 
-    with rasterio.open(os.path.join(OUT, "shade-raw.tif"), "w",
+    with rasterio.open(os.path.join(OUT, output_name("shade-raw", tag)), "w",
                        dtype="uint16", nodata=0, **profile) as raw_out, \
-         rasterio.open(os.path.join(OUT, "shade-corrected.tif"), "w",
-                       dtype="uint16", nodata=0, **profile) as corr_out, \
-         rasterio.open(os.path.join(OUT, "ground.tif"), "w",
+         rasterio.open(os.path.join(OUT, output_name("shade-corrected", tag)),
+                       "w", dtype="uint16", nodata=0, **profile) as corr_out, \
+         rasterio.open(os.path.join(OUT, output_name("ground", tag)), "w",
                        dtype="uint8", nodata=255, **profile) as ground_out:
 
         for number, core in enumerate(windows, start=1):
@@ -205,7 +284,6 @@ def build(resolution: float, window_m: float, limit: int | None) -> None:
             if trim > 0:
                 surface = surface[trim:-trim, trim:-trim]
                 valid = valid[trim:-trim, trim:-trim]
-            margin_px = int(round(margin_m / resolution))
 
             # Take the grid from the mosaic itself. Rebuilding it from the
             # window bounds risks a sub-pixel offset, which would slide the
@@ -246,7 +324,7 @@ def build(resolution: float, window_m: float, limit: int | None) -> None:
             for data, sink, dtype in ((raw_bits, raw_out, "uint16"),
                                       (corr_bits, corr_out, "uint16"),
                                       (ground, ground_out, "uint8")):
-                block = crop_margin(data, margin_px)
+                block = core_block(data, surface_transform, core, resolution)
                 block = block[:window.height, :window.width]
                 sink.write(block.astype(dtype), 1, window=window)
 
@@ -258,9 +336,14 @@ def build(resolution: float, window_m: float, limit: int | None) -> None:
 
     raised = totals["raised_pixels"]
     summary = {
+        "date": date,
         "resolution_m": resolution,
         "window_m": window_m,
         "frames": len(frames),
+        # Which clock hour each bit position means. The July raster's bit 0
+        # is 06:00; a selected-hours raster's bit 0 is its own first hour,
+        # and nothing downstream can infer that from the file.
+        "hours": [int(frame.clock.hour) for frame in frames],
         "casting_frames": len(casting),
         "worst_case_buffer_m": round(worst_buffer, 1),
         "canopy_pixels": totals["canopy_pixels"],
@@ -277,7 +360,7 @@ def build(resolution: float, window_m: float, limit: int | None) -> None:
                            if raised else 0.0),
         "seconds": round(time.time() - started, 1),
     }
-    with open(os.path.join(OUT, "correction-report.json"), "w") as handle:
+    with open(os.path.join(OUT, report_name(tag)), "w") as handle:
         json.dump(summary, handle, indent=2)
     print(json.dumps(summary, indent=2))
 
@@ -287,5 +370,12 @@ if __name__ == "__main__":
     parser.add_argument("--resolution", type=float, default=1.0)
     parser.add_argument("--window", type=float, default=WINDOW_M)
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument("--date", default=solar.MODEL_DATE,
+                        help="the modelled day; anything but the July default "
+                             "writes tagged filenames")
+    parser.add_argument("--hours", default=None,
+                        help="comma-separated clock hours to model, e.g. 12")
     args = parser.parse_args()
-    build(args.resolution, args.window, args.limit)
+    selected = ([int(h) for h in args.hours.split(",")]
+                if args.hours else None)
+    build(args.resolution, args.window, args.limit, args.date, selected)
