@@ -10,8 +10,9 @@
     "maps": "node scripts/build-contextual-maps.mjs",
     "build-hero-map": "node scripts/build-hero-map.mjs",
     "check": "astro check",
-    "test:web": "node --experimental-strip-types --test tests/atlas-events.test.mjs tests/fg03-state.test.mjs tests/fg03-results.test.mjs tests/fg03-map.test.mjs tests/map-url.test.mjs tests/map-stage.test.mjs",
+    "test:web": "node --experimental-strip-types --test tests/atlas-events.test.mjs tests/fg03-state.test.mjs tests/fg03-results.test.mjs tests/fg03-map.test.mjs tests/fg04-core.test.mjs tests/fg04-state.test.mjs tests/map-url.test.mjs tests/map-stage.test.mjs",
     "test:web:contract": "node --test tests/fg03-contract.test.mjs tests/fg04-content.test.mjs",
+    "verify:fg04-browser": "node scripts/verify-fg04-browser-decode.mjs",
     "test": "npm run test:web && npm run check && npm run build && npm run test:web:contract"
   },
   "engines": {

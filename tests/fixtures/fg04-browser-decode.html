@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>FG04 browser decode proof</title>
+  </head>
+  <body data-proof-state="running">
+    <pre id="result">Running browser decode proof.</pre>
+    <script type="module">
+      import {
+        decodeTilePixel,
+        hourBit,
+      } from '../../src/scripts/fg04-core.mjs';
+
+      const result = document.querySelector('#result');
+      const fail = (error) => {
+        document.body.dataset.proofState = 'failed';
+        result.textContent = error instanceof Error ? error.stack : String(error);
+      };
+
+      try {
+        const proofResponse = await fetch('../../data/proof/fg04/browser-decode.json');
+        if (!proofResponse.ok) throw new Error(`proof fixture ${proofResponse.status}`);
+        const proof = await proofResponse.json();
+
+        const tileResponse = await fetch('/__fg04_live_tile');
+        if (!tileResponse.ok) throw new Error(`live tile ${tileResponse.status}`);
+        const bitmap = await createImageBitmap(await tileResponse.blob());
+        const canvas = document.createElement('canvas');
+        canvas.width = bitmap.width;
+        canvas.height = bitmap.height;
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        if (!context) throw new Error('browser did not provide a 2D canvas');
+        context.drawImage(bitmap, 0, 0);
+
+        const hours = Object.fromEntries(
+          Array.from({ length: 15 }, (_, index) => [String(index + 6), index]),
+        );
+        const checks = proof.pythonReference.pixels.map((expected) => {
+          const rgba = context.getImageData(
+            expected.column,
+            expected.row,
+            1,
+            1,
+          ).data;
+          const rgb = Array.from(rgba.slice(0, 3));
+          const decoded = decodeTilePixel(...rgb);
+          const selectedBitSet = hourBit(decoded.mask, proof.selectedHour, hours);
+          const passed = JSON.stringify(rgb) === JSON.stringify(expected.rgb)
+            && `0x${decoded.mask.toString(16).padStart(4, '0')}` === expected.maskHex
+            && selectedBitSet === expected.selectedBitSet;
+          return {
+            row: expected.row,
+            column: expected.column,
+            rgb,
+            count: decoded.count,
+            maskHex: `0x${decoded.mask.toString(16).padStart(4, '0')}`,
+            selectedBitSet,
+            passed,
+          };
+        });
+        if (!checks.every((check) => check.passed)) {
+          throw new Error(`browser bytes differ from Python: ${JSON.stringify(checks)}`);
+        }
+
+        document.body.dataset.proofState = 'passed';
+        result.textContent = JSON.stringify({
+          tile: proof.tile.url,
+          selectedHour: proof.selectedHour,
+          checks,
+        });
+      } catch (error) {
+        fail(error);
+      }
+    </script>
+  </body>
+</html>

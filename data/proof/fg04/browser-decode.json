@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-08-07",
+  "surface": "raw",
+  "tile": {
+    "url": "https://tiles.torontomicroatlas.com/fg04/v3/raw/16/18316/23917.webp",
+    "zoom": 16,
+    "x": 18316,
+    "y": 23917,
+    "format": "webp",
+    "lossless": true
+  },
+  "delivery": {
+    "httpStatus": 200,
+    "contentType": "image/webp",
+    "cacheControl": "public, max-age=31536000, immutable",
+    "corsReadable": false,
+    "proofTransport": "The local verifier proxies the live response byte-for-byte onto its own origin. Chrome still performs the WebP and canvas decode. Production R2 CORS remains a release blocker."
+  },
+  "selectedHour": 13,
+  "selectedBit": 7,
+  "pythonReference": {
+    "sourceRaster": "data/processed/fg04/shade-raw.tif",
+    "warp": "EPSG:3857 nearest neighbour on the z16 tile grid, masked where ground-fraction is below 128",
+    "pixels": [
+      {
+        "row": 128,
+        "column": 128,
+        "rgb": [11, 112, 255],
+        "maskHex": "0x70ff",
+        "selectedBitSet": true
+      },
+      {
+        "row": 126,
+        "column": 127,
+        "rgb": [10, 124, 103],
+        "maskHex": "0x7c67",
+        "selectedBitSet": false
+      }
+    ]
+  },
+  "browserContract": "fetch live R2 bytes through the same-origin proof proxy, createImageBitmap, drawImage, getImageData, decodeTilePixel, hourBit"
+}
