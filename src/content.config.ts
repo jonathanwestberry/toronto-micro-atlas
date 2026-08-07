@@ -13,7 +13,7 @@ const guides = defineCollection({
     status: z.enum(['live', 'under-observation']),
     // Gallery metadata (drives the homepage feature + /guides/ grid so a new
     // guide is a content change, not markup).
-    theme: z.enum(['fg01', 'fg02', 'fg03']).optional(),
+    theme: z.enum(['fg01', 'fg02', 'fg03', 'fg04']).optional(),
     subjectTag: z.string().optional(),
     tagline: z.string().optional(),
     featured: z.boolean().default(false),
