@@ -130,10 +130,49 @@
   --c-mauve:      #8A4A70;
   --c-plum:       #4A1F3F;
 
-  --c-cream:      #F3EDDD;   /* NB: distinct from the atlas --paper #FAF6EC;
-                               shell migrates to true Cream in Phase 2/3 */
+  --c-cream:      #F3EDDD;   /* NB: distinct from the atlas --paper #FAF6EC,
+                               which the shell still uses. fg01/fg03/fg04 are
+                               all on true Cream. */
   --c-kraft:      #D3CFA6;
   --c-contour:    #1A1F2A;
+
+  /* ==========================================================================
+     DERIVED VALUES. Not ONE PALETTE originals. Each is generated from one by
+     a stated rule and named here so that every colour a theme sets is a
+     token, and no theme carries a loose literal anyone has to reverse
+     engineer.
+
+     Text siblings: same hue and saturation as the parent, lightness lowered
+     until the ratio clears 4.8 on that theme's ground. An accent picked to
+     work as a fill only has to clear 3:1; as 11-14px type it has to clear
+     4.5, and every small-text failure in the Phase 6 audit was one accent
+     asked to do both jobs.
+     ========================================================================== */
+  --c-kelly-text:       #32744C;   /* Kelly on Cream:      2.71 -> 4.81 */
+  --c-hot-orange-text:  #A94C0A;   /* Hot Orange on Cream: 2.49 -> 4.80 */
+  --c-tomato-text:      #CB3510;   /* Tomato on --paper:   4.12 -> 4.80 */
+  --c-control-line:     #8F836B;   /* control boundary: 3.46 --paper, 3.19 Cream */
+
+  /* Cream lifted toward white for a raised card, and Contour lightened for
+     secondary text. Both sit on the cream-ground guides. */
+  --c-cream-raised:     #FFFAF0;
+  --c-contour-muted:    #565A63;   /* 5.91 on Cream */
+
+  /* Night ramp: Sidewalk Forest's ground is a near-black in the Forest hue,
+     not Forest itself (#1F4F30 is far too light to read Lime against). These
+     are that guide's surfaces, kept in hsl() at their original values so
+     naming them changes nothing on screen. */
+  --c-night-ground:      hsl(150, 44%, 7%);
+  --c-night-surface:     hsl(150, 30%, 14%);
+  --c-night-ink:         hsl(48, 42%, 93%);
+  --c-night-ink-muted:   hsl(150, 14%, 76%);
+  --c-night-ink-faint:   hsl(150, 11%, 62%);
+  --c-night-line:        hsl(150, 22%, 24%);
+  --c-night-line-strong: hsl(150, 22%, 34%);
+  /* Solved against the lightest surface a control lands on, not the page
+     ground: solving against the ground alone gave 3.20 there but only 2.60
+     behind the street-search field, which sits on a raised panel. */
+  --c-night-control:     hsl(150, 22%, 42.5%);
 
   /* ==========================================================================
      Radius scale (THE GRID / DEPTH). Additive; unused until Phase 2+.
@@ -182,14 +221,14 @@
      ratio clears 4.8 against the theme's own ground -- 4.8 rather than 4.5 so
      a hover state or a slightly different surface cannot tip it back under.
      Never set an --atlas-accent* on text; use these. */
-  --atlas-accent-text:   #CB3510;             /* Tomato, darkened: 4.80 on cream */
-  --atlas-accent-2-text: #347A50;             /* Kelly, darkened: 4.81 on cream */
+  --atlas-accent-text:   var(--c-tomato-text);
+  --atlas-accent-2-text: #347A50;             /* Kelly on --paper: 4.81 */
   /* Boundary of an interactive control (SC 1.4.11, 3:1). Distinct from
      --atlas-line, which is a content hairline and is allowed to be faint.
      The map stage's buttons fill with --atlas-surface, which on a cream page
      is ~1.02:1 against the ground, so the border is the only thing that says
      where the control is. It measured 1.45:1. */
-  --atlas-control-line: #8F836B;              /* 3.47 on cream */
+  --atlas-control-line: var(--c-control-line);
   --atlas-link:        var(--ink);            /* link colour */
   --atlas-focus:       var(--ink);            /* focus ring colour */
   --atlas-marker:      var(--threshold);      /* map marker fill */
@@ -219,20 +258,31 @@
    not in scope here.
    ========================================================================== */
 
-/* Hidden Landscapes: Cobalt threshold, Kelly landscapes.
+/* Hidden Landscapes: Cream ground, Cobalt threshold, Kelly landscapes.
  *
- * NB the ground. This theme sets no --atlas-ground, so it inherits :root's
- * var(--paper) #FAF6EC, which is NOT ONE PALETTE Cream #F3EDDD. fg03 and fg04
- * do set true Cream, so the atlas currently renders two grounds one step
- * apart (1.08:1) depending on which guide you are reading. Migrating this to
- * Cream is a real change, not a tidy-up: see the accent-2-text note below. */
+ * The ground moved from the shell's --paper #FAF6EC to ONE PALETTE Cream
+ * #F3EDDD, so all three cream-ground guides now sit on the same cream. The
+ * two grounds are only 1.08:1 apart, but the atlas used to shift warmth as
+ * you moved between guides for no reason anyone chose.
+ *
+ * Cream is very slightly darker, so every ratio here fell a little. Checked,
+ * not assumed: ink 13.25, ink-2 5.60, ink-3 4.95, Cobalt 5.13, Deep Navy
+ * 10.94, control-line 3.19. One value did not survive the move and was
+ * re-derived; see accent-2-text.
+ *
+ * Kelly as a FILL sits at 2.71 on Cream, under the 3:1 for graphics, and it
+ * sat at 2.94 on --paper too, so this is inherited rather than introduced.
+ * It stands because Kelly is a palette colour and because every map category
+ * carries a shape as well as a colour, which the tests enforce, so colour is
+ * never the only thing saying what a thing is. */
 [data-guide-theme='fg01'] {
+  --atlas-ground:      var(--c-cream);
   --atlas-accent:      var(--c-cobalt);
   --atlas-accent-2:    var(--c-kelly);
-  --atlas-accent-text:   var(--c-cobalt);        /* 5.55 on --paper, this theme's ground */
-  /* Kelly darkened: 2.94 -> 4.81 on --paper. On true Cream the same value is
-     4.44 and FAILS AA, so it must be re-derived before the ground moves. */
-  --atlas-accent-2-text: #347A50;
+  --atlas-accent-text:   var(--c-cobalt);        /* 5.13 on Cream */
+  /* Was #347A50, which cleared 4.81 on --paper but only 4.44 on Cream, under
+     the 4.5 floor. Re-derived by the same house rule: 4.81 on Cream. */
+  --atlas-accent-2-text: var(--c-kelly-text);
   --atlas-focus:       var(--c-deep-navy);
   --atlas-hover:       var(--c-deep-navy);
   --atlas-active:      var(--c-deep-navy);
@@ -241,53 +291,50 @@
 /* Sidewalk Forest: near-black forest ground, Lime glow. The shell goes dark
    with the guide here, which is what the old `body:has(.fg2)` patch was for. */
 [data-guide-theme='fg02'] {
-  --atlas-ground:      hsl(150, 44%, 7%);
-  --atlas-surface:     hsl(150, 30%, 14%);
-  --atlas-ink:         hsl(48, 42%, 93%);
-  --atlas-ink-muted:   hsl(150, 14%, 76%);
-  --atlas-ink-faint:   hsl(150, 11%, 62%);
-  --atlas-line:        hsl(150, 22%, 24%);
-  --atlas-line-strong: hsl(150, 22%, 34%);
+  --atlas-ground:      var(--c-night-ground);
+  --atlas-surface:     var(--c-night-surface);
+  --atlas-ink:         var(--c-night-ink);
+  --atlas-ink-muted:   var(--c-night-ink-muted);
+  --atlas-ink-faint:   var(--c-night-ink-faint);
+  --atlas-line:        var(--c-night-line);
+  --atlas-line-strong: var(--c-night-line-strong);
   /* Was hsl(72,62%,62%) = #C2DA62, a hand-tuned near-miss of ONE PALETTE Lime
      #C5DE5F. Four levels per channel apart, invisible on screen, and the
      palette value reads slightly better on this ground (11.54 -> 11.96), so
      the token replaces the literal rather than the other way round. */
   --atlas-accent:      var(--c-lime);
-  /* The one value in this theme that is not on the palette and is not a
-     documented derivation: #AAD534, a more saturated green than Lime. The
-     nearest palette sibling is Pale Lime #E1EFA8, which is a real visual
-     change to a shipped guide (hover would brighten rather than saturate),
-     so it is left alone pending a decision. */
-  --atlas-accent-2:    hsl(76, 66%, 52%);
-  /* On a near-black ground the accents are the LIGHT end, so they already read
-     as text (Lime 11.96, accent-2 10.29). The text siblings exist so a shared
-     component can reference them in every theme without branching. */
+  /* Was hsl(76,66%,52%) = #AAD534, the one colour in the first three guides
+     that was neither a palette original nor a stated derivation. Now Pale
+     Lime, which is the palette's own brighter sibling to Lime: 14.63 on this
+     ground against the accent's 11.96, so hover and active brighten. That is
+     the right direction on a dark theme, and it was the direction the
+     off-palette green was reaching for. */
+  --atlas-accent-2:    var(--c-pale-lime);
+  /* On a near-black ground the accents are the LIGHT end, so they already
+     read as text (Lime 11.96, Pale Lime 14.63). The text siblings exist so a
+     shared component can reference them in every theme without branching. */
   --atlas-accent-text:   var(--c-lime);
-  --atlas-accent-2-text: hsl(76, 66%, 52%);
-  /* Solved against the LIGHTEST surface a control lands on, not the page
-     ground. Solving against the ground alone gave 3.20 there but only 2.60
-     behind the street-search field, which sits on a raised panel. 42.5%
-     clears 3.2 on all four fg02 surfaces. */
-  --atlas-control-line:  hsl(150, 22%, 42.5%);   /* 4.19 ground .. 3.20 card */
+  --atlas-accent-2-text: var(--c-pale-lime);
+  --atlas-control-line:  var(--c-night-control);   /* 4.19 ground .. 3.20 card */
   --atlas-focus:       var(--c-lime);
-  --atlas-hover:       hsl(76, 66%, 52%);
-  --atlas-active:      hsl(76, 66%, 52%);
-  --atlas-rule-header: hsl(150, 22%, 24%);       /* muted, not a white glare */
+  --atlas-hover:       var(--c-pale-lime);
+  --atlas-active:      var(--c-pale-lime);
+  --atlas-rule-header: var(--c-night-line);      /* muted, not a white glare */
 }
 
 /* When Toronto Has to Go: cream ground, Deep Navy reading accent, Hot Orange
    for alarm. Orange never carries text on cream (~2:1); navy does (~11:1). */
 [data-guide-theme='fg03'] {
   --atlas-ground:      var(--c-cream);
-  --atlas-surface:     #FFFAF0;                  /* Cream lifted to a raised card */
+  --atlas-surface:     var(--c-cream-raised);
   --atlas-ink:         var(--c-contour);
-  --atlas-ink-muted:   #565A63;                  /* Contour lightened, 5.91 on Cream */
+  --atlas-ink-muted:   var(--c-contour-muted);
   --atlas-line:        rgba(26, 31, 42, 0.3);    /* Contour at 30% */
   --atlas-line-strong: rgba(26, 31, 42, 0.72);   /* Contour at 72% */
   --atlas-accent:      var(--c-deep-navy);
   --atlas-accent-2:    var(--c-hot-orange);
   --atlas-accent-text:   var(--c-deep-navy);     /* Navy already reads 10.94 on this ground */
-  --atlas-accent-2-text: #A94C0A;                /* Hot Orange darkened: 2.49 -> 4.80 */
+  --atlas-accent-2-text: var(--c-hot-orange-text);
   --atlas-focus:       var(--c-deep-navy);
   --atlas-hover:       var(--c-deep-navy);
   --atlas-active:      var(--c-hot-orange);
