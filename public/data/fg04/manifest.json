@@ -5,16 +5,38 @@
     -79.10860313445477,
     43.867051319436264
   ],
-  "bytesTotal": 420458836,
+  "bytesTotal": 352781566,
   "channels": 3,
+  "countAggregation": "mean of the four children, rounded half up. The mask aggregates by majority vote per bit, which cannot preserve the mean count, so above the native zoom the count channel is the unbiased average and the mask is the best per-bit answer.",
+  "countBandStarts": {
+    "0": -10000.0,
+    "1": -3446.3999999999996,
+    "10": 55536.0,
+    "11": 62089.600000000006,
+    "12": 68643.20000000001,
+    "13": 75196.8,
+    "14": 81750.40000000001,
+    "15": 88304.0,
+    "16": 94857.6,
+    "2": 3107.2000000000007,
+    "3": 9660.800000000003,
+    "4": 16214.400000000001,
+    "5": 22768.0,
+    "6": 29321.600000000006,
+    "7": 35875.200000000004,
+    "8": 42428.8,
+    "9": 48982.4
+  },
+  "countChannel": "red",
+  "countIsPopulationCountAtNativeZoomOnly": true,
   "dawnHour": 6,
   "dawnNote": "The 06:00 frame sits at 0.38 degrees above the horizon and is shaded everywhere by construction, so every pixel scores at least one shaded hour. Read the count as frames of the modelled day, not as hours of shade.",
-  "demEncoding": {
-    "baseShift": 0,
-    "blueFactor": 1,
-    "encoding": "custom",
-    "greenFactor": 0,
-    "redFactor": 0
+  "demUnpack": {
+    "baseShift": 10000.0,
+    "blueFactor": 0.1,
+    "encoding": "mapbox",
+    "greenFactor": 25.6,
+    "redFactor": 6553.6
   },
   "firstHour": 6,
   "flightSeason": "April to May 2023",
@@ -39,12 +61,16 @@
     "9": 3
   },
   "lastHour": 20,
-  "layout": "One square image per surface per tile coordinate, at /<surface>/{z}/{x}/{y}. R is mask bits 0 to 7, G is bits 8 to 14, B is the shaded-hours count. Nothing is in alpha, because canvas rounds alpha on read.",
+  "layout": "One square image per surface per tile coordinate, at /<surface>/{z}/{x}/{y}. R is the shaded-hours count, G is mask bits 8 to 14 and B is mask bits 0 to 7. Read as a raster-dem source on the default mapbox encoding, the count owns a band of the unpacked value that the mask cannot reach. Nothing is in alpha, because canvas rounds alpha on read.",
   "localTileUrlTemplates": {
     "corrected": "/data/fg04/tiles/corrected/{z}/{x}/{y}.webp",
     "raw": "/data/fg04/tiles/raw/{z}/{x}/{y}.webp"
   },
   "lossless": true,
+  "maskChannels": {
+    "high": "green",
+    "low": "blue"
+  },
   "maxBit": 14,
   "maxZoom": 16,
   "minZoom": 12,
@@ -65,9 +91,10 @@
   ],
   "tileSize": 256,
   "tileUrlTemplates": {
-    "corrected": "https://tiles.torontomicroatlas.com/fg04/corrected/{z}/{x}/{y}.webp",
-    "raw": "https://tiles.torontomicroatlas.com/fg04/raw/{z}/{x}/{y}.webp"
+    "corrected": "https://tiles.torontomicroatlas.com/fg04/v2/corrected/{z}/{x}/{y}.webp",
+    "raw": "https://tiles.torontomicroatlas.com/fg04/v2/raw/{z}/{x}/{y}.webp"
   },
+  "tileVersion": "v2",
   "tilesProjected": 20318,
   "tilesProjectedByZoom": {
     "12": 84,
@@ -76,13 +103,6 @@
     "15": 3900,
     "16": 15048
   },
-  "tilesWritten": 19110,
-  "tilesWrittenByZoom": {
-    "12": 84,
-    "13": 262,
-    "14": 942,
-    "15": 3632,
-    "16": 14190
-  },
+  "tilesWritten": 10248,
   "timezone": "America/Toronto"
 }

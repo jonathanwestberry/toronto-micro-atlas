@@ -146,8 +146,9 @@ class OverviewTests(unittest.TestCase):
     def test_one_shaded_child_in_four_does_not_carry_the_parent(self):
         child = np.zeros((2, 2), dtype=np.uint16)
         child[0, 0] = 1 << pyramid.hour_bit(13)
+        all_ground = np.ones((2, 2), dtype=bool)
 
-        parent = pyramid.downsample_mask(child)
+        parent = pyramid.downsample_mask(child, all_ground)
 
         self.assertFalse(pyramid.hour_mask(parent, 13).any())
 
@@ -155,10 +156,63 @@ class OverviewTests(unittest.TestCase):
         """Two of four. Stated here because a tie has to go somewhere."""
         child = np.zeros((2, 2), dtype=np.uint16)
         child[0, 0] = child[1, 1] = 1 << pyramid.hour_bit(13)
+        all_ground = np.ones((2, 2), dtype=bool)
 
-        parent = pyramid.downsample_mask(child)
+        parent = pyramid.downsample_mask(child, all_ground)
 
         self.assertTrue(pyramid.hour_mask(parent, 13).all())
+
+    def test_only_ground_children_get_a_vote(self):
+        """A roof has no shaded-hours count and must not dilute one."""
+        child = np.zeros((2, 2), dtype=np.uint16)
+        child[0, 0] = child[0, 1] = 1 << pyramid.hour_bit(13)
+        half_is_ground = np.zeros((2, 2), dtype=bool)
+        half_is_ground[0, :] = True
+
+        parent = pyramid.downsample_mask(child, half_is_ground)
+
+        self.assertTrue(pyramid.hour_mask(parent, 13).all())
+
+    def test_one_ground_child_in_four_does_not_speak_for_the_parent(self):
+        """Measured, not assumed, and it is the reason this rule exists.
+
+        Letting one ground child of four carry a parent walked the mean from
+        5.99 at z16 to 8.26 at z12. The blocks with the least ground are the
+        tower districts, which are also the shadiest, so they gained weight
+        at every level and dragged the whole city dark.
+        """
+        child = np.full((2, 2), pyramid.ALL_HOURS, dtype=np.uint16)
+        only_one_is_ground = np.zeros((2, 2), dtype=bool)
+        only_one_is_ground[0, 0] = True
+
+        parent = pyramid.downsample_mask(child, only_one_is_ground)
+
+        self.assertEqual(int(parent[0, 0]), 0)
+
+    def test_a_parent_with_no_ground_children_is_empty(self):
+        child = np.full((2, 2), pyramid.ALL_HOURS, dtype=np.uint16)
+        no_ground = np.zeros((2, 2), dtype=bool)
+
+        parent = pyramid.downsample_mask(child, no_ground)
+
+        self.assertEqual(int(parent[0, 0]), 0)
+
+    def test_averaging_ignores_pixels_that_are_not_ground(self):
+        """Zero is "not ground", not "never shaded"."""
+        counts = np.array([[8, 6], [0, 0]], dtype=np.uint16)
+
+        self.assertEqual(int(pyramid.downsample_count(counts)[0, 0]), 7)
+
+    def test_a_block_that_is_mostly_roof_is_not_ground_at_all(self):
+        """One ground pixel of four does not describe the other three."""
+        counts = np.array([[15, 0], [0, 0]], dtype=np.uint16)
+
+        self.assertEqual(int(pyramid.downsample_count(counts)[0, 0]), 0)
+
+    def test_a_block_with_no_ground_averages_to_zero(self):
+        counts = np.zeros((2, 2), dtype=np.uint16)
+
+        self.assertEqual(int(pyramid.downsample_count(counts)[0, 0]), 0)
 
     def test_each_hour_is_voted_on_separately(self):
         child = np.zeros((2, 2), dtype=np.uint16)
@@ -186,6 +240,70 @@ class OverviewTests(unittest.TestCase):
             bits = pyramid.downsample_mask(bits)
 
         self.assertTrue(pyramid.hour_mask(bits, 6).all())
+
+
+class CountAggregationTests(unittest.TestCase):
+    """The count must not drift as the reader zooms out.
+
+    Majority vote with ties up walked the mean from 3.50 at z16 to 4.89 at
+    z12 on the real pyramid, a 40% inflation, which would have put the map
+    40% shadier than the figures printed beside it.
+    """
+
+    def test_averaging_four_children_is_their_mean(self):
+        counts = np.array([[4, 6], [8, 10]], dtype=np.uint16)
+
+        parent = pyramid.downsample_count(counts)
+
+        self.assertEqual(parent.shape, (1, 1))
+        self.assertEqual(int(parent[0, 0]), 7)
+
+    def test_a_tie_rounds_to_even_rather_than_always_up(self):
+        """Always-up adds a quarter frame per level. Four levels is a frame."""
+        up = np.array([[6, 7], [6, 7]], dtype=np.uint16)      # mean 6.5 -> 6
+        down = np.array([[7, 8], [7, 8]], dtype=np.uint16)    # mean 7.5 -> 8
+
+        self.assertEqual(int(pyramid.downsample_count(up)[0, 0]), 6)
+        self.assertEqual(int(pyramid.downsample_count(down)[0, 0]), 8)
+
+    def test_the_mean_survives_four_levels_of_aggregation(self):
+        rng = np.random.default_rng(11)
+        counts = rng.integers(1, 16, size=(64, 64)).astype(np.uint16)
+        before = counts.mean()
+
+        for _ in range(4):
+            counts = pyramid.downsample_count(counts).astype(np.uint16)
+
+        self.assertAlmostEqual(float(counts.mean()), float(before), delta=0.3)
+
+    def test_the_population_count_of_a_voted_mask_does_drift(self):
+        """Why the count channel is not the mask's population count."""
+        rng = np.random.default_rng(5)
+        bits = rng.integers(0, pyramid.ALL_HOURS + 1,
+                            size=(16, 16)).astype(np.uint16)
+        before = pyramid.shaded_hours(bits).mean()
+
+        voted = bits
+        for _ in range(4):
+            voted = pyramid.downsample_mask(voted)
+
+        self.assertGreater(pyramid.shaded_hours(voted).mean(), before)
+
+    def test_averaging_refuses_an_odd_tile(self):
+        with self.assertRaises(ValueError):
+            pyramid.downsample_count(np.zeros((3, 4), dtype=np.uint16))
+
+    def test_a_count_above_the_frame_total_is_refused(self):
+        bits = np.zeros((2, 2), dtype=np.uint16)
+
+        with self.assertRaises(ValueError):
+            pyramid.encode_tile(bits, np.full((2, 2), 16, dtype=np.uint8))
+
+    def test_a_count_of_the_wrong_shape_is_refused(self):
+        bits = np.zeros((2, 2), dtype=np.uint16)
+
+        with self.assertRaises(ValueError):
+            pyramid.encode_tile(bits, np.zeros((4, 4), dtype=np.uint8))
 
 
 class ManifestTests(unittest.TestCase):
@@ -249,11 +367,22 @@ class ManifestTests(unittest.TestCase):
                 self.assertIn(placeholder, template)
             self.assertTrue(template.endswith(".webp"))
 
-    def test_the_manifest_carries_the_dem_encoding_the_map_reads_with(self):
+    def test_the_manifest_carries_the_unpack_the_map_reads_with(self):
         entry = self.manifest()
 
-        self.assertEqual(entry["demEncoding"]["encoding"], "custom")
-        self.assertEqual(entry["demEncoding"]["blueFactor"], 1)
+        self.assertEqual(entry["demUnpack"], pyramid.DEM_UNPACK)
+        self.assertEqual(entry["countChannel"], "red")
+
+    def test_the_manifest_carries_a_band_start_for_every_count(self):
+        entry = self.manifest()
+
+        starts = entry["countBandStarts"]
+        # 0 to 15 are the band floors; 16 is the edge above the top band, and
+        # without it the highest band has no upper bound to interpolate to.
+        self.assertEqual(len(starts), pyramid.MAX_BIT + 3)
+        for count in range(pyramid.MAX_BIT + 3):
+            self.assertEqual(starts[str(count)], pyramid.dem_value(count))
+        self.assertIn("16", starts)
 
     def test_the_manifest_says_where_the_tiles_are_hosted(self):
         entry = self.manifest()

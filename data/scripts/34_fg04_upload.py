@@ -153,6 +153,7 @@ def upload(dry_run: bool, prefix: str) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--prefix", default="fg04")
+    parser.add_argument("--prefix",
+                        default=f"fg04/{pyramid.TILE_VERSION}")
     args = parser.parse_args()
     upload(dry_run=args.dry_run, prefix=args.prefix)

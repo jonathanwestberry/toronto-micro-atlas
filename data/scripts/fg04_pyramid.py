@@ -11,9 +11,9 @@ twenty-four, so the two surfaces cannot share a pixel. They get a tile each,
 at the same coordinates under different prefixes, which is what "separately
 addressable" should have meant all along.
 
-    R  mask bits 0 to 7
+    R  shaded-hours count, 0 to 15
     G  mask bits 8 to 14, the top bit unused
-    B  shaded-hours count, 0 to 15
+    B  mask bits 0 to 7
 
 An earlier revision stacked the two surfaces into one 256 by 512 image to
 halve the file count, back when the tiles were going to be part of the
@@ -30,8 +30,24 @@ byte parked in alpha comes back rounded, and comes back destroyed wherever
 alpha is zero. That failure looks like a rendering bug, not a data bug, and
 costs a week.
 
-B is derived from R and G. It is redundant on purpose: the count is what the
-reader sees first, and a channel read beats a population count in a shader.
+**Why the count is in RED, which looks arbitrary and is not.** MapLibre reads
+these as a `raster-dem` source, whose default "mapbox" encoding computes
+
+    value = R*6553.6 + G*25.6 + B*0.1 - 10000
+
+The mask in G and B can contribute at most 255*25.6 + 255*0.1 = 6553.5, which
+is just under R's step of 6553.6. So every count owns a band of `value` that
+no other count can reach, and a `color-relief` layer can colour by count with
+the mask riding along untouched in the same pixel.
+
+The obvious alternative was `encoding: "custom"` with blueFactor 1, which the
+style spec documents and the style validator accepts. It does not work:
+MapLibre 5.24 sends `encoding` to the tile-decoding worker and does not send
+`redFactor`, `greenFactor`, `blueFactor` or `baseShift` with it, so a custom
+source decodes with the factors undefined and reads as garbage. Verified in a
+browser, not assumed. Riding the default encoding needs no such feature.
+
+R is derived from G and B. It is redundant on purpose, and
 `decode_tile(..., verify=True)` refuses a tile whose count and mask disagree,
 so the redundancy cannot rot into a contradiction.
 
@@ -112,7 +128,18 @@ TILE_LOSSLESS = True
 # costs nothing to serve behind Cloudflare's CDN.
 HOSTING = "r2"
 R2_BUCKET = "toronto-micro-atlas-tiles"
-TILE_BASE_URL = f"https://tiles.torontomicroatlas.com/fg04"
+
+# Bump this whenever the tiles change. It is part of the URL, so a rebuild
+# lands on new paths and the old ones simply stop being asked for.
+#
+# Tiles are served with `immutable, max-age=1 year`, which is right for a tile
+# whose coordinates and modelled date fully determine it, and which means
+# overwriting a key does NOT reach readers: Cloudflare keeps serving the
+# cached copy for a year. That is not a caching bug to work around with a
+# purge, it is what immutable means. The version segment is the fix, and a
+# purge is only the rescue when someone forgets to bump it.
+TILE_VERSION = "v2"
+TILE_BASE_URL = f"https://tiles.torontomicroatlas.com/fg04/{TILE_VERSION}"
 # Local dev serves the same tree out of `public/`, so the map works before
 # anything is uploaded.
 LOCAL_TILE_BASE_URL = "/data/fg04/tiles"
@@ -174,20 +201,30 @@ def dawn_is_universal(bits: np.ndarray, ground: np.ndarray) -> bool:
     return bool(hour_mask(bits, DAWN_HOUR)[ground].all())
 
 
-def encode_tile(bits: np.ndarray) -> np.ndarray:
-    """One surface as (height, width, 3) uint8.
+def encode_tile(bits: np.ndarray, count: np.ndarray = None) -> np.ndarray:
+    """One surface as (height, width, 3) uint8. Count in red, mask in G and B.
 
-    Read back by a `raster-dem` source with `encoding: "custom"`,
-    `blueFactor: 1` and every other factor zero, which makes MapLibre's
-    elevation value the shaded-hours count and lets a `color-relief` layer
-    apply the guide's ramp with no custom drawing code at all.
+    Read back by an ordinary `raster-dem` source on its default encoding, so
+    a `color-relief` layer can apply the guide's ramp with no drawing code of
+    our own and no reliance on the custom-encoding path, which MapLibre 5.24
+    validates but never wires to its decoder.
     """
     check_bits(bits)
     bits = np.asarray(bits, dtype=np.uint16)
+    if count is None:
+        count = shaded_hours(bits)
+    count = np.asarray(count, dtype=np.uint8)
+    if count.shape != bits.shape:
+        raise ValueError(
+            f"count {count.shape} does not match the mask {bits.shape}")
+    if int(count.max(initial=0)) > MAX_BIT + 1:
+        raise ValueError(
+            f"a count of {int(count.max())} is more than the "
+            f"{MAX_BIT + 1} frames that were modelled")
     pixels = np.zeros(bits.shape + (CHANNELS,), dtype=np.uint8)
-    pixels[:, :, 0] = (bits & 0xFF).astype(np.uint8)
+    pixels[:, :, 0] = count
     pixels[:, :, 1] = ((bits >> 8) & 0xFF).astype(np.uint8)
-    pixels[:, :, 2] = shaded_hours(bits)
+    pixels[:, :, 2] = (bits & 0xFF).astype(np.uint8)
     return pixels
 
 
@@ -199,9 +236,9 @@ def decode_tile(pixels: np.ndarray, verify: bool = False) -> np.ndarray:
     checked is just two chances to be wrong.
     """
     pixels = np.asarray(pixels)
-    bits = (pixels[:, :, 0].astype(np.uint16)
+    bits = (pixels[:, :, 2].astype(np.uint16)
             | (pixels[:, :, 1].astype(np.uint16) << 8))
-    if verify and not np.array_equal(pixels[:, :, 2], shaded_hours(bits)):
+    if verify and not np.array_equal(pixels[:, :, 0], shaded_hours(bits)):
         raise ValueError(
             "the count channel disagrees with its mask; the tile is corrupt "
             "or was written by two code paths")
@@ -277,7 +314,7 @@ def check_file_sizes(paths, limit: int = CLOUDFLARE_MAX_FILE_BYTES) -> None:
                 f"{limit / 1024 / 1024:.0f} MiB per-file limit")
 
 
-def downsample_mask(bits: np.ndarray) -> np.ndarray:
+def downsample_mask(bits: np.ndarray, ground: np.ndarray = None) -> np.ndarray:
     """Halve a bitmask by voting on every hour separately.
 
     Picking one child pixel of four is not wrong so much as arbitrary: at
@@ -286,9 +323,11 @@ def downsample_mask(bits: np.ndarray) -> np.ndarray:
     meaning "most of this ground was shaded at 13:00" all the way up the
     pyramid.
 
-    A tie is shaded. It has to go somewhere, and the alternative silently
-    thins shade at every level, which would walk the count layer downward
-    as the reader zooms out.
+    A tie is shaded. It has to go somewhere, and either choice biases: ties
+    up thickens shade at every level, ties down thins it. Measured over four
+    levels, ties-up walks the mean count from 3.50 at z16 to 4.89 at z12, a
+    40% inflation, which is why the count channel is NOT the population count
+    of this at overview zooms. See `downsample_count`.
     """
     bits = np.asarray(bits, dtype=np.uint16)
     height, width = bits.shape
@@ -296,10 +335,23 @@ def downsample_mask(bits: np.ndarray) -> np.ndarray:
         raise ValueError(f"cannot halve a {height}x{width} tile")
     blocks = bits.reshape(height // 2, 2, width // 2, 2)
 
+    # Only ground children get a vote. Without this a parent with one ground
+    # child and three roofs could never reach two votes, so real shade would
+    # vanish wherever ground is sparse.
+    if ground is None:
+        ground = bits > 0
+    voters = np.asarray(ground, dtype=bool).reshape(
+        height // 2, 2, width // 2, 2)
+    count = voters.sum(axis=(1, 3))
+    # Matches `downsample_count`: a parent is ground only when at least half
+    # its children are, so the two channels agree about where ground is.
+    count = np.where(count >= 2, count, 0)
+    needed = np.maximum((count + 1) // 2, 1)
+
     parent = np.zeros((height // 2, width // 2), dtype=np.uint16)
     for position in range(MAX_BIT + 1):
-        votes = ((blocks >> position) & 1).sum(axis=(1, 3))
-        parent |= (votes >= 2).astype(np.uint16) << position
+        votes = (((blocks >> position) & 1) & voters).sum(axis=(1, 3))
+        parent |= ((votes >= needed) & (count > 0)).astype(np.uint16) << position
     return parent
 
 
@@ -315,18 +367,83 @@ def tile_url_templates(base_url: str = None) -> dict:
             for surface in SURFACES}
 
 
-# MapLibre reads the count straight out of the blue channel. A `raster-dem`
-# source with this encoding makes the style expression `["elevation"]` equal
-# to the shaded-hours count, which a `color-relief` layer then runs through
-# the guide's own ramp. No custom drawing code, and the ramp stays in CSS
-# where it was decided.
-DEM_ENCODING = {
-    "encoding": "custom",
-    "redFactor": 0,
-    "greenFactor": 0,
-    "blueFactor": 1,
-    "baseShift": 0,
+# MapLibre's default "mapbox" DEM unpack, which these tiles are built to ride.
+# Not configuration: these are the constants MapLibre compiles in, restated
+# here so the encoder and the map agree and a test can prove they do.
+DEM_UNPACK = {
+    "encoding": "mapbox",
+    "redFactor": 6553.6,
+    "greenFactor": 25.6,
+    "blueFactor": 0.1,
+    "baseShift": 10000.0,
 }
+
+
+def dem_value(count: int) -> float:
+    """The lowest `["elevation"]` MapLibre reports for a given count.
+
+    The mask in green and blue adds up to 6553.5 on top of this, which is
+    less than one step of red, so [dem_value(c), dem_value(c + 1)) contains
+    every pixel whose count is c and no pixel whose count is not.
+    """
+    return count * DEM_UNPACK["redFactor"] - DEM_UNPACK["baseShift"]
+
+
+def dem_unpack(red: int, green: int, blue: int) -> float:
+    """What MapLibre computes for one pixel. The same arithmetic, in Python."""
+    return (red * DEM_UNPACK["redFactor"]
+            + green * DEM_UNPACK["greenFactor"]
+            + blue * DEM_UNPACK["blueFactor"]
+            - DEM_UNPACK["baseShift"])
+
+
+def downsample_count(counts: np.ndarray) -> np.ndarray:
+    """Halve a count field by averaging, which is the unbiased aggregate.
+
+    The count cannot be the population count of `downsample_mask` above
+    overview zooms. No per-bit vote preserves the mean of the children's
+    counts: ties have to break somewhere, and whichever way they break the
+    error compounds at every level. Measured on this pyramid, majority vote
+    with ties up drifts the mean from 3.50 at z16 to 4.89 at z12.
+
+    That drift is not cosmetic. The count is the layer the reader sees, and a
+    zoomed-out map reading 40% shadier than the guide's own figures is the map
+    contradicting the prose.
+
+    So the two channels answer two questions above z16. The mask says "was
+    most of this ground shaded at hour n", which is the best a bit can do.
+    The count says "how many frames shaded this ground on average", which is
+    what the ramp is showing. At the native zoom they are the same number,
+    and `decode_tile(..., verify=True)` checks it there.
+    """
+    counts = np.asarray(counts, dtype=np.uint16)
+    height, width = counts.shape
+    if height % 2 or width % 2:
+        raise ValueError(f"cannot halve a {height}x{width} tile")
+    blocks = counts.reshape(height // 2, 2, width // 2, 2)
+
+    # Zero is not a count, it is "not ground". Averaging it in would drag a
+    # parent toward zero in proportion to how much roof and crown its
+    # children covered, which would draw a darker city wherever there are
+    # fewer buildings. Average over the ground children only.
+    #
+    # But a parent is only ground at all when at least half its children are.
+    # Letting one ground child of four speak for the whole parent is what
+    # made the mean climb from 5.99 at z16 to 8.26 at z12: the places with
+    # the least ground are the tower districts, which are also the shadiest,
+    # so they gained weight at every level and dragged the whole city dark.
+    ground = (blocks > 0)
+    covered = ground.sum(axis=(1, 3))
+    enough = covered >= 2
+    total = np.where(ground, blocks, 0).sum(axis=(1, 3))
+
+    # Round half to even. Rounding half UP looks like the innocent choice and
+    # is not: it adds a quarter of a frame per level in expectation, which
+    # over the four levels from z16 to z12 is more than a whole frame. Ties
+    # to even cancel instead of accumulating.
+    with np.errstate(invalid="ignore", divide="ignore"):
+        averaged = np.rint(np.where(enough, total / np.maximum(covered, 1), 0))
+    return np.where(enough, averaged, 0).astype(np.uint8)
 
 
 def manifest(bounds, tiles_written: int, projected: dict,
@@ -352,13 +469,30 @@ def manifest(bounds, tiles_written: int, projected: dict,
         "format": TILE_FORMAT,
         "lossless": TILE_LOSSLESS,
         "hosting": HOSTING,
+        "tileVersion": TILE_VERSION,
         "tileUrlTemplates": tile_url_templates(base_url),
         "localTileUrlTemplates": tile_url_templates(LOCAL_TILE_BASE_URL),
-        "demEncoding": dict(DEM_ENCODING),
+        "demUnpack": dict(DEM_UNPACK),
+        "countChannel": "red",
+        "countIsPopulationCountAtNativeZoomOnly": True,
+        "countAggregation": ("mean of the four children, rounded half up. "
+                             "The mask aggregates by majority vote per bit, "
+                             "which cannot preserve the mean count, so above "
+                             "the native zoom the count channel is the "
+                             "unbiased average and the mask is the best "
+                             "per-bit answer."),
+        "maskChannels": {"high": "green", "low": "blue"},
+        # 0 to 16 inclusive: a floor for every count from 0 to 15, plus the
+        # edge above the top band so the last band has somewhere to stop.
+        "countBandStarts": {str(count): dem_value(count)
+                            for count in range(MAX_BIT + 3)},
         "layout": ("One square image per surface per tile coordinate, at "
-                   "/<surface>/{z}/{x}/{y}. R is mask bits 0 to 7, G is bits "
-                   "8 to 14, B is the shaded-hours count. Nothing is in "
-                   "alpha, because canvas rounds alpha on read."),
+                   "/<surface>/{z}/{x}/{y}. R is the shaded-hours count, G is "
+                   "mask bits 8 to 14 and B is mask bits 0 to 7. Read as a "
+                   "raster-dem source on the default mapbox encoding, the "
+                   "count owns a band of the unpacked value that the mask "
+                   "cannot reach. Nothing is in alpha, because canvas rounds "
+                   "alpha on read."),
         "surfaces": list(SURFACES),
         "surfaceLabels": dict(SURFACE_LABELS),
         "hourBits": {str(hour): bit for hour, bit in HOUR_BITS.items()},

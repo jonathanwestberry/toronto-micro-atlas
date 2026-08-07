@@ -49,6 +49,72 @@ WEB_MERCATOR = "EPSG:3857"
 MERCATOR_SPAN = 20037508.342789244
 
 
+def count_raster(surface: str) -> str:
+    """A ground-masked shaded-hours raster, written once, warped per zoom.
+
+    This exists so every zoom can be resampled straight from the 2 m grid
+    with an area average, instead of each level being aggregated from the
+    level below it. Aggregating from children cannot be made unbiased here:
+    a parent covers four children of which some are roof, and any rule for
+    weighting them either over-represents the blocks with little ground, or
+    throws them away. Measured, the two rules drifted the citywide mean from
+    5.99 at z16 to 8.26 and 7.08 at z12 respectively. The map would have read
+    up to 38% shadier than the figures printed beside it.
+
+    An area average over ground is the number the ramp is meant to show, and
+    GDAL computes it exactly: nodata is 0, and `Resampling.average` skips
+    nodata, so each output pixel is the mean over the ground it covers and
+    nothing else.
+    """
+    path = os.path.join(PROCESSED, f"count-{surface}.tif")
+    if os.path.exists(path):
+        return path
+
+    started = time.time()
+    with rasterio.open(os.path.join(PROCESSED, f"shade-{surface}.tif")) as src, \
+         rasterio.open(os.path.join(PROCESSED, "ground.tif")) as ground_src:
+        profile = src.profile.copy()
+        profile.update(dtype="uint8", nodata=0, compress="deflate",
+                       predictor=2, tiled=True, blockxsize=512,
+                       blockysize=512, BIGTIFF="YES")
+        with rasterio.open(path, "w", **profile) as sink:
+            for _, window in src.block_windows(1):
+                bits = src.read(1, window=window)
+                ground = ground_src.read(1, window=window) == 1
+                counts = np.where(ground, pyramid.shaded_hours(bits), 0)
+                sink.write(counts.astype("uint8"), 1, window=window)
+    print(f"count raster {surface}: {time.time() - started:.0f} s", flush=True)
+    return path
+
+
+def ground_fraction_raster() -> str:
+    """Ground as 0 or 255, so an area average gives the fraction of ground.
+
+    Needed because averaging the count with nodata=0 DILATES the ground mask:
+    any output pixel touching a sliver of ground comes back non-zero and takes
+    that sliver's value. The slivers are against buildings, where shade is
+    highest, so the dilation biased the map upward by 0.77 frames even at the
+    native zoom. A pixel is ground here only when at least half of it is.
+
+    No nodata on this one, deliberately. The zeros have to take part in the
+    average or it is not a fraction.
+    """
+    path = os.path.join(PROCESSED, "ground-fraction.tif")
+    if os.path.exists(path):
+        return path
+    with rasterio.open(os.path.join(PROCESSED, "ground.tif")) as src:
+        profile = src.profile.copy()
+        profile.update(dtype="uint8", nodata=None, compress="deflate",
+                       predictor=2, tiled=True, blockxsize=512,
+                       blockysize=512, BIGTIFF="YES")
+        with rasterio.open(path, "w", **profile) as sink:
+            for _, window in src.block_windows(1):
+                block = src.read(1, window=window)
+                sink.write(np.where(block == 1, 255, 0).astype("uint8"), 1,
+                           window=window)
+    return path
+
+
 def mercator_resolution(zoom: int) -> float:
     return 2.0 * MERCATOR_SPAN / (1 << zoom) / pyramid.TILE_SIZE
 
@@ -75,7 +141,8 @@ def tile_path(surface: str, zoom: int, x: int, y: int) -> str:
                         f"{y}.{pyramid.TILE_FORMAT}")
 
 
-def write_tile(surface: str, zoom: int, x: int, y: int, bits) -> str:
+def write_tile(surface: str, zoom: int, x: int, y: int, bits,
+               count=None) -> str:
     """Lossless WebP. Measured at 39% of PNG on 120 real z16 tiles.
 
     Lossless matters more than it sounds: two of the three channels are a
@@ -89,24 +156,38 @@ def write_tile(surface: str, zoom: int, x: int, y: int, bits) -> str:
     """
     path = tile_path(surface, zoom, x, y)
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    Image.fromarray(pyramid.encode_tile(bits), mode="RGB").save(
+    Image.fromarray(pyramid.encode_tile(bits, count), mode="RGB").save(
         path, format="WEBP", lossless=True, quality=100, method=2)
     return path
 
 
 def read_tile(surface: str, zoom: int, x: int, y: int):
-    """A written tile back as a mask, or None where none was written."""
+    """A written tile back as (mask, count), or None if none was written.
+
+    The count is read rather than recomputed: above the native zoom it is the
+    average of the children rather than the population count of the mask, so
+    recomputing it here would throw away exactly the correction that keeps
+    the zoomed-out map agreeing with the guide's figures.
+    """
     path = tile_path(surface, zoom, x, y)
     if not os.path.exists(path):
         return None
     with Image.open(path) as image:
-        return pyramid.decode_tile(np.asarray(image.convert("RGB")))
+        pixels = np.asarray(image.convert("RGB"))
+    return pyramid.decode_tile(pixels), pixels[:, :, 0]
 
 
-def build_native(bounds, limit=None) -> int:
-    """Warp z16 straight off the citywide rasters."""
-    resolution = mercator_resolution(pyramid.MAX_ZOOM)
-    x0, y0, x1, y1 = pyramid.tile_range(bounds, pyramid.MAX_ZOOM)
+def build_level(bounds, zoom: int, limit=None) -> int:
+    """Warp one zoom straight off the 2 m rasters.
+
+    The count is area-averaged over ground; the mask is nearest, because a
+    bitmask cannot be averaged. Above the native zoom the two therefore
+    answer slightly different questions, which the manifest says plainly:
+    the count is "how many frames shaded this ground on average" and the mask
+    is "was the sampled ground shaded at hour n".
+    """
+    resolution = mercator_resolution(zoom)
+    x0, y0, x1, y1 = pyramid.tile_range(bounds, zoom)
     size = pyramid.TILE_SIZE
     transform = rasterio.transform.from_origin(
         -MERCATOR_SPAN + x0 * size * resolution,
@@ -114,78 +195,62 @@ def build_native(bounds, limit=None) -> int:
         resolution, resolution)
     width = (x1 - x0 + 1) * size
     height = (y1 - y0 + 1) * size
-    print(f"z{pyramid.MAX_ZOOM}: warping to {width} x {height} px at "
-          f"{resolution:.4f} mercator m/px", flush=True)
 
     written = 0
-    considered = 0
     started = time.time()
-    sources = {name: rasterio.open(os.path.join(PROCESSED, f"shade-{name}.tif"))
-               for name in ("raw", "corrected")}
+    handles = []
     try:
-        warped = {
-            name: WarpedVRT(src, crs=WEB_MERCATOR, transform=transform,
-                            width=width, height=height,
-                            resampling=Resampling.nearest, nodata=0)
-            for name, src in sources.items()}
-        try:
-            for x, y in pyramid.tiles_for_bounds(bounds, pyramid.MAX_ZOOM):
-                considered += 1
-                window = Window((x - x0) * size, (y - y0) * size, size, size)
-                raw = warped["raw"].read(1, window=window)
-                # Every covered pixel carries the 06:00 bit, so an all-zero
-                # tile is ground the lidar never saw rather than ground that
-                # was never shaded.
-                if not raw.any():
-                    continue
-                corrected = warped["corrected"].read(1, window=window)
-                write_tile("raw", pyramid.MAX_ZOOM, x, y,
-                           raw.astype(np.uint16))
-                write_tile("corrected", pyramid.MAX_ZOOM, x, y,
-                           corrected.astype(np.uint16))
-                written += 1
-                if written % 500 == 0:
-                    print(f"  {written} written of {considered} considered, "
-                          f"{time.time() - started:.0f} s", flush=True)
-                if limit and written >= limit:
-                    break
-        finally:
-            for vrt in warped.values():
-                vrt.close()
-    finally:
-        for src in sources.values():
-            src.close()
-    # `written` counts coordinates; each writes one file per surface. The
-    # overview levels count files, so convert here rather than leave the
-    # manifest reporting two different things under one key.
-    files = written * len(pyramid.SURFACES)
-    print(f"z{pyramid.MAX_ZOOM}: {written} coordinates, {files} files, "
-          f"{considered - written} empty, {time.time() - started:.0f} s",
-          flush=True)
-    return files
-
-
-def build_overview(bounds, zoom: int) -> int:
-    """Halve the level below, voting per bit. Never a second warp."""
-    written = 0
-    started = time.time()
-    empty = np.zeros((pyramid.TILE_SIZE, pyramid.TILE_SIZE), dtype=np.uint16)
-    for x, y in pyramid.tiles_for_bounds(bounds, zoom):
+        warped = {}
+        ground_src = rasterio.open(ground_fraction_raster())
+        handles.append(ground_src)
+        ground_vrt = WarpedVRT(
+            ground_src, crs=WEB_MERCATOR, transform=transform,
+            width=width, height=height, resampling=Resampling.average)
+        handles.append(ground_vrt)
         for surface in pyramid.SURFACES:
-            children = {(dx, dy): read_tile(surface, zoom + 1,
-                                            x * 2 + dx, y * 2 + dy)
-                        for dx in (0, 1) for dy in (0, 1)}
-            if not any(child is not None for child in children.values()):
+            mask_src = rasterio.open(
+                os.path.join(PROCESSED, f"shade-{surface}.tif"))
+            count_src = rasterio.open(count_raster(surface))
+            handles += [mask_src, count_src]
+            common = dict(crs=WEB_MERCATOR, transform=transform,
+                          width=width, height=height)
+            warped[surface] = {
+                # nodata=0 is safe on the bitmask: 0 already means "no data"
+                # there, because every covered pixel carries the 06:00 bit.
+                "mask": WarpedVRT(mask_src, resampling=Resampling.nearest,
+                                  nodata=0, **common),
+                # NOT nodata=0 here. The count raster already declares 0 as
+                # nodata, and passing it again overrides the SOURCE nodata,
+                # which makes the warper backfill every not-ground pixel from
+                # a neighbour. That silently turned a 44.7% ground mask into
+                # 100% ground.
+                "count": WarpedVRT(count_src, resampling=Resampling.average,
+                                   **common),
+            }
+        handles += [vrt for pair in warped.values() for vrt in pair.values()]
+
+        for x, y in pyramid.tiles_for_bounds(bounds, zoom):
+            window = Window((x - x0) * size, (y - y0) * size, size, size)
+            # Majority ground, not "touched any ground".
+            ground = ground_vrt.read(1, window=window) >= 128
+            if not ground.any():
                 continue
-            stacked = np.zeros((pyramid.TILE_SIZE * 2, pyramid.TILE_SIZE * 2),
-                               dtype=np.uint16)
-            for (dx, dy), child in children.items():
-                block = empty if child is None else child
-                stacked[dy * pyramid.TILE_SIZE:(dy + 1) * pyramid.TILE_SIZE,
-                        dx * pyramid.TILE_SIZE:(dx + 1) * pyramid.TILE_SIZE] = block
-            write_tile(surface, zoom, x, y, pyramid.downsample_mask(stacked))
-            written += 1
-    print(f"z{zoom}: {written} written, {time.time() - started:.0f} s",
+            for surface in pyramid.SURFACES:
+                count = warped[surface]["count"].read(1, window=window)
+                bits = warped[surface]["mask"].read(1, window=window)
+                # One ground definition for both channels.
+                count = np.where(ground, np.maximum(count, 1), 0)
+                bits = np.where(ground, bits, 0).astype(np.uint16)
+                write_tile(surface, zoom, x, y, bits,
+                           np.minimum(count, pyramid.MAX_BIT + 1).astype(np.uint8))
+                written += 1
+            if limit and written >= limit * len(pyramid.SURFACES):
+                break
+    finally:
+        for handle in handles:
+            handle.close()
+
+    print(f"z{zoom}: {written} files, {time.time() - started:.0f} s",
           flush=True)
     return written
 
@@ -228,10 +293,11 @@ def build(limit=None, dry_run=False) -> None:
     if dry_run:
         return
 
-    written = {pyramid.MAX_ZOOM: build_native(bounds, limit=limit)}
-    if not limit:
-        for zoom in range(pyramid.MAX_ZOOM - 1, pyramid.MIN_ZOOM - 1, -1):
-            written[zoom] = build_overview(bounds, zoom)
+    written = {}
+    for zoom in range(pyramid.MAX_ZOOM, pyramid.MIN_ZOOM - 1, -1):
+        written[zoom] = build_level(bounds, zoom, limit=limit)
+        if limit:
+            break
 
     paths = list(written_files())
     pyramid.check_file_sizes(paths)

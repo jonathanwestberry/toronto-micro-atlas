@@ -24,6 +24,13 @@ import { test } from 'node:test';
  * rather than the source: the constraint is about what a reader sees, not what
  * the markup contains. `fg04` is expected in class names and data attributes
  * and forbidden in visible text, and stripping tags is what tells them apart.
+ *
+ * Since the map landed, both rules have to survive contact with a colour ramp,
+ * a legend and a layer name rather than only prose. A blue-to-orange ramp
+ * reads as a thermometer whatever the legend says, and a map showing one
+ * surface at a time hides the reversal that is the guide's finding. So the
+ * temperature sweep now covers the legend and the surface labels, and the map
+ * has to name both surfaces in words.
  */
 
 const routePath = new URL(
@@ -73,6 +80,9 @@ const REQUIRED_DISCLAIMER = 'This guide maps shade, not temperature.';
 const ALLOWED_TEMPERATURE_SENTENCES = [
   REQUIRED_DISCLAIMER,
   'A shaded asphalt lot can be hotter than a sunny lawn, and nothing here measures heat.',
+  // The map's own "how to read this" panel, once per surface.
+  'This map shows where the sun was blocked.',
+  'It says nothing about temperature.',
 ];
 
 /**
@@ -113,6 +123,24 @@ test('build publishes the exact shade guide route', () => {
 
 test('the guide never claims temperature, heat, or coolness', () => {
   const copy = readCopy();
+  const html = readRoute();
+
+  // Layer names, aria labels and data attributes are not visible prose and
+  // would slip past a sweep of the copy alone. A layer called "cooling" is
+  // still the guide making a thermal claim.
+  const labels = [
+    ...(html.match(/aria-label="[^"]*"/g) ?? []),
+    ...(html.match(/data-fg04-map="[^"]*"/g) ?? []),
+    ...(html.match(/id="[^"]*legend[^"]*"/g) ?? []),
+  ].join(' ');
+  for (const word of ['cool', 'heat', 'hot', 'warm', 'temperature', 'thermal']) {
+    assert.doesNotMatch(
+      labels,
+      new RegExp(word, 'i'),
+      `"${word}" appears in a map label. This guide maps shade only, and a `
+      + 'layer name is a claim as much as a sentence is.',
+    );
+  }
 
   assert.ok(
     copy.includes(REQUIRED_DISCLAIMER),
@@ -221,6 +249,64 @@ test('the guide states the instrument that produced every figure', () => {
   assert.match(copy, /20:00/, 'the last modelled frame');
   assert.match(copy, /April (?:to|and) May 2023/, 'the lidar flight season');
   assert.match(copy, /2 m grid/, 'the grid resolution');
+});
+
+test('the map shows both surfaces, each named in words', () => {
+  const html = readRoute();
+  const copy = readCopy();
+
+  assert.match(
+    html,
+    /data-fg04-map="raw"/,
+    'The measured leaf-off surface must be on the page',
+  );
+  assert.match(
+    html,
+    /data-fg04-map="corrected"/,
+    'The leaf-on corrected surface must be on the page. Every lidar flight '
+    + 'over Toronto is leaf-off and the correction reverses which '
+    + 'neighbourhoods are shadiest, so one surface alone is not a map of '
+    + 'Toronto, it is a map of April.',
+  );
+
+  for (const label of ['Measured, leaf-off', 'Leaf-on corrected']) {
+    assert.ok(
+      copy.includes(label),
+      `The map must label each surface in words: "${label}". Mauve and Plum `
+      + 'sit 2.11 apart in contrast, so colour alone cannot carry which '
+      + 'surface a reader is looking at.',
+    );
+  }
+});
+
+test('the map legend states the instrument, and does not invent one', () => {
+  const copy = readCopy();
+
+  assert.match(copy, /Shaded frames/i, 'the legend names what it counts');
+  assert.match(
+    copy,
+    /shaded everywhere by construction/i,
+    'The legend must say the 06:00 frame is shaded everywhere, or a reader '
+    + 'takes the count for hours of usable shade.',
+  );
+});
+
+test('the map ramp is the one declared in fg04.css, not a second copy', () => {
+  const html = readRoute();
+
+  const invented = html.match(/#[0-9a-f]{6}/gi) ?? [];
+  const rampTokens = html.match(/--fg04-shade-[1-6]/g) ?? [];
+
+  assert.ok(
+    new Set(rampTokens).size >= 6,
+    'The legend swatches must reference --fg04-shade-1 to -6 rather than '
+    + 'hard-coded hex. The ramp was decided in src/styles/fg04.css and the '
+    + 'map reads it; a second copy is a second thing to keep in step.',
+  );
+  assert.ok(
+    invented.length === 0,
+    `The rendered guide must not carry raw hex colours. Found: ${invented.slice(0, 5).join(', ')}`,
+  );
 });
 
 test('the internal id and the retired series naming stay out of the copy', () => {

@@ -1,0 +1,132 @@
+---
+import MapStage from './MapStage.astro';
+
+/**
+ * The shade map. Two surfaces, side by side, always both.
+ *
+ * The leaf-on correction reverses which neighbourhoods are shadiest, so a
+ * reader who can see one surface must be able to see the other. A toggle
+ * would make the reader hold an image in memory to spot the reversal, and
+ * the reversal IS the finding. Two panes, and each one says in words which
+ * surface it is: colour cannot carry that, because the two ramps are the
+ * same ramp.
+ *
+ * Everything in the legend is filled in from `public/data/fg04/manifest.json`
+ * at runtime, which is the same file the tiles were written with. A legend
+ * carrying its own copy of the modelled date is a legend that will one day
+ * disagree with the data it labels.
+ *
+ * The surface labels below are the pre-JS fallback and are replaced by the
+ * manifest's own `surfaceLabels`. They are spelled out here rather than left
+ * blank so the markup is never unlabelled.
+ */
+interface Props {
+  id?: string;
+}
+const { id = 'fg04-shade' } = Astro.props as Props;
+
+/**
+ * The ramp bands, matching the comments beside the tokens in fg04.css and the
+ * BANDS array in fg04-map.ts. Rendered statically rather than left to the
+ * script: a legend that only exists once JavaScript runs is a legend that is
+ * missing exactly when the map is also missing, which is the moment a reader
+ * most needs to know what they were going to be looking at.
+ */
+const BANDS = [
+  { token: '--fg04-shade-1', label: '1' },
+  { token: '--fg04-shade-2', label: '2 to 4' },
+  { token: '--fg04-shade-3', label: '5 to 7' },
+  { token: '--fg04-shade-4', label: '8 to 10' },
+  { token: '--fg04-shade-5', label: '11 to 13' },
+  { token: '--fg04-shade-6', label: '14 to 15' },
+];
+
+const SURFACES = [
+  {
+    key: 'raw',
+    label: 'Measured, leaf-off',
+    note: 'The surface the lidar actually recorded. Every flight over Toronto is spring, so tree shade is understated and building shade is not.',
+  },
+  {
+    key: 'corrected',
+    label: 'Leaf-on corrected',
+    note: 'Bare canopy raised to a leaf-on equivalent. The generous end of the range: ground under a crown counts as shaded for the whole modelled day.',
+  },
+];
+---
+
+<section class="fg04-maps" data-fg04-maps aria-labelledby={`${id}-title`}>
+  <h2 class="fg04-maps__title" id={`${id}-title`}>
+    Shaded frames of the modelled day
+  </h2>
+
+  <p class="fg04-maps__standfirst">
+    The same ground twice. The map on the left is what the lidar measured. The
+    map on the right raises bare canopy to a leaf-on equivalent. Both are
+    published because the correction changes which neighbourhoods come out
+    shadiest, and publishing one alone would report the month the plane flew
+    as a fact about the city.
+  </p>
+
+  <div class="fg04-maps__pair">
+    {
+      SURFACES.map((surface) => (
+        <div class="fg04-maps__pane">
+          <h3 class="fg04-maps__pane-title" id={`${id}-${surface.key}-label`}>
+            {surface.label}
+          </h3>
+          <MapStage
+            label={`Shade map, ${surface.label}`}
+            id={`${id}-${surface.key}`}
+            as="div"
+            helpCorner="top-left"
+          >
+            <div
+              class="fg04-maps__canvas"
+              data-fg04-map={surface.key}
+              aria-labelledby={`${id}-${surface.key}-label`}
+            />
+            <div slot="howto">
+              <p>
+                Darker ground was shaded for more of the modelled day. The
+                count runs from one frame to fifteen, and the 06:00 frame is
+                shaded everywhere by construction, so nothing scores zero.
+              </p>
+              <p>
+                This map shows where the sun was blocked. It says nothing
+                about temperature.
+              </p>
+            </div>
+          </MapStage>
+          <p class="fg04-maps__pane-note">{surface.note}</p>
+        </div>
+      ))
+    }
+  </div>
+
+  <div class="fg04-legend" data-fg04-legend>
+    <h3 class="fg04-legend__title">Shaded frames, of fifteen</h3>
+    <ol class="fg04-legend__scale" data-fg04-legend-swatches>
+      {
+        BANDS.map((band) => (
+          <li class="fg04-legend__item">
+            <span
+              class="fg04-legend__swatch"
+              style={`background: var(${band.token})`}
+            />
+            <span>{band.label}</span>
+          </li>
+        ))
+      }
+    </ol>
+    <p class="fg04-legend__facts" data-fg04-legend-facts>
+      Shaded frames of fifteen, 21 July 2026, 06:00 to 20:00 EDT, on a 2 m
+      grid. Lidar flown April to May 2023. The 06:00 frame sits at
+      0.38&deg; above the horizon and is shaded everywhere by construction.
+    </p>
+  </div>
+</section>
+
+<script>
+  import '../scripts/fg04-map';
+</script>

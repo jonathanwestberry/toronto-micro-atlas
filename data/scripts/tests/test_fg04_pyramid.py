@@ -37,9 +37,9 @@ different prefixes. Square matters: MapLibre colourises the count with a
 `raster-dem` source and a `color-relief` layer, and a `raster-dem` source
 cannot read a tile that is not square. Three channels:
 
-    R  mask bits 0 to 7
+    R  shaded-hours count, 0 to 15
     G  mask bits 8 to 14, top bit unused
-    B  shaded-hours count, 0 to 15
+    B  mask bits 0 to 7
 
 B is derived from R and G and is redundant on purpose. The count layer is
 what the reader sees first, and MapLibre reads B directly as the value its
@@ -244,12 +244,12 @@ class TileEncodingTests(unittest.TestCase):
                         "fifteen channels would be one band per hour, which "
                         "is the encoding this contract exists to forbid")
 
-    def test_the_blue_channel_is_the_shaded_hour_count(self):
+    def test_the_red_channel_is_the_shaded_hour_count(self):
         raw, _ = sample_masks(8, 8)
 
         pixels = pyramid.encode_tile(raw)
 
-        np.testing.assert_array_equal(pixels[:, :, 2],
+        np.testing.assert_array_equal(pixels[:, :, 0],
                                       pyramid.shaded_hours(raw))
 
     def test_the_mask_survives_the_round_trip(self):
@@ -273,7 +273,7 @@ class TileEncodingTests(unittest.TestCase):
     def test_a_tampered_count_channel_is_caught(self):
         raw, _ = sample_masks(8, 8)
         pixels = pyramid.encode_tile(raw)
-        pixels[0, 0, 2] = (int(pixels[0, 0, 2]) + 1) % 16
+        pixels[0, 0, 0] = (int(pixels[0, 0, 0]) + 1) % 16
 
         with self.assertRaises(ValueError):
             pyramid.decode_tile(pixels, verify=True)
@@ -319,27 +319,46 @@ class SeparateAddressingTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             pyramid.tile_url_template("cooler")
 
-    def test_the_dem_encoding_makes_elevation_the_shade_count(self):
-        """blueFactor 1 and the rest zero, so ["elevation"] is the count."""
-        encoding = pyramid.DEM_ENCODING
+    def test_the_unpack_constants_are_maplibres_default_encoding(self):
+        """Not configuration. These are the numbers MapLibre compiles in."""
+        unpack = pyramid.DEM_UNPACK
 
-        self.assertEqual(encoding["encoding"], "custom")
-        self.assertEqual(encoding["blueFactor"], 1)
-        self.assertEqual(encoding["redFactor"], 0)
-        self.assertEqual(encoding["greenFactor"], 0)
-        self.assertEqual(encoding["baseShift"], 0)
+        self.assertEqual(unpack["encoding"], "mapbox")
+        self.assertEqual(unpack["redFactor"], 6553.6)
+        self.assertEqual(unpack["greenFactor"], 25.6)
+        self.assertEqual(unpack["blueFactor"], 0.1)
+        self.assertEqual(unpack["baseShift"], 10000.0)
 
-    def test_the_encoding_recovers_the_count_the_way_maplibre_would(self):
-        raw, _ = sample_masks(8, 8)
+    def test_the_mask_can_never_push_a_pixel_into_another_counts_band(self):
+        """The whole reason the count sits in red and rides the default.
+
+        Green and blue at their maximum add 6553.5, and one step of red is
+        6553.6. If that ever stopped being true the map would colour some
+        pixels by the wrong count and nothing else would notice.
+        """
+        widest = pyramid.dem_unpack(0, 255, 255) - pyramid.dem_unpack(0, 0, 0)
+
+        self.assertLess(widest, pyramid.DEM_UNPACK["redFactor"])
+
+        for count in range(pyramid.MAX_BIT + 1):
+            with self.subTest(count=count):
+                floor = pyramid.dem_unpack(count, 0, 0)
+                ceiling = pyramid.dem_unpack(count, 255, 255)
+                self.assertEqual(floor, pyramid.dem_value(count))
+                self.assertLess(ceiling, pyramid.dem_value(count + 1))
+
+    def test_every_pixel_lands_in_the_band_for_its_own_count(self):
+        raw, _ = sample_masks(16, 16)
         pixels = pyramid.encode_tile(raw)
-        e = pyramid.DEM_ENCODING
+        counts = pyramid.shaded_hours(raw)
 
-        elevation = (pixels[:, :, 0].astype(int) * e["redFactor"]
-                     + pixels[:, :, 1].astype(int) * e["greenFactor"]
-                     + pixels[:, :, 2].astype(int) * e["blueFactor"]
-                     - e["baseShift"])
-
-        np.testing.assert_array_equal(elevation, pyramid.shaded_hours(raw))
+        for row in range(16):
+            for col in range(16):
+                red, green, blue = (int(v) for v in pixels[row, col])
+                value = pyramid.dem_unpack(red, green, blue)
+                count = int(counts[row, col])
+                self.assertGreaterEqual(value, pyramid.dem_value(count))
+                self.assertLess(value, pyramid.dem_value(count + 1))
 
 
 class SurfaceNamingTests(unittest.TestCase):
