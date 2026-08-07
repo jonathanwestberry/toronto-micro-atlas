@@ -1,0 +1,167 @@
+---
+import Base from '../../../layouts/Base.astro';
+import '../../../styles/fg04.css';
+
+/*
+ * Throwing Shade.
+ *
+ * Every figure on this page is a 2 m figure computed on 21 July 2026, 06:00 to
+ * 20:00 EDT, from lidar flown April to May 2023. Source of record:
+ * data/proof/fg04/statistics.json. Nothing here is rounded by hand.
+ *
+ * Two rules govern the copy, and tests/fg04-content.test.mjs enforces both:
+ *   1. This maps shade. It never claims temperature, heat, or coolness.
+ *   2. Every neighbourhood and street figure is published twice, measured and
+ *      leaf-on corrected, side by side. The aircraft flew in spring, so a
+ *      measured figure standing alone reports the month of the flight as a
+ *      fact about the city.
+ */
+---
+
+<Base
+  title="Throwing Shade"
+  description="Fifteen hourly frames of Toronto's ground shade on 21 July 2026, modelled at 2 m. The shadiest neighbourhoods change once a spring lidar flight is corrected for summer leaves, and the citywide shortage this guide went looking for is not there."
+  guideTheme="fg04"
+  articlePublished="2026-08-06"
+  articleUpdated="2026-08-06"
+>
+  <div class="fg04">
+    <article class="fg04-container">
+
+      <header class="fg04-chapter">
+        <span class="fg04-kicker">Shade, towers &amp; trees</span>
+        <h1>Throwing Shade</h1>
+        <p class="fg04-lede">
+          The city thins at one. This maps where the sun reaches the ground in
+          Toronto, hour by hour, across a single modelled day.
+        </p>
+      </header>
+
+      <!-- ============================================================
+           Chapter one. Opens on the behaviour, not on the data. No numbers
+           until the reader has been told what is being measured and, just as
+           importantly, what is not.
+           ============================================================ -->
+      <section class="fg04-chapter" id="the-map-you-were-already-using">
+        <span class="fg04-kicker">Chapter one</span>
+        <h2>The map you were already using</h2>
+
+        <p>
+          You already do this. Walking a long block in July, you cross to the
+          far side without deciding to, then cross back when the buildings run
+          out. Nobody taught you the rule. You read the pavement ahead, saw
+          where the light stopped, and moved.
+        </p>
+
+        <p>
+          That habit is a map. You drew it from memory, it covers only the
+          streets you walk, and it changes every time a tower goes up or a tree
+          comes down. This guide draws the same map for the whole city, on one
+          day of one year.
+        </p>
+
+        <div class="fg04-scope-note">
+          <p>
+            <strong>This guide maps shade, not temperature.</strong> Shade is a
+            question of what stood between the ground and the sun at a given
+            minute. That is all it measures. A shaded asphalt lot can be hotter
+            than a sunny lawn, and nothing here measures heat.
+          </p>
+        </div>
+
+        <p>
+          Here is the whole city, averaged across every hour of the modelled
+          day. The left figure is the surface the aircraft measured. The right
+          figure is the one this guide publishes. Chapter three says why.
+        </p>
+
+        <div class="fg04-pair">
+          <div class="fg04-pair__half fg04-pair__half--raw">
+            <span class="fg04-pair__label">Measured, leaf-off</span>
+            <span class="fg04-pair__value">6.201</span>
+            <span class="fg04-pair__note">
+              mean shaded hours of fifteen, citywide
+            </span>
+          </div>
+          <div class="fg04-pair__half fg04-pair__half--corrected">
+            <span class="fg04-pair__label">Leaf-on corrected</span>
+            <span class="fg04-pair__value">7.020</span>
+            <span class="fg04-pair__note">
+              the same ground, with the trees given their summer leaves back
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           Chapter two. The confirmed finding, and the one place the dawn and
+           dusk frames get explained. Every later shaded-hour count in the
+           guide depends on the reader having been told, once and plainly,
+           that the fifteen frames are not fifteen equal hours.
+           ============================================================ -->
+      <section class="fg04-chapter" id="noon-is-the-cruellest-hour">
+        <span class="fg04-kicker">Chapter two</span>
+        <h2>Noon is the cruellest hour</h2>
+
+        <p>
+          It is not, quite. The sun over Toronto peaks at <strong>13:25
+          EDT</strong> on 21 July, not at noon. Daylight saving takes an hour
+          of the blame. The rest is Toronto sitting west of the meridian its
+          time zone is named for. Shade is thinnest at the modelled hour
+          nearest that peak, and that hour is <strong>13:00</strong>.
+        </p>
+
+        <div class="fg04-pair">
+          <div class="fg04-pair__half fg04-pair__half--raw">
+            <span class="fg04-pair__label">Measured, leaf-off</span>
+            <span class="fg04-pair__value">10.73%</span>
+            <span class="fg04-pair__note">
+              of Toronto's ground in shade at 13:00
+            </span>
+          </div>
+          <div class="fg04-pair__half fg04-pair__half--corrected">
+            <span class="fg04-pair__label">Leaf-on corrected</span>
+            <span class="fg04-pair__value">19.70%</span>
+            <span class="fg04-pair__note">
+              of Toronto's ground in shade at 13:00, the day's minimum
+            </span>
+          </div>
+        </div>
+
+        <p>
+          Four fifths of the city stands in open sun at one in the afternoon.
+          That is the generous reading. The surface the aircraft measured puts
+          it nearer nine tenths.
+        </p>
+
+        <h3 class="fg04-kicker">What fifteen frames actually means</h3>
+
+        <p>
+          The day runs from <strong>06:00</strong> to <strong>20:00 EDT</strong>
+          on <strong>21 July 2026</strong>, sampled once an hour. Fifteen
+          frames, computed on a <strong>2 m grid</strong> across the whole
+          municipality. Every figure in this guide counts how many of those
+          fifteen frames found a patch of ground in shadow.
+        </p>
+
+        <p>
+          Fifteen frames are not fifteen equal hours. At 06:00 the sun sits
+          0.38&deg; above the horizon, at or below the point the model treats
+          as sunrise, so that frame finds the city <strong>shaded
+          everywhere</strong>. Every patch of ground in Toronto scores one
+          shaded hour before anything about it is measured. The 20:00 frame is
+          nearly as generous: 84.2% of ground in shade, with the sun under
+          8&deg;. So seven shaded hours means seven frames <em>of the modelled
+          day</em>, and two of them came free. It does not mean seven hours of
+          useful shade, and this guide never says it does.
+        </p>
+
+        <p>
+          The hours that settle anything are the ones in the middle. That is
+          why 13:00 is the frame worth arguing about.
+        </p>
+      </section>
+
+    </article>
+  </div>
+</Base>
