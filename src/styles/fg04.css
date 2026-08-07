@@ -836,6 +836,10 @@
   grid-template-columns: 1fr;
 }
 
+.fg04-maps__pane {
+  min-width: 0;
+}
+
 @media (min-width: 60rem) {
   .fg04-maps__pair {
     grid-template-columns: 1fr 1fr;

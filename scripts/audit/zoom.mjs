@@ -28,6 +28,7 @@ const ROUTES = [
   ['fg01-location', '/guides/hidden-landscapes/glen-stewart-ravine/'],
   ['fg02', '/guides/sidewalk-forest/'], ['fg02-map', '/guides/sidewalk-forest/map/'],
   ['fg03', '/guides/when-toronto-has-to-go/'], ['fg03-map', '/guides/when-toronto-has-to-go/map/'],
+  ['fg04', '/guides/throwing-shade/'],
   ['about', '/about/'], ['404', '/404.html'],
 ];
 

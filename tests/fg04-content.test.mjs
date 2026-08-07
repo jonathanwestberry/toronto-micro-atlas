@@ -41,6 +41,7 @@ const socialPath = new URL(
   '../public/social/og-throwing-shade.jpg',
   import.meta.url,
 );
+const stylePath = new URL('../src/styles/fg04.css', import.meta.url);
 
 const readRoute = () => (existsSync(routePath) ? readFileSync(routePath, 'utf8') : '');
 
@@ -151,6 +152,15 @@ test('build publishes the exact shade guide route', () => {
     existsSync(routePath),
     true,
     'Expected /guides/throwing-shade/ to build an index.html file',
+  );
+});
+
+test('the paired explorer panes may shrink to the 320 px reading frame', () => {
+  const css = readFileSync(stylePath, 'utf8');
+  assert.match(
+    css,
+    /\.fg04-maps__pane\s*\{[^}]*min-width:\s*0;/s,
+    'MapLibre attribution must not impose its min-content width on a map pane',
   );
 });
 
