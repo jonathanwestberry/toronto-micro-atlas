@@ -332,6 +332,11 @@ test('the map shows both surfaces, each named in words', () => {
     + 'neighbourhoods are shadiest, so one surface alone is not a map of '
     + 'Toronto, it is a map of April.',
   );
+  assert.doesNotMatch(
+    html,
+    /<div[^>]*data-fg04-map="(?:raw|corrected)"[^>]*aria-labelledby=/,
+    'The labelled MapStage owns the accessible name; a generic map div must not duplicate it',
+  );
 
   for (const label of ['Measured, leaf-off', 'Leaf-on corrected']) {
     assert.ok(
