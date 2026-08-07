@@ -343,6 +343,13 @@ class ManifestTests(unittest.TestCase):
 
         self.assertEqual(entry["dawnHour"], 6)
         self.assertRegex(entry["dawnNote"], r"shaded everywhere")
+        self.assertNotRegex(
+            entry["dawnNote"],
+            r"\bdegrees\b",
+            "The manifest note is inserted into the live legend. Use the "
+            "degree symbol so a sun angle cannot read as a temperature.",
+        )
+        self.assertIn("0.38°", entry["dawnNote"])
 
     def test_the_manifest_makes_no_thermal_claim(self):
         text = json.dumps(self.manifest()).lower()

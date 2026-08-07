@@ -500,7 +500,7 @@ def manifest(bounds, tiles_written: int, projected: dict,
         "firstHour": FIRST_HOUR,
         "lastHour": LAST_HOUR,
         "dawnHour": DAWN_HOUR,
-        "dawnNote": ("The 06:00 frame sits at 0.38 degrees above the horizon "
+        "dawnNote": ("The 06:00 frame sits at 0.38° above the horizon "
                      "and is shaded everywhere by construction, so every "
                      "pixel scores at least one shaded hour. Read the count "
                      "as frames of the modelled day, not as hours of shade."),

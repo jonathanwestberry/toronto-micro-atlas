@@ -30,7 +30,7 @@
   "countChannel": "red",
   "countIsPopulationCountAtNativeZoomOnly": true,
   "dawnHour": 6,
-  "dawnNote": "The 06:00 frame sits at 0.38 degrees above the horizon and is shaded everywhere by construction, so every pixel scores at least one shaded hour. Read the count as frames of the modelled day, not as hours of shade.",
+  "dawnNote": "The 06:00 frame sits at 0.38° above the horizon and is shaded everywhere by construction, so every pixel scores at least one shaded hour. Read the count as frames of the modelled day, not as hours of shade.",
   "demUnpack": {
     "baseShift": 10000.0,
     "blueFactor": 0.1,
