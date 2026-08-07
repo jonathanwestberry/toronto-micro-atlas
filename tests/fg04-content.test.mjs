@@ -37,8 +37,33 @@ const routePath = new URL(
   '../dist/guides/throwing-shade/index.html',
   import.meta.url,
 );
+const socialPath = new URL(
+  '../public/social/og-throwing-shade.jpg',
+  import.meta.url,
+);
 
 const readRoute = () => (existsSync(routePath) ? readFileSync(routePath, 'utf8') : '');
+
+const jpegDimensions = (path) => {
+  const bytes = readFileSync(path);
+  assert.equal(bytes[0], 0xff);
+  assert.equal(bytes[1], 0xd8);
+
+  const startOfFrameMarkers = new Set([
+    0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7,
+    0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf,
+  ]);
+  for (let offset = 2; offset < bytes.length - 8; offset += 1) {
+    if (bytes[offset] !== 0xff || !startOfFrameMarkers.has(bytes[offset + 1])) {
+      continue;
+    }
+    return {
+      height: bytes.readUInt16BE(offset + 5),
+      width: bytes.readUInt16BE(offset + 7),
+    };
+  }
+  throw new Error('JPEG is missing a start-of-frame marker');
+};
 
 /**
  * The guide's own copy, excluding the shared header and footer. The atlas-wide
@@ -127,6 +152,27 @@ test('build publishes the exact shade guide route', () => {
     true,
     'Expected /guides/throwing-shade/ to build an index.html file',
   );
+});
+
+test('the guide publishes an accessible 1200 by 630 social comparison', () => {
+  const html = readRoute();
+  const alt = 'The same Toronto streets at 13:00 and 18:00 on 21 July 2026, with shaded ground shown in dark charcoal.';
+
+  assert.equal(existsSync(socialPath), true);
+  assert.deepEqual(jpegDimensions(socialPath), { height: 630, width: 1200 });
+  assert.match(
+    html,
+    /property="og:image" content="https:\/\/torontomicroatlas\.com\/social\/og-throwing-shade\.jpg"/,
+  );
+  assert.match(html, new RegExp(`property="og:image:alt" content="${alt}"`));
+  assert.match(html, /property="og:image:width" content="1200"/);
+  assert.match(html, /property="og:image:height" content="630"/);
+  assert.match(html, /property="og:image:type" content="image\/jpeg"/);
+  assert.match(
+    html,
+    /name="twitter:image" content="https:\/\/torontomicroatlas\.com\/social\/og-throwing-shade\.jpg"/,
+  );
+  assert.match(html, new RegExp(`name="twitter:image:alt" content="${alt}"`));
 });
 
 test('the guide never claims temperature, heat, or coolness', () => {

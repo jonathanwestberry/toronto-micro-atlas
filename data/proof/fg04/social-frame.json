@@ -1,0 +1,46 @@
+{
+  "col": 10800,
+  "row": 10710,
+  "swing": 0.5326327469309026,
+  "bounds": [
+    630600.0,
+    4835320.0,
+    631800.0,
+    4836580.0
+  ],
+  "streets": [
+    "Carlton Street",
+    "Church Street",
+    "Dundas Street East",
+    "Gerrard Street East",
+    "Jarvis Street",
+    "Mount Pleasant Road",
+    "Parliament Street",
+    "Ted Rogers Way"
+  ],
+  "arterial_m": 4690.2,
+  "ground_fraction": 0.4101,
+  "surface": "raw",
+  "hours": [
+    13,
+    18
+  ],
+  "image_text": {
+    "title": "Throwing Shade",
+    "panels": [
+      "Toronto, 13:00",
+      "Same ground, 18:00"
+    ],
+    "surface": "Measured, leaf-off",
+    "date": "21 July 2026",
+    "legend": [
+      "Shaded ground",
+      "Sunlit ground"
+    ]
+  },
+  "dimensions": [
+    1200,
+    630
+  ],
+  "crs": "EPSG:6660"
+}
