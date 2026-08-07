@@ -1,0 +1,317 @@
+/* ============================================================
+   Throwing Shade -- guide-scoped styles.
+
+   The --atlas-* contract for this guide is declared in tokens.css under
+   [data-guide-theme='fg04'], on <body>, so the shared header and footer sit
+   inside the theme rather than outside it. This file holds the ramp the map
+   will read in a later phase, and the story page's own components.
+   ============================================================ */
+
+.fg04 {
+  /* ----------------------------------------------------------
+     The shaded-hours ramp. Six stops from ONE PALETTE, ordered by
+     luminance and nothing else: the sun is blocked or it is not, and the
+     darker the ground the longer it stayed blocked. Measured luminance runs
+     0.918 -> 0.014, strictly downward, so the ramp survives being printed in
+     grey or read by someone who sees no hue at all.
+
+     Deliberately NOT a two-hue ramp. A ramp with a hue axis invites the reader
+     to decode the hue, and the only hue axis anyone expects on a map like this
+     is the one this guide is not entitled to draw.
+     ---------------------------------------------------------- */
+  --fg04-shade-1: #FBF8C8;   /* Pale Lemon -- one shaded hour, sun nearly all day */
+  --fg04-shade-2: #D3CFA6;   /* Kraft      -- 2 to 4 */
+  --fg04-shade-3: #C9A52E;   /* Mustard    -- 5 to 7 */
+  --fg04-shade-4: #8A4A70;   /* Mauve      -- 8 to 10 */
+  --fg04-shade-5: #4A1F3F;   /* Plum       -- 11 to 13 */
+  --fg04-shade-6: #1A1F2A;   /* Contour    -- 14 to 15, blocked almost throughout */
+
+  /* The first three stops sit at 1.08, 1.36 and 2.02 against the Cream ground,
+     which is under the 3:1 a legend swatch needs to be found at all. They are
+     never drawn bare: .fg04-swatch gives every stop the same hairline so the
+     light end is locatable and the ramp stays one visual object. */
+  --fg04-swatch-edge: var(--atlas-control-line);
+
+  background-color: var(--atlas-ground);
+  color: var(--atlas-ink);
+  font-family: var(--font-body);
+}
+
+.fg04-container {
+  width: min(100% - 2.5rem, var(--container));
+  margin-inline: auto;
+}
+
+.fg04-measure {
+  max-width: var(--measure);
+}
+
+/* ============================================================
+   Chapters
+   ============================================================ */
+
+.fg04-chapter {
+  padding-block: var(--space-16);
+  border-top: 1px solid var(--atlas-line);
+}
+
+.fg04-chapter:first-of-type {
+  border-top: 0;
+}
+
+/* Hierarchy here is carried by weight, colour and letter-spacing, not by size
+   alone: the kicker is the smallest thing on the page and still reads first
+   because it is the only uppercase mono line in the column. */
+.fg04-kicker {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--atlas-accent-text);
+  margin-bottom: var(--space-3);
+}
+
+.fg04-chapter h2 {
+  font-family: var(--font-heading);
+  font-size: var(--text-3xl);
+  line-height: 1.08;
+  letter-spacing: 0.01em;
+  color: var(--atlas-ink);
+  margin-bottom: var(--space-6);
+  max-width: 22ch;
+}
+
+.fg04-chapter p {
+  font-size: var(--text-lg);
+  line-height: 1.65;
+  color: var(--atlas-ink-muted);
+  max-width: var(--measure);
+  margin-bottom: var(--space-4);
+}
+
+/* The reader's eye should land on the sentence that carries the argument, and
+   on nothing else. One emphasis level, ink-weight, no accent colour: an accent
+   here would compete with the paired figures, which are the real signal. */
+.fg04-chapter p strong {
+  color: var(--atlas-ink);
+  font-weight: 600;
+}
+
+.fg04-lede {
+  font-size: var(--text-xl);
+  line-height: 1.5;
+  color: var(--atlas-ink);
+  max-width: var(--measure-lede);
+}
+
+/* ============================================================
+   The paired figure: the guide's signature component.
+
+   Every neighbourhood and street number in this guide is published twice,
+   because the aircraft flew in spring and the trees were bare. Showing the
+   measured value alone would report the month of the flight as a fact about
+   the city. So the pair is one object with two halves and no way to render
+   half of it: there is no single-value variant of this component, on purpose.
+
+   The measured half is de-emphasised rather than the corrected half being
+   shouted, which is the cheaper and more legible way to build the hierarchy.
+   The relationship is stated in words in the label as well as shown in the
+   layout, so it does not depend on the two halves being seen together.
+   ============================================================ */
+
+.fg04-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+  margin-block: var(--space-8);
+  padding: var(--space-6);
+  background-color: var(--atlas-surface);
+  border-left: 3px solid var(--atlas-accent);
+  max-width: var(--measure);
+}
+
+.fg04-pair__half {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.fg04-pair__label {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--atlas-ink-faint);
+}
+
+.fg04-pair__value {
+  font-family: var(--font-heading);
+  font-size: var(--text-3xl);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.fg04-pair__note {
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--atlas-ink-muted);
+}
+
+/* The measured surface: true, and not the reading the guide stands behind. */
+.fg04-pair__half--raw .fg04-pair__value {
+  color: var(--atlas-marker);
+}
+
+/* The leaf-on equivalent: the reading the guide publishes. */
+.fg04-pair__half--corrected .fg04-pair__value {
+  color: var(--atlas-marker-alt);
+}
+
+@media (max-width: 600px) {
+  .fg04-pair {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+}
+
+/* ============================================================
+   Ramp legend
+   ============================================================ */
+
+.fg04-ramp {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-block: var(--space-6);
+  padding: 0;
+  list-style: none;
+}
+
+.fg04-ramp li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  color: var(--atlas-ink-muted);
+}
+
+.fg04-swatch {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  border: 1px solid var(--fg04-swatch-edge);
+}
+
+/* ============================================================
+   The standing note about what this guide measures.
+
+   Not a footnote. It sits in the reading column at full body weight, because
+   a reader who takes one thing from this page should take this one.
+   ============================================================ */
+
+.fg04-scope-note {
+  margin-block: var(--space-8);
+  padding: var(--space-4) var(--space-6);
+  border-left: 3px solid var(--atlas-accent-2);
+  background-color: var(--atlas-surface);
+  max-width: var(--measure);
+}
+
+.fg04-scope-note p {
+  margin-bottom: 0;
+  color: var(--atlas-ink);
+  font-size: var(--text-base);
+}
+
+/* ============================================================
+   Limits
+   ============================================================ */
+
+.fg04-limits {
+  padding-block: var(--space-16);
+  border-top: 1px solid var(--atlas-line-strong);
+}
+
+.fg04-limits h2 {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--atlas-ink-faint);
+  margin-bottom: var(--space-6);
+}
+
+.fg04-limits ol {
+  max-width: var(--measure);
+  padding-left: var(--space-6);
+  display: grid;
+  gap: var(--space-4);
+}
+
+.fg04-limits li {
+  font-size: var(--text-base);
+  line-height: 1.6;
+  color: var(--atlas-ink-muted);
+}
+
+.fg04-limits li strong {
+  color: var(--atlas-ink);
+  font-weight: 600;
+}
+
+/* ============================================================
+   Links and focus
+   ============================================================ */
+
+.fg04 a {
+  color: var(--atlas-accent-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.fg04 a:hover {
+  color: var(--atlas-hover);
+}
+
+.fg04 a:focus-visible,
+.fg04 :focus-visible {
+  outline: 2px solid var(--atlas-focus);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   Narrow widths. The atlas audits across six, and the paired figure is the
+   component most at risk: two tabular numbers in one row is exactly the thing
+   that overflows first.
+   ============================================================ */
+
+@media (max-width: 767px) {
+  .fg04-chapter {
+    padding-block: var(--space-12);
+  }
+
+  .fg04-chapter h2 {
+    font-size: var(--text-2xl);
+  }
+
+  .fg04-chapter p {
+    font-size: var(--text-base);
+  }
+
+  .fg04-lede {
+    font-size: var(--text-lg);
+  }
+
+  .fg04-pair {
+    padding: var(--space-4);
+  }
+
+  .fg04-pair__value {
+    font-size: var(--text-2xl);
+  }
+}

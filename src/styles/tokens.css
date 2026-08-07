@@ -279,3 +279,53 @@
      not the theme's. Stating it here keeps the rule predictable. */
   --atlas-rule-header: #1A1F2A;                  /* Contour */
 }
+
+/* Throwing Shade: Cream ground, Plum shadow, Mustard sun.
+ *
+ * The palette is chosen against the shaded-hours ramp the map will carry, so
+ * the page and the map agree before the map exists. Every value is a ONE
+ * PALETTE colour; the only derived one is the Mustard text sibling, darkened
+ * by the same house rule already applied to Kelly and Hot Orange.
+ *
+ * WHY THE RAMP HAS NO HUE AXIS. The obvious ramp for a map like this runs blue
+ * to orange, and it is the one thing this guide cannot do. A reader looking at
+ * a blue-to-orange map reads it as a thermometer whatever the caption says, and
+ * the caption loses. This guide measures where the sun is blocked, which is
+ * geometry, and says nothing about how any of it feels to stand on. So the ramp
+ * is built on luminance alone, which is what shade physically is: Pale Lemon at
+ * one shaded hour down to Contour at fifteen, strictly monotonic, no hue doing
+ * any of the work.
+ *
+ * THE TWO READINGS. Every lidar flight over Toronto is leaf-off, so the guide
+ * publishes each figure twice: the measured surface, and the same surface with
+ * canopy raised to its leaf-on equivalent. Those are one measurement read
+ * twice, not two different quantities, so they are one hue family at two
+ * depths (--atlas-marker Mauve, --atlas-marker-alt Plum) rather than two hues.
+ * Two hues would say "two kinds of thing". Two depths say "the same city,
+ * deeper", which is exactly what the correction does to the data.
+ */
+[data-guide-theme='fg04'] {
+  --atlas-ground:      #F3EDDD;                  /* Cream */
+  --atlas-surface:     #FFFAF0;
+  --atlas-ink:         #1A1F2A;                  /* Contour: 14.11 on Cream */
+  --atlas-ink-muted:   #565A63;                  /* 5.91 */
+  --atlas-ink-faint:   #6B6558;                  /* 4.95 */
+  --atlas-line:        rgba(26, 31, 42, 0.3);
+  --atlas-line-strong: rgba(26, 31, 42, 0.72);
+  --atlas-accent:      #4A1F3F;                  /* Plum: the shadow */
+  --atlas-accent-2:    #C9A52E;                  /* Mustard: ground the sun reaches */
+  /* Plum clears 11.53 on Cream, so it carries type as it stands. Mustard is a
+     fill at 2.02 and never carries type; its sibling is Mustard held at the
+     same hue and saturation with lightness dropped to 30%, measured at 4.79 on
+     Cream and 5.38 on the raised surface. */
+  --atlas-accent-text:   #4A1F3F;
+  --atlas-accent-2-text: #7D651C;
+  --atlas-control-line: #8F836B;                 /* 3.19 on Cream, 3.59 on surface */
+  --atlas-focus:       #4A1F3F;
+  --atlas-hover:       #4A1F3F;
+  --atlas-active:      #C9A52E;
+  --atlas-marker:      #8A4A70;                  /* Mauve: the measured surface */
+  --atlas-marker-alt:  #4A1F3F;                  /* Plum: leaf-on corrected */
+  --atlas-layer:       #8A4A70;
+  --atlas-rule-header: #1A1F2A;                  /* Contour */
+}
