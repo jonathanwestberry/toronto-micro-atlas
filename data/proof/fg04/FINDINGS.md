@@ -26,7 +26,7 @@ arterial right of way lands in the traffic lanes.
 
 ## Headline
 
-**No citywide shade shortage on the streets people walk on.** 3.89% of
+**No citywide shade shortage on the streets people walk on.** 5.26% of
 Toronto's arterial kilometres are shade-poor on the corrected surface,
 against a pre-registered threshold of 25%. The condition fails, and it fails
 by a wide margin rather than narrowly.
@@ -35,7 +35,7 @@ by a wide margin rather than narrowly.
 retitled it *The Great Toronto Shade Shortage* only if the shortage held on
 the corrected surface. It does not.
 
-**The roadway is a different story: 39.61% of arterial kilometres are
+**The roadway is a different story: 39.50% of arterial kilometres are
 shade-poor when measured over the traffic lanes.** Toronto's arterial roads
 are largely bare and their sidewalks largely are not. That contrast, not a
 shortage, is the honest finding.
@@ -47,11 +47,11 @@ shortage, is the honest finding.
 | | raw | corrected |
 |---|---|---|
 | minimum frame | 13:00 | 13:00 |
-| shaded fraction of ground at minimum | 10.73% | 19.70% |
+| shaded fraction of ground at minimum | 10.73% | 20.73% |
 
 Solar noon is 13:25 EDT and 13:00 is the nearest modelled frame. The curve is
-a clean bowl either way: on the corrected surface 100% at 06:00, 37.4% at
-10:00, **19.7% at 13:00**, 31.8% at 16:00, 84.2% at 20:00.
+a clean bowl either way: on the corrected surface 100% at 06:00, 39.1% at
+10:00, **20.73% at 13:00**, 32.5% at 16:00, 85.2% at 20:00.
 
 Held on both surfaces, so the leaf-off bias does not touch this one.
 
@@ -61,9 +61,9 @@ This is the finding the leaf-off correction was built to catch, and it fired.
 
 | rank | raw, shadiest neighbourhoods | corrected, shadiest neighbourhoods |
 |---|---|---|
-| 1 | Yonge-Bay Corridor, 10.90 | **Rosedale-Moore Park, 11.25** |
-| 2 | Downtown Yonge East, 10.60 | **Mount Pleasant East, 11.17** |
-| 3 | Church-Wellesley, 10.58 | **Lawrence Park South, 11.08** |
+| 1 | Yonge-Bay Corridor, 10.90 | **Lawrence Park South, 11.30** |
+| 2 | Downtown Yonge East, 10.60 | **Rosedale-Moore Park, 11.25** |
+| 3 | Church-Wellesley, 10.58 | **Mount Pleasant East, 11.17** |
 
 **Uncorrected, the three shadiest neighbourhoods in Toronto are downtown
 tower districts. Corrected, all three are leafy midtown, and downtown drops
@@ -74,7 +74,7 @@ cast their full shadow and the midtown canopy casts almost none, so the
 towers win. Give the trees their leaves and midtown overtakes them.
 
 Downtown still comfortably beats the sunniest inner suburbs (Downsview 3.57
-raw, 3.86 corrected), so H2 as written holds. But **any chapter claiming
+raw, 3.90 corrected), so H2 as written holds. But **any chapter claiming
 downtown is the shadiest part of Toronto would have been reporting the month
 the plane flew.**
 
@@ -85,14 +85,14 @@ Citywide shortage means at least **X = 25%** of arterial kilometres.
 
 | band | surface | shade-poor share | of | shortage |
 |---|---|---|---|---|
-| **walk, 8-15 m** | raw | 6.79% | 1,128.6 km | **fails** |
-| **walk, 8-15 m** | **corrected** | **3.89%** | 1,128.6 km | **fails** |
-| road, 0-6 m | raw | 41.92% | 1,128.6 km | holds |
-| road, 0-6 m | corrected | 39.61% | 1,128.6 km | holds |
+| **walk, 8-15 m** | raw | 8.49% | 1,128.6 km | **fails** |
+| **walk, 8-15 m** | **corrected** | **5.26%** | 1,128.6 km | **fails** |
+| road, 0-6 m | raw | 42.04% | 1,128.6 km | holds |
+| road, 0-6 m | corrected | 39.50% | 1,128.6 km | holds |
 
-Shade-poor arterials exist, so H3 holds in its literal form: about 44 km of
+Shade-poor arterials exist, so H3 holds in its literal form: 59.4 km of
 them on the corrected walk band. The **citywide shortage condition fails**,
-on the governing band, on both surfaces, by a factor of six.
+on the governing band, on both surfaces, by nearly a factor of five.
 
 Reported plainly: **the shortage the working title anticipated is not there
 for people on foot.** It is there for the road surface.
@@ -101,13 +101,13 @@ for people on foot.** It is there for the road surface.
 
 | | raw | corrected |
 |---|---|---|
-| NIA mean shaded hours | 6.027 | 6.855 |
-| non-NIA mean shaded hours | 6.246 | 7.064 |
-| **difference** | **0.219** | **0.209** |
+| NIA mean shaded hours | 6.027 | 7.034 |
+| non-NIA mean shaded hours | 6.246 | 7.240 |
+| **difference** | **0.219** | **0.206** |
 
 The 33 NIAs are less shaded than the rest of Toronto, in the expected
 direction, on both surfaces. The gap is **0.21 of 15 hours, about 1.4% of the
-modelled day**, and the leaf-on correction barely moves it (0.219 to 0.209).
+modelled day**, and the leaf-on correction barely moves it (0.219 to 0.206).
 
 **Recommendation: cut chapter 5, or rewrite it as a null result.** The spec
 committed to cutting it rather than fudging it. A 0.21 hour difference cannot
@@ -122,15 +122,35 @@ Derived on the corrected surface unless stated.
 
 - **Shadiest arterial: York Street, 11.74 mean shaded hours.** A downtown
   tower canyon. Unchanged from raw (11.70), because its shade is buildings.
-- **Sunniest arterial: Staines Road, 1.91 mean shaded hours.** In Scarborough,
-  and identical raw and corrected, so it has neither towers nor canopy.
-- **Shadiest neighbourhood: Rosedale-Moore Park, 11.25.**
-- **Sunniest neighbourhood: Downsview, 3.86** (3.57 raw).
+- **Shadiest arterial outside downtown, with at least 1 km sampled: St. Clair
+  Avenue East, 9.99 raw and 10.65 corrected**, over 1,051.7 m. The floor
+  excludes a 309.7 m Oxton Avenue feature whose arterial tag is too short to
+  support a citywide superlative.
+- **Sunniest arterial: Staines Road, 1.85 raw and 1.86 corrected mean shaded
+  hours.** In Scarborough, with almost no movement from the correction.
+- **Shadiest neighbourhood: Lawrence Park South, 11.30 corrected**
+  (Yonge-Bay Corridor, 10.90 raw).
+- **Sunniest neighbourhood: Downsview, 3.90 corrected** (3.57 raw).
 - **Sunniest transit stops**, at a single shaded hour of 15, including
-  Pharmacy Ave at Princeway Dr and Birchmount Rd at Parnell Ave. That single
-  hour is the 06:00 frame, which is shaded everywhere by construction, so
-  these stops have **no modelled shade at all** during the usable day.
-- Mean over all 8,432 transit stops: 6.30 corrected, 6.15 raw.
+  Midland Ave at Emblem Crt, Warden Ave at Roper Rd (North Commuter Parking
+  Lot), and Kingston Rd at Highland Creek Overpass on both surfaces. That
+  single hour is the 06:00 frame, which is shaded everywhere by construction,
+  so these stops have **no modelled shade at all** during the usable day.
+- Mean over all 8,432 transit stops: 6.00 raw, 6.17 corrected.
+
+## The January scope measurement
+
+Chapter six now has the one winter frame it promised. This is not a winter
+day model and does not support any claim about how long shade lasts.
+
+| Ground shaded at midday | measured, leaf-off | leaf-on corrected |
+|---|---:|---:|
+| 21 July 2026, 13:00 EDT, 66.19&deg; | 10.73% | 20.73% |
+| 21 January 2026, 12:00 EST, 26.24&deg; | **47.22%** | **53.27%** |
+
+The **47.22% measured value is the one to read in January** because the trees
+are bare. The 53.27% corrected column is a summer-foliage counterfactual,
+printed because this guide always shows both surfaces.
 
 ## Exclusions and counts
 
@@ -159,10 +179,12 @@ Derived on the corrected surface unless stated.
    report: a maximum correction rise of 142.5 m, which is a 2018 tree polygon
    now standing over a 2023 tower.
 4. **Three of fifteen frames are near-free shade, and one is unconditional.**
-   06:00 sits at 0.38 degrees, at or below the model's horizon cutoff, so
+   06:00 sits at 0.38&deg;, at or below the model's horizon cutoff, so
    **every pixel in Toronto scores at least one shaded hour by construction**.
    A shaded-hours count must never be presented as fifteen equal hours.
-5. **One day of one year.** 21 July 2026. Nothing generalises across seasons.
+5. **One July day and one January frame.** The main model is 21 July 2026.
+   The winter comparison is 12:00 EST on 21 January 2026 only. It measures
+   midday coverage, not a winter day or season.
 6. **Roofs are invented and the flight has a date.** Anything built or felled
    since April 2023 is missing.
 7. **The NIA designation is a dated instrument**, 31 of 140 neighbourhoods on
@@ -174,7 +196,7 @@ Derived on the corrected surface unless stated.
 ## What this means for the guide
 
 - **Title stays *Throwing Shade*.** The shortage condition failed.
-- **Chapter 2 holds.** Noon is every neighbourhood's minimum, 19.7% corrected.
+- **Chapter 2 holds.** Noon is every neighbourhood's minimum, 20.73% corrected.
 - **Chapter 3 needs rewriting.** "Where height buys shade" is true of York
   Street and false of the city's shadiest neighbourhoods, which are leafy
   midtown once trees have leaves. The honest chapter is that towers and trees
@@ -182,4 +204,15 @@ Derived on the corrected surface unless stated.
 - **Chapter 4 changes shape.** There is no shortage for walkers. There is a
   bare roadway, and a real set of sunless arterials like Staines Road.
 - **Chapter 5 should be cut**, or published as a null result at 0.21 hours.
-- **Chapter 6, the winter frame, is untouched by any of this.**
+- **Chapter 6 now carries one January midday measurement.** Read the measured
+  47.22%; the corrected 53.27% is a summer-foliage counterfactual.
+
+## Registration correction, 2026-08-07
+
+The original citywide build placed most 8 km windows one pixel south-east of
+their own coordinates. The crop used two separately rounded parts of a
+fractional buffer, so `round(A) + round(B)` differed from `round(A + B)` by one
+pixel for 14 of 19 windows. The rebuild derives each crop from the array's own
+georeference. Translation-invariant figures held, while vector-joined figures
+moved most where the sample geometry was narrow. The statistics above are the
+post-fix figures from `statistics.json`.

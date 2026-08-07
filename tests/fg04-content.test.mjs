@@ -106,11 +106,19 @@ const FORBIDDEN_CLAIM_WORDS = [
  * alone, in either direction.
  */
 const RAW_AND_CORRECTED = [
-  ['6.201', '7.020', 'citywide mean shaded hours'],
-  ['10.73', '19.7', 'ground shaded at 13:00'],
-  ['6.79', '3.89', 'shade-poor arterial, walk band'],
-  ['41.92', '39.61', 'shade-poor arterial, road band'],
-  ['10.90', '11.25', 'shadiest neighbourhood'],
+  ['6.201', '7.197', 'citywide mean shaded hours'],
+  ['10.73', '20.73', 'ground shaded at 13:00'],
+  ['8.49', '5.26', 'shade-poor arterial, walk band'],
+  ['42.04', '39.50', 'shade-poor arterial, road band'],
+  ['6.027', '7.034', 'NIA mean shaded hours'],
+  ['6.246', '7.240', 'non-NIA mean shaded hours'],
+  ['0.219', '0.206', 'NIA gap'],
+  ['6.00', '6.17', 'transit stop mean shaded hours'],
+  ['1.85', '1.86', 'sunniest arterial'],
+  ['9.99', '10.65', 'shadiest arterial outside downtown'],
+  ['10.90', '11.30', 'shadiest neighbourhood'],
+  ['3.57', '3.90', 'sunniest neighbourhood'],
+  ['47.22', '53.27', 'January midday ground shade'],
 ];
 
 test('build publishes the exact shade guide route', () => {
@@ -180,14 +188,14 @@ test('no statistic travels without its leaf-on corrected twin', () => {
 
 test('the walk band and the road band are always published together', () => {
   const copy = readCopy();
-  const hasWalk = copy.includes('3.89');
-  const hasRoad = copy.includes('39.61');
+  const hasWalk = copy.includes('5.26');
+  const hasRoad = copy.includes('39.50');
 
   if (hasWalk || hasRoad) {
     assert.ok(
       hasWalk && hasRoad,
-      'The governing walk band (3.89%, 8 to 15 m from the centreline) and the '
-      + 'road band beside it (39.61%, 0 to 6 m) must appear together. The walk '
+      'The governing walk band (5.26%, 8 to 15 m from the centreline) and the '
+      + 'road band beside it (39.50%, 0 to 6 m) must appear together. The walk '
       + 'figure alone invites the reader to picture the roadway.',
     );
     assert.match(

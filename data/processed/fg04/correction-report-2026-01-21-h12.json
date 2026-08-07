@@ -1,0 +1,19 @@
+{
+  "date": "2026-01-21",
+  "resolution_m": 2.0,
+  "window_m": 8000.0,
+  "frames": 1,
+  "hours": [
+    12
+  ],
+  "casting_frames": 1,
+  "worst_case_buffer_m": 1217.0,
+  "canopy_pixels": 50357487,
+  "raised_pixels": 13736540,
+  "mean_rise_m": 11.237,
+  "max_rise_m": 142.545,
+  "measured_pixels": 13701185,
+  "defaulted_pixels": 35355,
+  "measured_share": 0.9974,
+  "seconds": 481.7
+}

@@ -74,6 +74,85 @@ def median_from_histogram(counts: np.ndarray) -> np.ndarray:
     return median
 
 
+def all_hours(frames: int) -> int:
+    """The bitmask meaning "shaded in every frame this raster holds".
+
+    The July raster holds fifteen frames and its constant is 0x7FFF. A
+    raster built from a selected hour holds one, and reusing the July
+    constant there would set fourteen bits the file never modelled, which
+    the under-canopy override would then read back as shade.
+    """
+    if not 1 <= frames <= FRAMES:
+        raise ValueError(f"{frames} frames is outside 1 to {FRAMES}")
+    return (1 << frames) - 1
+
+
+def bit_for_hour(frames, hour: int) -> int:
+    """Which bit of a raster holds a given clock hour.
+
+    A raster numbers its own frames from zero. The July raster starts at
+    06:00, so 13:00 is bit 7, but a raster built from a selected hour starts
+    wherever it starts. Asking the frames rather than assuming is what keeps
+    the two readable by the same code.
+    """
+    for position, frame in enumerate(frames):
+        if frame.clock.hour == hour:
+            return position
+    raise ValueError(f"no frame at {hour}:00 in this raster")
+
+
+def block_swing(shaded_a: np.ndarray,
+                shaded_b: np.ndarray,
+                ground: np.ndarray,
+                min_ground: float) -> float | None:
+    """How much more ground is shaded in frame b than frame a.
+
+    None when the block holds too little ground to be worth showing. A
+    block that is mostly lake or mostly rooftop swings beautifully and
+    shows a reader nothing, so ground is a floor rather than a tiebreak.
+    """
+    total = int(ground.sum())
+    if total == 0 or total / ground.size < min_ground:
+        return None
+    before = int(shaded_a[ground].sum())
+    after = int(shaded_b[ground].sum())
+    return (after - before) / total
+
+
+def frame_share(bits: np.ndarray,
+                ground: np.ndarray,
+                bit: int) -> tuple[int, int]:
+    """(ground pixels, ground pixels shaded in this frame) for one block.
+
+    July's published minimum, 10.73% raw and 19.70% corrected at 13:00, is
+    this statistic. Chapter six's winter figure is the same one at January
+    midday, which is what lets the two sit beside each other.
+    """
+    if not ground.any():
+        return 0, 0
+    lit = ((bits >> bit) & 1).astype(bool)
+    return int(ground.sum()), int(lit[ground].sum())
+
+
+def shadiest_among(means: np.ndarray,
+                   eligible: np.ndarray,
+                   lengths_m: np.ndarray | None = None,
+                   minimum_length_m: float = 0.0) -> int | None:
+    """Index of the shadiest eligible segment, or None if there is not one.
+
+    The same unsampled rule the rest of this module keeps: a NaN mean is a
+    street nobody measured, and it must not be allowed to win a superlative
+    the guide intends to print. A caller may also require enough sampled
+    centreline to keep a short tagging artefact from winning a citywide rank.
+    """
+    if lengths_m is not None:
+        eligible = eligible & (lengths_m >= minimum_length_m)
+    usable = eligible & ~np.isnan(means)
+    if not usable.any():
+        return None
+    return int(np.nanargmax(np.where(usable, means, -np.inf)))
+
+
 def shortage_share(medians: np.ndarray,
                    lengths_m: np.ndarray,
                    arterial: np.ndarray,

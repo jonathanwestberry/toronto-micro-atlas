@@ -134,8 +134,9 @@ full. Jonathan chose the sample band knowing what each choice produced.
 Mississauga, Vaughan, Markham and Pickering. The tier filter was checked, the
 spatial extent was not. All layers are now clipped to
 `toronto-boundary.geojson`. This correction moved the shade-poor share **up**,
-from 37.92% to 39.61% on the road band, so it was not a change that flattered
-any preferred answer.
+from 37.92% to 39.61% on the road band in that run, so it was not a change that
+flattered any preferred answer. The later registration repair moved the final
+road-band value to 39.50%.
 
 **2. The "sidewalk sample" was measuring the roadway.** The pre-registration
 defined it as ground within 6 m of a street centreline. An arterial right of
@@ -148,8 +149,8 @@ Both bands are now computed and reported:
 
 | band | where it is | corrected shade-poor | shortage at X = 25 |
 |---|---|---|---|
-| **walk, 8 to 15 m** | where people walk | **3.89%** | fails |
-| road, 0 to 6 m | traffic lanes | 39.61% | holds |
+| **walk, 8 to 15 m** | where people walk | **5.26%** | fails |
+| road, 0 to 6 m | traffic lanes | 39.50% | holds |
 
 **The walk band governs the shortage test and the title**, chosen by Jonathan
 on 2026-08-06 because it is what the pre-registration said it was measuring
@@ -159,6 +160,46 @@ a discarded variant.
 
 This choice decides the title, and it was made with both numbers visible.
 That is disclosed here rather than presented as if only one had been computed.
+
+## Change record, 2026-08-07: repair one-pixel window registration
+
+The citywide build wrote 14 of 19 covered 8 km windows one pixel south-east of
+their own coordinates. The crop removed two separately rounded parts of the
+same fractional buffer. For affected windows, `round(A) + round(B)` was one
+pixel smaller than `round(A + B)`. The corrected build derives the crop from
+the array georeference and passes a citywide zero-offset regression test.
+
+This repair was required by the coordinates, not by the resulting figures.
+Translation-invariant statistics held. Vector joins moved, with the narrow
+walk band and point-sampled transit stops moving most:
+
+| Published figure | before repair | after repair |
+|---|---:|---:|
+| Citywide mean, corrected | 7.020 | 7.197 |
+| Ground shaded at 13:00, corrected | 19.70% | 20.73% |
+| Walk band, raw | 6.79% | 8.49% |
+| Walk band, corrected | 3.89% | 5.26% |
+| Road band, raw | 41.92% | 42.04% |
+| Road band, corrected | 39.61% | 39.50% |
+| NIA mean, corrected | 6.855 | 7.034 |
+| Non-NIA mean, corrected | 7.064 | 7.240 |
+| Transit stop mean, raw | 6.15 | 6.00 |
+| Transit stop mean, corrected | 6.30 | 6.17 |
+| Staines Road, raw | 1.91 | 1.85 |
+| Staines Road, corrected | 1.91 | 1.86 |
+| Downsview, corrected | 3.86 | 3.90 |
+| Corrected shadiest neighbourhood | Rosedale-Moore Park, 11.25 | Lawrence Park South, 11.30 |
+
+The corrected NIA gap is 0.206 hours rather than 0.209. H1, H2, H3 and H4
+still hold as published. The governing shortage remains a clear failure at
+5.26% against the pre-registered 25% threshold, so the title does not change.
+
+The first outside-downtown arterial ranking returned Oxton Avenue at 10.70
+raw and 11.54 corrected, but the feature contains only 309.7 m of sampled
+centreline and is a short residential street tagged as an arterial. The
+published ranking requires at least 1 km of sampled centreline. Under that
+floor the leader is St. Clair Avenue East, 9.99 raw and 10.65 corrected over
+1,051.7 m. The floor and sampled length are written into `statistics.json`.
 
 ## Title rule
 

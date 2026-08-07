@@ -1,0 +1,35 @@
+{
+  "date": "2026-01-21",
+  "hour": 12,
+  "solar_noon": "12:29 -0500",
+  "altitude_deg": 26.24,
+  "azimuth_deg": 172.43,
+  "resolution_m": 2.0,
+  "frames": 1,
+  "note": "one frame at the modelled hour nearest January solar noon; it says how much ground is shaded at midday and nothing about how long winter shade lasts",
+  "corrected_note": "the leaf-on correction models summer foliage; in January the trees are bare, so the measured column is the physically right one",
+  "surfaces": {
+    "raw": {
+      "ground_pixels": 96756690,
+      "shaded_ground_pixels": 45689980,
+      "shaded_fraction": 0.4722
+    },
+    "corrected": {
+      "ground_pixels": 96756690,
+      "shaded_ground_pixels": 51546741,
+      "shaded_fraction": 0.5327
+    }
+  },
+  "july_minimum_frame": {
+    "raw": {
+      "hour": 13,
+      "altitude_deg": 66.19,
+      "shaded_fraction": 0.1073
+    },
+    "corrected": {
+      "hour": 13,
+      "altitude_deg": 66.19,
+      "shaded_fraction": 0.2073
+    }
+  }
+}

@@ -26,7 +26,8 @@ from rasterio.windows import Window
 import fg04_canopy
 import fg04_solar as solar
 from fg04_stats import (FRAMES, HOURS, histogram, mean_from_histogram,
-                        median_from_histogram, shaded_hours, shortage_share)
+                        median_from_histogram, shaded_hours, shadiest_among,
+                        shortage_share)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.abspath(os.path.join(HERE, ".."))
@@ -45,8 +46,38 @@ BANDS = {"walk": (8.0, 15.0), "road": (0.0, 6.0)}
 PRIMARY_BAND = "walk"
 SHADE_POOR_N = 5            # pre-registered N
 SHORTAGE_X = 25.0           # pre-registered X, per cent of arterial kilometres
+OUTSIDE_DOWNTOWN_MIN_LENGTH_M = 1000.0
 SURFACES = ("raw", "corrected")
 ALL_HOURS = 0x7FFF          # bits 0 to 14 set, every modelled daylight hour
+
+# Downtown, as a reader means it: Bathurst to the Don, the lake to Bloor.
+# The shadiest arterial in the city is York Street, which is downtown, and a
+# reader who lives anywhere else learns nothing from it. Excluding these
+# names answers the question they actually have.
+#
+# Chosen with Jonathan over the narrower alternative of the five tower
+# districts the guide already names, which would have been circular: that
+# set is defined by the answer it is meant to exclude, and it would let a
+# Kensington-Chinatown street count as outside downtown.
+DOWNTOWN = frozenset({
+    "Annex",
+    "Bay-Cloverhill",
+    "Cabbagetown-South St.James Town",
+    "Church-Wellesley",
+    "Downtown Yonge East",
+    "Fort York-Liberty Village",
+    "Harbourfront-CityPlace",
+    "Kensington-Chinatown",
+    "Moss Park",
+    "North St.James Town",
+    "Palmerston-Little Italy",
+    "Regent Park",
+    "St Lawrence-East Bayfront-The Islands",
+    "Trinity-Bellwoods",
+    "University",
+    "Wellington Place",
+    "Yonge-Bay Corridor",
+})
 
 
 def burn(geometries, values, shape, transform, dtype="int32", fill=0):
@@ -81,6 +112,32 @@ def clip_to_city(frame, boundary):
     a denominator containing Mississauga and Markham is not a Toronto claim.
     """
     return frame.clip(boundary).reset_index(drop=True)
+
+
+def downtown_mask(segments, hoods):
+    """True for every segment that touches downtown at all.
+
+    A street that runs in and out of downtown is still a downtown street for
+    this purpose. Half of University Avenue is not an answer to "where else
+    is there shade".
+
+    The neighbourhood names are asserted rather than matched loosely,
+    because a renamed or misspelt one would silently shrink the exclusion
+    and hand the superlative straight back to a downtown street.
+    """
+    known = set(hoods["AREA_NAME"])
+    missing = DOWNTOWN - known
+    if missing:
+        raise SystemExit(
+            f"downtown neighbourhoods not in the layer: {sorted(missing)}; "
+            f"the 158-neighbourhood names have changed and DOWNTOWN needs "
+            f"revisiting")
+    core = hoods[hoods["AREA_NAME"].isin(DOWNTOWN)]
+    if core.empty:
+        return np.zeros(len(segments), dtype=bool)
+    hit = gpd.sjoin(segments[["geometry"]], core[["geometry"]],
+                    predicate="intersects", how="inner")
+    return np.isin(np.arange(len(segments)), hit.index.unique())
 
 
 def load_layers(crs, clip_city=True):
@@ -242,7 +299,7 @@ def sample_stops(stops, surface, trees=None):
 
 
 def summarise(surface, data, frames, hoods, nia, segments, stops,
-              trees=None):
+              trees=None, downtown=None):
     ground_total = data["ground"]
     per_frame = [
         {"hour": int(frame.clock.hour),
@@ -286,6 +343,17 @@ def summarise(surface, data, frames, hoods, nia, segments, stops,
     shadiest = int(np.nanargmax(art_mean)) if have.any() else None
     sunniest = int(np.nanargmin(art_mean)) if have.any() else None
 
+    # The shadiest arterial is downtown, which is no use to a reader who
+    # does not live there. This is the same ranking with downtown taken out.
+    if downtown is None:
+        downtown = np.zeros(len(segments), dtype=bool)
+    beyond = shadiest_among(
+        art_mean,
+        arterial & ~downtown,
+        lengths_m=lengths,
+        minimum_length_m=OUTSIDE_DOWNTOWN_MIN_LENGTH_M,
+    )
+
     ranked = np.argsort(np.where(np.isnan(hood_mean[1:]), -np.inf,
                                  hood_mean[1:]))
     named = [i for i in ranked if not np.isnan(hood_mean[i + 1])]
@@ -323,6 +391,14 @@ def summarise(surface, data, frames, hoods, nia, segments, stops,
             {"name": str(names[sunniest]),
              "mean_shaded_hours": round(float(art_mean[sunniest]), 2)}
             if sunniest is not None else None),
+        "shadiest_arterial_outside_downtown": (
+            {"name": str(names[beyond]),
+             "mean_shaded_hours": round(float(art_mean[beyond]), 2),
+             "sampled_length_m": round(float(lengths[beyond]), 1),
+             "minimum_sampled_length_m": OUTSIDE_DOWNTOWN_MIN_LENGTH_M,
+             "downtown_segments_excluded": int(downtown.sum()),
+             "downtown_neighbourhoods": sorted(DOWNTOWN)}
+            if beyond is not None else None),
         "transit_stops": {
             "count": int(len(stops)),
             "mean_shaded_hours": round(float(stop_hours.mean()), 2),
@@ -353,6 +429,11 @@ def main(block: int) -> None:
           f"({int((segments['kind'] == 'arterial').sum())} arterial), "
           f"{len(stops)} transit stops")
 
+    downtown = downtown_mask(segments, hoods)
+    print(f"{len(DOWNTOWN)} downtown neighbourhoods exclude "
+          f"{int((downtown & (segments['kind'] == 'arterial')).sum())} "
+          f"arterial segments")
+
     accum, sources = accumulate(block, crs, transform, width, height,
                                 hoods, nia, segments, cover)
     for handle in sources.values():
@@ -370,7 +451,8 @@ def main(block: int) -> None:
         },
         "surfaces": {
             surface: summarise(surface, accum[surface], frames,
-                               hoods, nia, segments, stops)
+                               hoods, nia, segments, stops,
+                               downtown=downtown)
             for surface in SURFACES
         },
     }
@@ -392,6 +474,14 @@ def main(block: int) -> None:
                   f"shade-poor {band['shade_poor_share_percent']}% of "
                   f"{band['arterial_km_sampled']} km, "
                   f"shortage {band['shortage_holds']}{mark}")
+        best = block_report["shadiest_arterial"]
+        beyond = block_report["shadiest_arterial_outside_downtown"]
+        if best:
+            print(f"    shadiest arterial: {best['name']}, "
+                  f"{best['mean_shaded_hours']}")
+        if beyond:
+            print(f"    shadiest outside downtown: {beyond['name']}, "
+                  f"{beyond['mean_shaded_hours']}")
     print(f"\nwrote {out}")
 
 

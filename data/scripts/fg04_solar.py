@@ -13,6 +13,12 @@ import pandas as pd
 import pvlib
 
 MODEL_DATE = "2026-07-21"
+
+# Chapter six's date. The guide is a July guide and this is the only winter
+# figure in it, chosen as 21 January to mirror 21 July rather than for any
+# property of the day itself.
+WINTER_DATE = "2026-01-21"
+
 TZ = "America/Toronto"
 TORONTO = (43.6532, -79.3832)
 FIRST_HOUR = 6
@@ -52,6 +58,21 @@ def hourly_frames(date: str = MODEL_DATE) -> list[SunFrame]:
         raise RuntimeError(
             f"{len(frames)} frames will not fit a 16 bit mask")
     return frames
+
+
+def frame_nearest_solar_noon(date: str = MODEL_DATE) -> SunFrame:
+    """The modelled hour closest to solar noon on `date`.
+
+    This is already the convention behind the published 13:00 figure: solar
+    noon on 21 July is 13:24, and 13:00 is the nearest hour the model has.
+    Naming it here means the winter figure follows the same rule instead of
+    a hardcoded hour, and the rule is what makes the two comparable.
+    """
+    frames = hourly_frames(date)
+    if not frames:
+        raise ValueError(f"no daylight frames on {date}")
+    noon = solar_noon(date)
+    return min(frames, key=lambda frame: abs(frame.clock - noon))
 
 
 def shadow_ratio(altitude_deg: float) -> float:

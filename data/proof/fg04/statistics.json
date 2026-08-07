@@ -18,7 +18,7 @@
   "surfaces": {
     "raw": {
       "surface": "raw",
-      "ground_pixels": 96753711,
+      "ground_pixels": 96756690,
       "citywide_mean_shaded_hours": 6.201,
       "per_frame": [
         {
@@ -108,22 +108,22 @@
           "inner_m": 8.0,
           "outer_m": 15.0,
           "arterial_km_sampled": 1128.6,
-          "shade_poor_arterial_km": 76.6,
-          "shade_poor_share_percent": 6.79,
+          "shade_poor_arterial_km": 95.9,
+          "shade_poor_share_percent": 8.49,
           "shortage_holds": false
         },
         "road": {
           "inner_m": 0.0,
           "outer_m": 6.0,
           "arterial_km_sampled": 1128.6,
-          "shade_poor_arterial_km": 473.1,
-          "shade_poor_share_percent": 41.92,
+          "shade_poor_arterial_km": 474.4,
+          "shade_poor_share_percent": 42.04,
           "shortage_holds": true
         }
       },
       "arterial_km_sampled": 1128.6,
-      "shade_poor_arterial_km": 76.6,
-      "shade_poor_share_percent": 6.79,
+      "shade_poor_arterial_km": 95.9,
+      "shade_poor_share_percent": 8.49,
       "shortage_holds": false,
       "nia_mean_shaded_hours": 6.027,
       "non_nia_mean_shaded_hours": 6.246,
@@ -178,30 +178,56 @@
       },
       "sunniest_arterial": {
         "name": "Staines Road",
-        "mean_shaded_hours": 1.91
+        "mean_shaded_hours": 1.85
+      },
+      "shadiest_arterial_outside_downtown": {
+        "name": "St. Clair Avenue East",
+        "mean_shaded_hours": 9.99,
+        "sampled_length_m": 1051.7,
+        "minimum_sampled_length_m": 1000.0,
+        "downtown_segments_excluded": 589,
+        "downtown_neighbourhoods": [
+          "Annex",
+          "Bay-Cloverhill",
+          "Cabbagetown-South St.James Town",
+          "Church-Wellesley",
+          "Downtown Yonge East",
+          "Fort York-Liberty Village",
+          "Harbourfront-CityPlace",
+          "Kensington-Chinatown",
+          "Moss Park",
+          "North St.James Town",
+          "Palmerston-Little Italy",
+          "Regent Park",
+          "St Lawrence-East Bayfront-The Islands",
+          "Trinity-Bellwoods",
+          "University",
+          "Wellington Place",
+          "Yonge-Bay Corridor"
+        ]
       },
       "transit_stops": {
         "count": 8432,
-        "mean_shaded_hours": 6.15,
+        "mean_shaded_hours": 6.0,
         "sunniest": [
           {
-            "name": "Pharmacy Ave at Princeway Dr",
+            "name": "Senlac Rd at York Cemetery",
             "shaded_hours": 1
           },
           {
-            "name": "Canmore Blvd at Charcoal Dr (West) East Side",
+            "name": "Runnymede Rd at Dundas St West North Side",
             "shaded_hours": 1
           },
           {
-            "name": "Dupont St at Davenport Rd",
+            "name": "400 The West Mall",
             "shaded_hours": 1
           },
           {
-            "name": "Northover St at Giltspur Dr",
+            "name": "Steeles Ave East at Brimley Rd",
             "shaded_hours": 1
           },
           {
-            "name": "Weston Rd at Northland Ave",
+            "name": "The Queensway at Royal York Rd",
             "shaded_hours": 1
           }
         ]
@@ -209,8 +235,8 @@
     },
     "corrected": {
       "surface": "corrected",
-      "ground_pixels": 96753711,
-      "citywide_mean_shaded_hours": 7.02,
+      "ground_pixels": 96756690,
+      "citywide_mean_shaded_hours": 7.197,
       "per_frame": [
         {
           "hour": 6,
@@ -220,78 +246,78 @@
         {
           "hour": 7,
           "altitude_deg": 9.87,
-          "shaded_fraction": 0.7461
+          "shaded_fraction": 0.7606
         },
         {
           "hour": 8,
           "altitude_deg": 20.33,
-          "shaded_fraction": 0.5841
+          "shaded_fraction": 0.6015
         },
         {
           "hour": 9,
           "altitude_deg": 31.12,
-          "shaded_fraction": 0.4603
+          "shaded_fraction": 0.4776
         },
         {
           "hour": 10,
           "altitude_deg": 41.88,
-          "shaded_fraction": 0.3736
+          "shaded_fraction": 0.3912
         },
         {
           "hour": 11,
           "altitude_deg": 52.12,
-          "shaded_fraction": 0.2976
+          "shaded_fraction": 0.3158
         },
         {
           "hour": 12,
           "altitude_deg": 60.88,
-          "shaded_fraction": 0.2197
+          "shaded_fraction": 0.2408
         },
         {
           "hour": 13,
           "altitude_deg": 66.19,
-          "shaded_fraction": 0.197
+          "shaded_fraction": 0.2073
         },
         {
           "hour": 14,
           "altitude_deg": 65.53,
-          "shaded_fraction": 0.2081
+          "shaded_fraction": 0.2176
         },
         {
           "hour": 15,
           "altitude_deg": 59.3,
-          "shaded_fraction": 0.2437
+          "shaded_fraction": 0.249
         },
         {
           "hour": 16,
           "altitude_deg": 50.12,
-          "shaded_fraction": 0.3184
+          "shaded_fraction": 0.3247
         },
         {
           "hour": 17,
           "altitude_deg": 39.71,
-          "shaded_fraction": 0.3913
+          "shaded_fraction": 0.399
         },
         {
           "hour": 18,
           "altitude_deg": 28.91,
-          "shaded_fraction": 0.4923
+          "shaded_fraction": 0.5016
         },
         {
           "hour": 19,
           "altitude_deg": 18.15,
-          "shaded_fraction": 0.6466
+          "shaded_fraction": 0.6583
         },
         {
           "hour": 20,
           "altitude_deg": 7.78,
-          "shaded_fraction": 0.8417
+          "shaded_fraction": 0.852
         }
       ],
       "minimum_frame": {
         "hour": 13,
         "altitude_deg": 66.19,
-        "shaded_fraction": 0.197
+        "shaded_fraction": 0.2073
       },
       "primary_band": "walk",
       "bands": {
@@ -299,27 +325,31 @@
           "inner_m": 8.0,
           "outer_m": 15.0,
           "arterial_km_sampled": 1128.6,
-          "shade_poor_arterial_km": 43.9,
-          "shade_poor_share_percent": 3.89,
+          "shade_poor_arterial_km": 59.4,
+          "shade_poor_share_percent": 5.26,
           "shortage_holds": false
         },
         "road": {
           "inner_m": 0.0,
           "outer_m": 6.0,
           "arterial_km_sampled": 1128.6,
-          "shade_poor_arterial_km": 447.1,
-          "shade_poor_share_percent": 39.61,
+          "shade_poor_arterial_km": 445.8,
+          "shade_poor_share_percent": 39.5,
           "shortage_holds": true
         }
       },
       "arterial_km_sampled": 1128.6,
-      "shade_poor_arterial_km": 43.9,
-      "shade_poor_share_percent": 3.89,
+      "shade_poor_arterial_km": 59.4,
+      "shade_poor_share_percent": 5.26,
       "shortage_holds": false,
-      "nia_mean_shaded_hours": 6.855,
-      "non_nia_mean_shaded_hours": 7.064,
+      "nia_mean_shaded_hours": 7.034,
+      "non_nia_mean_shaded_hours": 7.24,
       "nia_polygons": 33,
       "shadiest_neighbourhoods": [
+        {
+          "name": "Lawrence Park South",
+          "mean_shaded_hours": 11.3
+        },
         {
           "name": "Rosedale-Moore Park",
           "mean_shaded_hours": 11.25
@@ -327,10 +357,6 @@
         {
           "name": "Mount Pleasant East",
           "mean_shaded_hours": 11.17
-        },
-        {
-          "name": "Lawrence Park South",
-          "mean_shaded_hours": 11.08
         },
         {
           "name": "Church-Wellesley",
@@ -344,23 +370,23 @@
       "sunniest_neighbourhoods": [
         {
           "name": "Downsview",
-          "mean_shaded_hours": 3.86
+          "mean_shaded_hours": 3.9
         },
         {
           "name": "West Humber-Clairville",
-          "mean_shaded_hours": 4.87
+          "mean_shaded_hours": 4.92
         },
         {
           "name": "South Riverdale",
           "mean_shaded_hours": 5.41
         },
         {
-          "name": "Milliken",
-          "mean_shaded_hours": 5.55
+          "name": "Etobicoke City Centre",
+          "mean_shaded_hours": 5.71
         },
         {
-          "name": "Etobicoke City Centre",
-          "mean_shaded_hours": 5.66
+          "name": "Fort York-Liberty Village",
+          "mean_shaded_hours": 5.72
         }
       ],
       "shadiest_arterial": {
@@ -369,30 +395,56 @@
       },
       "sunniest_arterial": {
         "name": "Staines Road",
-        "mean_shaded_hours": 1.91
+        "mean_shaded_hours": 1.86
+      },
+      "shadiest_arterial_outside_downtown": {
+        "name": "St. Clair Avenue East",
+        "mean_shaded_hours": 10.65,
+        "sampled_length_m": 1051.7,
+        "minimum_sampled_length_m": 1000.0,
+        "downtown_segments_excluded": 589,
+        "downtown_neighbourhoods": [
+          "Annex",
+          "Bay-Cloverhill",
+          "Cabbagetown-South St.James Town",
+          "Church-Wellesley",
+          "Downtown Yonge East",
+          "Fort York-Liberty Village",
+          "Harbourfront-CityPlace",
+          "Kensington-Chinatown",
+          "Moss Park",
+          "North St.James Town",
+          "Palmerston-Little Italy",
+          "Regent Park",
+          "St Lawrence-East Bayfront-The Islands",
+          "Trinity-Bellwoods",
+          "University",
+          "Wellington Place",
+          "Yonge-Bay Corridor"
+        ]
       },
       "transit_stops": {
         "count": 8432,
-        "mean_shaded_hours": 6.3,
+        "mean_shaded_hours": 6.17,
         "sunniest": [
           {
-            "name": "Pharmacy Ave at Princeway Dr",
+            "name": "Midland Ave at Emblem Crt",
             "shaded_hours": 1
           },
           {
-            "name": "Birchmount Rd at Parnell Ave",
+            "name": "Cummer Ave at Snowcrest Ave (West)",
             "shaded_hours": 1
           },
           {
-            "name": "Jones Ave at Boultbee Ave",
+            "name": "Warden Ave at Roper Rd (North Commuter Parking Lot)",
             "shaded_hours": 1
           },
           {
-            "name": "Sheppard Ave West at Arrow Rd",
+            "name": "Marlee Ave at Stayner Ave",
             "shaded_hours": 1
           },
           {
-            "name": "Lawrence Ave East at Bellamy Rd North",
+            "name": "Kingston Rd at Highland Creek Overpass",
             "shaded_hours": 1
           }
         ]
