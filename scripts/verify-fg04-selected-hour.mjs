@@ -260,7 +260,65 @@ const proofExpression = `(() => {
   return { ready: true, passed, checks, centres, pointProfile };
 })()`;
 
-async function runBrowser(executable, url, profile) {
+const streetProofExpression = `(() => {
+  const explorer = window.__fg04Explorer;
+  if (!explorer || explorer.maps.length !== 2) return { ready: false };
+  if (!explorer.maps.every(({ map }) => map.isStyleLoaded())) return { ready: false };
+  const street = explorer.getStreetResult();
+  if (!street) return { ready: false };
+  const centres = explorer.maps.map(({ map }) => {
+    const center = map.getCenter();
+    return [center.lng, center.lat, map.getZoom()];
+  });
+  const cameraReady = centres.every((camera) => (
+    Math.abs(camera[0] - street.center[0]) < 0.0001
+    && Math.abs(camera[1] - street.center[1]) < 0.0001
+    && camera[2] >= 15
+  ));
+  if (!cameraReady) return { ready: false };
+
+  const input = document.querySelector('[data-fg04-street-search]');
+  const hour = document.querySelector('[data-fg04-hour]');
+  const measured13 = document.querySelector('[data-fg04-street-selected-measured]')?.textContent;
+  const corrected13 = document.querySelector('[data-fg04-street-selected-corrected]')?.textContent;
+  input.value = 'York Street';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  const resultButton = Array.from(document.querySelectorAll('.fg04-street__result'))
+    .find((button) => button.textContent === 'York Street');
+  const ordinaryResultButton = resultButton?.tagName === 'BUTTON'
+    && resultButton.type === 'button' && resultButton.tabIndex === 0;
+  resultButton?.click();
+  hour.value = '16';
+  hour.dispatchEvent(new Event('input', { bubbles: true }));
+  hour.dispatchEvent(new Event('change', { bubbles: true }));
+
+  const checks = {
+    streetCount: explorer.getStreetCount() === 8507,
+    directStreet: street.id === 'york-street' && street.name === 'York Street',
+    directUrl: new URL(location.href).searchParams.get('street') === 'york-street',
+    sameStreetCamera: cameraReady,
+    inputRestored: input.value === 'York Street' && input.disabled === false,
+    ordinaryResultButton,
+    pairedKnown13: measured13 === '23.9% shaded' && corrected13 === '24.8% shaded',
+    profileHasFifteenRows: document.querySelectorAll('[data-fg04-street-table] tr').length === 15,
+    everyRowPaired: Array.from(document.querySelectorAll('[data-fg04-street-table] tr'))
+      .every((row) => row.querySelectorAll('td').length === 2),
+    selected16: document.querySelector('[data-fg04-street-selected-measured]')?.textContent === '64.6% shaded'
+      && document.querySelector('[data-fg04-street-selected-corrected]')?.textContent === '64.9% shaded',
+    oneSelectedHour: document.querySelectorAll('[data-fg04-street-strip] [data-selected="true"]').length === 1,
+    pointCleared: explorer.getPointResult() === null
+      && document.querySelectorAll('.fg04-point-marker').length === 0,
+  };
+  return {
+    ready: true,
+    passed: Object.values(checks).every((value) => value === true),
+    checks,
+    centres,
+    street,
+  };
+})()`;
+
+async function runBrowser(executable, url, profile, expression, label) {
   const child = spawn(executable, [
     '--headless=new',
     '--disable-background-networking',
@@ -290,7 +348,7 @@ async function runBrowser(executable, url, profile) {
       await cdp.call('Runtime.enable');
       for (let attempt = 0; attempt < 300; attempt += 1) {
         const result = await cdp.call('Runtime.evaluate', {
-          expression: proofExpression,
+          expression,
           returnByValue: true,
           awaitPromise: true,
         });
@@ -301,7 +359,7 @@ async function runBrowser(executable, url, profile) {
         const value = result.result?.value;
         if (value?.ready) {
           if (!value.passed) {
-            throw new Error(`selected-hour browser proof failed: ${JSON.stringify(value)}`);
+            throw new Error(`${label} browser proof failed: ${JSON.stringify(value)}`);
           }
           return value;
         }
@@ -318,7 +376,7 @@ async function runBrowser(executable, url, profile) {
         returnByValue: true,
       });
       throw new Error(
-        `selected-hour browser proof did not finish in 30 seconds: `
+        `${label} browser proof did not finish in 30 seconds: `
         + JSON.stringify(diagnostic.result?.value),
       );
     } finally {
@@ -338,7 +396,8 @@ if (!existsSync(resolve(DIST, 'guides/throwing-shade/index.html'))) {
 }
 
 const server = createServer(serve);
-const profile = mkdtempSync(join(tmpdir(), 'fg04-explorer-proof-'));
+const pointBrowserProfile = mkdtempSync(join(tmpdir(), 'fg04-point-proof-'));
+const streetBrowserProfile = mkdtempSync(join(tmpdir(), 'fg04-street-proof-'));
 try {
   await new Promise((resolveListen, rejectListen) => {
     server.once('error', rejectListen);
@@ -353,13 +412,31 @@ try {
   });
   const url = `http://127.0.0.1:${address.port}`
     + `/guides/throwing-shade/?${query}`;
-  const result = await runBrowser(browserPath(), url, profile);
+  const result = await runBrowser(
+    browserPath(), url, pointBrowserProfile, proofExpression, 'selected-hour',
+  );
+  const streetQuery = new URLSearchParams({
+    tiles: 'local',
+    street: 'york-street',
+  });
+  const streetUrl = `http://127.0.0.1:${address.port}`
+    + `/guides/throwing-shade/?${streetQuery}`;
+  const streetResult = await runBrowser(
+    browserPath(), streetUrl, streetBrowserProfile,
+    streetProofExpression, 'street-profile',
+  );
   if (Object.values(tileRequests).some((count) => count === 0)) {
     throw new Error(`browser did not request every tile product: ${JSON.stringify(tileRequests)}`);
   }
   result.tileRequests = tileRequests;
+  result.streetProof = streetResult;
   console.log(`FG04 selected-hour browser proof passed: ${JSON.stringify(result)}`);
 } finally {
   await new Promise((resolveClose) => server.close(resolveClose));
-  rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  rmSync(pointBrowserProfile, {
+    recursive: true, force: true, maxRetries: 5, retryDelay: 100,
+  });
+  rmSync(streetBrowserProfile, {
+    recursive: true, force: true, maxRetries: 5, retryDelay: 100,
+  });
 }

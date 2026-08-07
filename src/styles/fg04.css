@@ -219,6 +219,265 @@
   }
 }
 
+/* ---- Street search -----------------------------------------------------
+   A second paired profile, at a declared street grain. Search results are
+   ordinary buttons so Tab and Enter work without reproducing a browser's
+   focus model in a custom combobox.
+   ------------------------------------------------------------------------- */
+
+.fg04-street {
+  margin-top: var(--space-6);
+  padding: var(--space-5);
+  border-left: 3px solid var(--atlas-accent-2);
+  background: var(--atlas-surface);
+}
+
+.fg04-street__title {
+  margin: 0 0 var(--space-1);
+  font-family: var(--font-heading);
+  font-size: var(--text-xl);
+  color: var(--atlas-ink);
+}
+
+.fg04-street__grain,
+.fg04-street__status,
+.fg04-street__sample {
+  margin: 0;
+  color: var(--atlas-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.fg04-street__form {
+  margin-top: var(--space-4);
+}
+
+.fg04-street__label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.fg04-street__search-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.fg04-street__search {
+  width: min(100%, 32rem);
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--atlas-control-line);
+  border-radius: 0;
+  background: var(--atlas-ground);
+  color: var(--atlas-ink);
+  font: inherit;
+}
+
+.fg04-street__search:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.fg04-street__search:focus-visible,
+.fg04-street__retry:focus-visible,
+.fg04-street__result:focus-visible,
+.fg04-street__details summary:focus-visible {
+  outline: 3px solid var(--atlas-focus);
+  outline-offset: 3px;
+}
+
+.fg04-street__retry,
+.fg04-street__result {
+  min-height: 2.75rem;
+  border: 1px solid var(--atlas-control-line);
+  border-radius: 0;
+  background: var(--atlas-ground);
+  color: var(--atlas-ink);
+  font-family: var(--font-ui);
+  cursor: pointer;
+}
+
+.fg04-street__retry {
+  padding-inline: var(--space-4);
+  font-weight: 700;
+}
+
+.fg04-street__status {
+  min-height: 1.5em;
+  margin-top: var(--space-2);
+}
+
+.fg04-street__results {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+}
+
+.fg04-street__result {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+}
+
+.fg04-street__result:hover {
+  border-color: var(--atlas-ink);
+}
+
+.fg04-street__profile {
+  margin-top: var(--space-5);
+}
+
+.fg04-street__profile-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.fg04-street__name {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--text-xl);
+  color: var(--atlas-ink);
+}
+
+.fg04-street__sample {
+  flex: 0 0 auto;
+  font-family: var(--font-ui);
+  font-variant-numeric: tabular-nums;
+}
+
+.fg04-street__selected {
+  padding-block: var(--space-3);
+  border-block: 1px solid var(--atlas-line);
+}
+
+.fg04-street__selected-time {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.fg04-street__selected-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.fg04-street__selected-pair p {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  color: var(--atlas-ink-muted);
+}
+
+.fg04-street__selected-pair strong {
+  font-size: var(--text-lg);
+  color: var(--atlas-ink);
+}
+
+.fg04-street__strip {
+  display: grid;
+  grid-template-columns: repeat(15, minmax(6.2rem, 1fr));
+  gap: 2px;
+  overflow-x: auto;
+  list-style: none;
+  margin: var(--space-4) 0;
+  padding: 0 0 var(--space-2);
+}
+
+.fg04-street__strip-hour {
+  display: grid;
+  gap: 3px;
+  min-width: 6.2rem;
+  padding: var(--space-2);
+  border: 1px solid var(--atlas-line);
+  background: var(--atlas-ground);
+}
+
+.fg04-street__strip-hour[data-selected='true'] {
+  border-color: var(--atlas-ink);
+  box-shadow: inset 0 -3px 0 var(--atlas-ink);
+}
+
+.fg04-street__strip-label,
+.fg04-street__strip-value {
+  font-family: var(--font-ui);
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.fg04-street__strip-label {
+  font-weight: 700;
+  color: var(--atlas-ink);
+}
+
+.fg04-street__strip-value {
+  color: var(--atlas-ink-muted);
+}
+
+.fg04-street__details summary {
+  width: fit-content;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--atlas-ink);
+}
+
+.fg04-street__table-wrap {
+  overflow-x: auto;
+  margin-top: var(--space-3);
+}
+
+.fg04-street__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  color: var(--atlas-ink);
+}
+
+.fg04-street__table th,
+.fg04-street__table td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--atlas-line);
+  text-align: left;
+}
+
+@media (max-width: 600px) {
+  .fg04-street {
+    padding: var(--space-4);
+  }
+
+  .fg04-street__results,
+  .fg04-street__selected-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fg04-street__profile-head {
+    display: block;
+  }
+
+  .fg04-street__sample {
+    margin-top: var(--space-1);
+  }
+}
+
 /* ============================================================
    Ranked pair: the same league table, read twice.
 

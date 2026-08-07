@@ -67,9 +67,9 @@
     }
   ],
   "network": {
-    "classificationV2Requests": 10,
-    "correctedV3Requests": 10,
-    "measuredV3Requests": 10,
+    "classificationV2Requests": 33,
+    "correctedV3Requests": 45,
+    "measuredV3Requests": 54,
     "proofMode": "same-origin local proxy of live R2 bytes",
     "productionCorsStillMissing": true
   },
@@ -95,5 +95,26 @@
       true, true, true, false, false,
       false, false, true, true, true
     ]
+  },
+  "streetProfile": {
+    "assetRecords": 8507,
+    "directId": "york-street",
+    "directCamera": [
+      -79.382523,
+      43.645446,
+      15
+    ],
+    "ordinaryResultButton": true,
+    "profileRows": 15,
+    "known13": {
+      "measured": "23.9% shaded",
+      "corrected": "24.8% shaded"
+    },
+    "selected16": {
+      "measured": "64.6% shaded",
+      "corrected": "64.9% shaded"
+    },
+    "sameCamera": true,
+    "shareableUrlRestored": true
   }
 }

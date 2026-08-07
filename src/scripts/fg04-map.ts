@@ -11,6 +11,12 @@ import {
   pointStateAtHour,
 } from './fg04-point.mjs';
 import { parseFg04State, serializeFg04State } from './fg04-state.mjs';
+import {
+  parseStreetProfiles,
+  profileAtHour,
+  searchStreets,
+  streetById,
+} from './fg04-streets.mjs';
 
 /**
  * The shade map: two surfaces, side by side, always both.
@@ -79,6 +85,9 @@ interface Manifest {
     tileUrlTemplate: string;
     localTileUrlTemplate: string;
     classBandStarts: Record<string, number>;
+  };
+  streetProfiles: {
+    url: string;
   };
 }
 
@@ -475,6 +484,97 @@ function renderPointLoading(root: HTMLElement, coordinate: [number, number]): vo
   }
 }
 
+interface StreetRecord {
+  id: string;
+  name: string;
+  center: [number, number];
+  lengthM: number;
+  groundPixels: number;
+  measured: number[];
+  corrected: number[];
+}
+
+interface StreetProfiles {
+  hours: number[];
+  streets: StreetRecord[];
+}
+
+function shadeFraction(value: number): string {
+  return `${(value * 100).toFixed(1)}%`;
+}
+
+function renderStreetSelectedHour(
+  root: HTMLElement,
+  street: StreetRecord,
+  hour: number,
+  hours: number[],
+): void {
+  const selected = profileAtHour(street, hour, hours);
+  const time = root.querySelector<HTMLElement>('[data-fg04-street-selected-time]');
+  const measured = root.querySelector<HTMLElement>(
+    '[data-fg04-street-selected-measured]',
+  );
+  const corrected = root.querySelector<HTMLElement>(
+    '[data-fg04-street-selected-corrected]',
+  );
+  if (time) time.textContent = `Selected hour, ${formatHour(hour)}`;
+  if (measured) measured.textContent = `${shadeFraction(selected.measured)} shaded`;
+  if (corrected) corrected.textContent = `${shadeFraction(selected.corrected)} shaded`;
+}
+
+function renderStreetProfile(
+  root: HTMLElement,
+  street: StreetRecord,
+  hour: number,
+  profiles: StreetProfiles,
+): void {
+  const panel = root.querySelector<HTMLElement>('[data-fg04-street-profile]');
+  const name = root.querySelector<HTMLElement>('[data-fg04-street-name]');
+  const sample = root.querySelector<HTMLElement>('[data-fg04-street-sample]');
+  const strip = root.querySelector<HTMLOListElement>('[data-fg04-street-strip]');
+  const table = root.querySelector<HTMLTableSectionElement>('[data-fg04-street-table]');
+  if (panel) panel.hidden = false;
+  if (name) name.textContent = street.name;
+  if (sample) sample.textContent = 'Named street profile at the explorer grain.';
+  if (strip) strip.replaceChildren();
+  if (table) table.replaceChildren();
+
+  profiles.hours.forEach((current, index) => {
+    const measured = shadeFraction(street.measured[index]);
+    const corrected = shadeFraction(street.corrected[index]);
+    const item = document.createElement('li');
+    item.className = 'fg04-street__strip-hour';
+    if (current === hour) {
+      item.dataset.selected = 'true';
+      item.setAttribute('aria-current', 'true');
+    }
+    const label = document.createElement('span');
+    label.className = 'fg04-street__strip-label';
+    label.textContent = `${String(current).padStart(2, '0')}:00`;
+    const rawValue = document.createElement('span');
+    rawValue.className = 'fg04-street__strip-value';
+    rawValue.textContent = `Measured ${measured}`;
+    const correctedValue = document.createElement('span');
+    correctedValue.className = 'fg04-street__strip-value';
+    correctedValue.textContent = `Corrected ${corrected}`;
+    item.append(label, rawValue, correctedValue);
+    strip?.append(item);
+
+    const row = document.createElement('tr');
+    if (current === hour) row.dataset.selected = 'true';
+    const hourCell = document.createElement('th');
+    hourCell.scope = 'row';
+    hourCell.textContent = formatHour(current);
+    const measuredCell = document.createElement('td');
+    measuredCell.textContent = `${measured} shaded`;
+    const correctedCell = document.createElement('td');
+    correctedCell.textContent = `${corrected} shaded`;
+    row.append(hourCell, measuredCell, correctedCell);
+    table?.append(row);
+  });
+  renderStreetSelectedHour(root, street, hour, profiles.hours);
+}
+
 function localTileOptIn(): boolean {
   const localHost = window.location.hostname === 'localhost'
     || window.location.hostname === '127.0.0.1';
@@ -573,6 +673,7 @@ export async function initShadeMap(): Promise<void> {
   const pointCache = new Map();
   let activePoint: PointProfile | null = null;
   let pointMarkers: maplibregl.Marker[] = [];
+  let clearStreetSelection = (): void => {};
 
   const placePointMarkers = (coordinate: [number, number]): void => {
     pointMarkers.forEach((marker) => marker.remove());
@@ -592,6 +693,11 @@ export async function initShadeMap(): Promise<void> {
       coordinate, pointManifest, pointCache,
     ),
     (profile: PointProfile) => {
+      if (
+        state.point === null
+        || profile.coordinate[0] !== state.point[0]
+        || profile.coordinate[1] !== state.point[1]
+      ) return;
       activePoint = profile;
       renderPointProfile(root, profile, state.hour, manifest);
     },
@@ -605,6 +711,7 @@ export async function initShadeMap(): Promise<void> {
       Number(coordinate[0].toFixed(5)),
       Number(coordinate[1].toFixed(5)),
     ];
+    clearStreetSelection();
     const centre = maps[0]?.map.getCenter();
     const camera: [number, number, number] | null = centre
       ? [centre.lng, centre.lat, maps[0].map.getZoom()]
@@ -636,6 +743,161 @@ export async function initShadeMap(): Promise<void> {
     selectPoint([state.point[0], state.point[1]], 'none');
   }
 
+  const streetInput = root.querySelector<HTMLInputElement>(
+    '[data-fg04-street-search]',
+  );
+  const streetResults = root.querySelector<HTMLUListElement>(
+    '[data-fg04-street-results]',
+  );
+  const streetStatus = root.querySelector<HTMLElement>(
+    '[data-fg04-street-status]',
+  );
+  const streetProfile = root.querySelector<HTMLElement>(
+    '[data-fg04-street-profile]',
+  );
+  const streetRetry = root.querySelector<HTMLButtonElement>(
+    '[data-fg04-street-retry]',
+  );
+  let streetData: StreetProfiles | null = null;
+  let activeStreet: StreetRecord | null = null;
+  let currentStreetResults: StreetRecord[] = [];
+  let streetLoadGeneration = 0;
+
+  const clearPointSelection = (): void => {
+    activePoint = null;
+    pointMarkers.forEach((marker) => marker.remove());
+    pointMarkers = [];
+    const panel = root.querySelector<HTMLElement>('[data-fg04-point-profile]');
+    const coordinate = root.querySelector<HTMLElement>('[data-fg04-point-coordinate]');
+    const status = root.querySelector<HTMLElement>('[data-fg04-point-status]');
+    if (panel) panel.hidden = true;
+    if (coordinate) coordinate.hidden = true;
+    if (status) {
+      status.textContent = 'Select a point to see its shade profile from 06:00 to 20:00 EDT.';
+    }
+  };
+
+  clearStreetSelection = (): void => {
+    activeStreet = null;
+    currentStreetResults = [];
+    streetResults?.replaceChildren();
+    if (streetProfile) streetProfile.hidden = true;
+    if (streetInput) streetInput.value = '';
+    if (streetStatus && streetData) {
+      streetStatus.textContent = 'Type a street name to search.';
+    }
+  };
+
+  const renderStreetResults = (query: string): void => {
+    streetResults?.replaceChildren();
+    if (!streetData) return;
+    currentStreetResults = searchStreets(streetData.streets, query);
+    if (!query.trim()) {
+      if (streetStatus) streetStatus.textContent = 'Type a street name to search.';
+      return;
+    }
+    if (currentStreetResults.length === 0) {
+      if (streetStatus) streetStatus.textContent = 'No matching street. Try another name.';
+      return;
+    }
+    if (streetStatus) {
+      streetStatus.textContent = `${currentStreetResults.length} matching ${currentStreetResults.length === 1 ? 'street' : 'streets'}.`;
+    }
+    currentStreetResults.forEach((street) => {
+      const item = document.createElement('li');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'fg04-street__result';
+      button.textContent = street.name;
+      button.addEventListener('click', () => selectStreet(street));
+      item.append(button);
+      streetResults?.append(item);
+    });
+  };
+
+  const selectStreet = (
+    street: StreetRecord,
+    historyMode: 'none' | 'push' = 'push',
+    moveCamera = true,
+  ): void => {
+    if (!streetData) return;
+    clearPointSelection();
+    activeStreet = street;
+    currentStreetResults = [];
+    streetResults?.replaceChildren();
+    if (streetInput) streetInput.value = street.name;
+    if (streetStatus) streetStatus.textContent = `Showing ${street.name}.`;
+    renderStreetProfile(root, street, state.hour, streetData);
+
+    let camera = state.map;
+    if (moveCamera && maps[0]) {
+      const zoom = Math.max(15, maps[0].map.getZoom());
+      camera = [street.center[0], street.center[1], zoom];
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      maps[0].map.easeTo({ center: street.center, zoom, duration: reducedMotion ? 0 : 650 });
+    }
+    state = { ...state, map: camera, point: null, street: street.id };
+    if (historyMode === 'push') {
+      window.history.pushState(null, '', stateUrl(state));
+      committedState = { ...state };
+    }
+  };
+
+  const loadStreetData = async (): Promise<void> => {
+    streetLoadGeneration += 1;
+    const generation = streetLoadGeneration;
+    streetData = null;
+    currentStreetResults = [];
+    streetResults?.replaceChildren();
+    if (streetInput) streetInput.disabled = true;
+    if (streetRetry) streetRetry.hidden = true;
+    if (streetProfile) streetProfile.hidden = true;
+    if (streetStatus) streetStatus.textContent = 'Loading the street index.';
+    try {
+      const response = await fetch(manifest.streetProfiles.url);
+      if (!response.ok) throw new Error(`street profiles ${response.status}`);
+      const parsed = parseStreetProfiles(await response.json()) as StreetProfiles;
+      if (generation !== streetLoadGeneration) return;
+      streetData = parsed;
+      if (streetInput) streetInput.disabled = false;
+      if (state.street !== null) {
+        const linked = streetById(parsed.streets, state.street) as StreetRecord | null;
+        if (!linked) {
+          if (streetStatus) {
+            streetStatus.textContent = 'The linked street is not in this edition. Search another street.';
+          }
+          return;
+        }
+        selectStreet(linked, 'none', state.map === null);
+      } else if (streetStatus) {
+        streetStatus.textContent = `Search ${parsed.streets.length.toLocaleString('en-CA')} named streets.`;
+      }
+    } catch {
+      if (generation !== streetLoadGeneration) return;
+      if (streetStatus) {
+        streetStatus.textContent = 'The street index could not load. Try again.';
+      }
+      if (streetRetry) streetRetry.hidden = false;
+    }
+  };
+
+  streetInput?.addEventListener('input', () => {
+    renderStreetResults(streetInput.value);
+  });
+  streetInput?.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    currentStreetResults = [];
+    streetResults?.replaceChildren();
+    if (streetStatus) streetStatus.textContent = 'Search results cleared.';
+  });
+  root.querySelector<HTMLFormElement>('[data-fg04-street-form]')
+    ?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      if (currentStreetResults[0]) selectStreet(currentStreetResults[0]);
+    });
+  streetRetry?.addEventListener('click', () => void loadStreetData());
+  void loadStreetData();
+
   const applyHour = (hour: number): void => {
     state = { ...state, hour };
     maps.forEach(({ map, surface }) => {
@@ -652,6 +914,9 @@ export async function initShadeMap(): Promise<void> {
     });
     updateHourChrome(root, hour);
     if (activePoint) renderPointProfile(root, activePoint, hour, manifest);
+    if (activeStreet && streetData) {
+      renderStreetProfile(root, activeStreet, hour, streetData);
+    }
   };
 
   input?.addEventListener('input', () => {
@@ -674,6 +939,8 @@ export async function initShadeMap(): Promise<void> {
         errors: string[];
         getPointResult: () => PointProfile | null;
         getPointCacheSize: () => number;
+        getStreetResult: () => StreetRecord | null;
+        getStreetCount: () => number;
       };
     };
     diagnosticWindow.__fg04Explorer = {
@@ -681,6 +948,8 @@ export async function initShadeMap(): Promise<void> {
       errors: diagnosticErrors,
       getPointResult: () => activePoint,
       getPointCacheSize: () => pointCache.size,
+      getStreetResult: () => activeStreet,
+      getStreetCount: () => streetData?.streets.length ?? 0,
     };
   }
 }

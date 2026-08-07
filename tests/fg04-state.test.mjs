@@ -109,6 +109,22 @@ test('street ids accept only the stable public wire format', () => {
   }
 });
 
+test('a street, hour, and camera make one canonical shareable state', () => {
+  const state = parseFg04State(
+    '?street=york-street&hour=16&map=-79.382523%2C43.645446%2C15',
+  );
+  assert.deepEqual(state, {
+    hour: 16,
+    map: [-79.38252, 43.64545, 15],
+    point: null,
+    street: 'york-street',
+  });
+  assert.equal(
+    serializeFg04State(state),
+    '?hour=16&map=-79.38252%2C43.64545%2C15.00&street=york-street',
+  );
+});
+
 test('serializer orders state and rejects invalid values', () => {
   assert.equal(
     serializeFg04State({

@@ -219,6 +219,100 @@ const SURFACES = [
       </details>
     </div>
   </section>
+
+  <section class="fg04-street" data-fg04-street aria-labelledby={`${id}-street-title`}>
+    <h3 class="fg04-street__title" id={`${id}-street-title`}>Explore a street</h3>
+    <p class="fg04-street__grain">
+      Search named walkable OpenStreetMap features of at least 100 m. Each
+      profile samples ground 8 to 15 m from the centreline. This explorer grain
+      is broader than the arterial-only analysis in the guide.
+    </p>
+
+    <form class="fg04-street__form" data-fg04-street-form>
+      <label class="fg04-street__label" for={`${id}-street-search`}>
+        Search for a Toronto street
+      </label>
+      <div class="fg04-street__search-row">
+        <input
+          class="fg04-street__search"
+          id={`${id}-street-search`}
+          data-fg04-street-search
+          type="search"
+          autocomplete="off"
+          aria-controls={`${id}-street-results`}
+          aria-describedby={`${id}-street-status`}
+          disabled
+        />
+        <button
+          class="fg04-street__retry"
+          data-fg04-street-retry
+          type="button"
+          hidden
+        >
+          Retry
+        </button>
+      </div>
+    </form>
+    <p
+      class="fg04-street__status"
+      id={`${id}-street-status`}
+      data-fg04-street-status
+      role="status"
+      aria-live="polite"
+    >
+      Loading the street index.
+    </p>
+    <ul
+      class="fg04-street__results"
+      id={`${id}-street-results`}
+      data-fg04-street-results
+      aria-label="Street search results"
+    />
+
+    <div class="fg04-street__profile" data-fg04-street-profile hidden>
+      <div class="fg04-street__profile-head">
+        <h4 class="fg04-street__name" data-fg04-street-name />
+        <p class="fg04-street__sample" data-fg04-street-sample />
+      </div>
+      <div class="fg04-street__selected" aria-live="polite">
+        <p class="fg04-street__selected-time" data-fg04-street-selected-time>
+          Selected hour, 13:00 EDT
+        </p>
+        <div class="fg04-street__selected-pair">
+          <p>
+            <span>Measured, leaf-off</span>
+            <strong data-fg04-street-selected-measured>Unknown</strong>
+          </p>
+          <p>
+            <span>Leaf-on corrected</span>
+            <strong data-fg04-street-selected-corrected>Unknown</strong>
+          </p>
+        </div>
+      </div>
+
+      <ol
+        class="fg04-street__strip"
+        data-fg04-street-strip
+        aria-label="Paired hourly street shade profile"
+      />
+
+      <details class="fg04-street__details">
+        <summary>Read the street profile as a table</summary>
+        <div class="fg04-street__table-wrap">
+          <table class="fg04-street__table">
+            <thead>
+              <tr>
+                <th scope="col">Clock hour</th>
+                <th scope="col">Measured, leaf-off</th>
+                <th scope="col">Leaf-on corrected</th>
+              </tr>
+            </thead>
+            <tbody data-fg04-street-table />
+          </table>
+        </div>
+      </details>
+    </div>
+  </section>
 </section>
 
 <script>

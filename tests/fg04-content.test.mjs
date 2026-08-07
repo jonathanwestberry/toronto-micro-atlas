@@ -383,6 +383,23 @@ test('point inspection has instructions, paired states, and a table alternative'
   assert.match(html, /<th[^>]*>Clock hour<\/th>/);
 });
 
+test('street search names its broader grain and keeps hourly values paired', () => {
+  const html = readRoute();
+  const copy = readCopy();
+
+  assert.match(copy, /Search for a Toronto street/);
+  assert.match(copy, /named walkable OpenStreetMap features/);
+  assert.match(copy, /8 to 15 m from the centreline/);
+  assert.match(copy, /broader than the arterial-only analysis/);
+  assert.match(html, /data-fg04-street-search/);
+  assert.match(html, /data-fg04-street-results/);
+  assert.match(html, /data-fg04-street-status/);
+  assert.match(html, /data-fg04-street-profile/);
+  assert.match(html, /data-fg04-street-table/);
+  assert.match(html, /<th[^>]*>Measured, leaf-off<\/th>/);
+  assert.match(html, /<th[^>]*>Leaf-on corrected<\/th>/);
+});
+
 test('the selected-hour legend uses declared shade tokens, not a second copy', () => {
   const html = readRoute();
 
