@@ -7,7 +7,40 @@
   ],
   "bytesTotal": 351624530,
   "channels": 3,
-  "countAggregation": "mean of the four children, rounded half up. The mask aggregates by majority vote per bit, which cannot preserve the mean count, so above the native zoom the count channel is the unbiased average and the mask is the best per-bit answer.",
+  "classification": {
+    "aggregation": "majority coverage, then majority ground, then majority canopy among ground; a canopy tie remains canopy",
+    "bytesTotal": 27564428,
+    "channel": "red",
+    "classBandStarts": {
+      "0": -10000.0,
+      "1": -3446.3999999999996,
+      "2": 3107.2000000000007,
+      "3": 9660.800000000003,
+      "4": 16214.400000000001
+    },
+    "localTileUrlTemplate": "/data/fg04/class-tiles/{z}/{x}/{y}.webp",
+    "reservedChannels": [
+      "green",
+      "blue"
+    ],
+    "tileUrlTemplate": "https://tiles.torontomicroatlas.com/fg04/class/v2/{z}/{x}/{y}.webp",
+    "tilesWritten": 10159,
+    "tilesWrittenByZoom": {
+      "12": 42,
+      "13": 143,
+      "14": 500,
+      "15": 1950,
+      "16": 7524
+    },
+    "values": {
+      "0": "missing",
+      "1": "non-ground",
+      "2": "ground",
+      "3": "ground under leaf-on canopy"
+    },
+    "version": "v2"
+  },
+  "countAggregation": "mean of the four children, rounded ties to even. The mask aggregates by majority vote per bit, which cannot preserve the mean count, so above the native zoom the count channel is the unbiased average and the mask is the best per-bit answer.",
   "countBandStarts": {
     "0": -10000.0,
     "1": -3446.3999999999996,
@@ -30,7 +63,7 @@
   "countChannel": "red",
   "countIsPopulationCountAtNativeZoomOnly": true,
   "dawnHour": 6,
-  "dawnNote": "The 06:00 frame sits at 0.38° above the horizon and is shaded everywhere by construction, so every pixel scores at least one shaded hour. Read the count as frames of the modelled day, not as hours of shade.",
+  "dawnNote": "The 06:00 frame sits at 0.38\u00b0 above the horizon and is shaded everywhere by construction, so every pixel scores at least one shaded hour. Read the count as frames of the modelled day, not as hours of shade.",
   "demUnpack": {
     "baseShift": 10000.0,
     "blueFactor": 0.1,
@@ -77,6 +110,27 @@
   "modelledDate": "2026-07-21",
   "nativeZoom": 16,
   "schemaVersion": 1,
+  "streetProfiles": {
+    "anchorEvidence": {
+      "York Street": {
+        "centerlineM": 640.4,
+        "corrected": {
+          "profileFractionSum": 11.74,
+          "publishedMeanShadedFrames": 11.74
+        },
+        "grain": "Phase 2 arterial with 8 to 15 m walking band",
+        "groundPixels": 902,
+        "measured": {
+          "profileFractionSum": 11.7,
+          "publishedMeanShadedFrames": 11.7
+        }
+      }
+    },
+    "bytes": 3366123,
+    "records": 8507,
+    "schemaVersion": 1,
+    "url": "/data/fg04/street-profiles.json"
+  },
   "surfaceLabels": {
     "corrected": "Leaf-on corrected",
     "raw": "Measured, leaf-off"

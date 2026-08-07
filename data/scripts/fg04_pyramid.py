@@ -475,7 +475,7 @@ def manifest(bounds, tiles_written: int, projected: dict,
         "demUnpack": dict(DEM_UNPACK),
         "countChannel": "red",
         "countIsPopulationCountAtNativeZoomOnly": True,
-        "countAggregation": ("mean of the four children, rounded half up. "
+        "countAggregation": ("mean of the four children, rounded ties to even. "
                              "The mask aggregates by majority vote per bit, "
                              "which cannot preserve the mean count, so above "
                              "the native zoom the count channel is the "

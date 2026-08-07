@@ -1,0 +1,78 @@
+{
+  "builtAt": "2026-08-07",
+  "classification": {
+    "bytesTotal": 27564428,
+    "objects": 10159,
+    "prefix": "fg04/class/v2",
+    "tilesByZoom": {
+      "12": 42,
+      "13": 143,
+      "14": 500,
+      "15": 1950,
+      "16": 7524
+    },
+    "values": {
+      "0": "missing",
+      "1": "non-ground",
+      "2": "ground",
+      "3": "ground under leaf-on canopy"
+    }
+  },
+  "knownPixel": {
+    "coordinate": [
+      -79.3844497203827,
+      43.653954970269545
+    ],
+    "decodedClass": 2,
+    "groundAgreementWithV3": {
+      "groundPixels": 27737,
+      "mismatchedPixels": 0,
+      "pixelsCompared": 65536
+    },
+    "pixel": [
+      128,
+      128
+    ],
+    "publicCacheControl": "public, max-age=31536000, immutable",
+    "publicContentType": "image/webp",
+    "publicCors": null,
+    "publicStatus": 200,
+    "rgb": [
+      2,
+      0,
+      0
+    ],
+    "sha256Local": "769ff8f5bb8208480701c6a37b804fe26a89a0e6428676fffcecfbf421b43670",
+    "sha256Public": "769ff8f5bb8208480701c6a37b804fe26a89a0e6428676fffcecfbf421b43670",
+    "sourceRasterClass": 2,
+    "tile": [
+      16,
+      18316,
+      23917
+    ],
+    "url": "https://tiles.torontomicroatlas.com/fg04/class/v2/16/18316/23917.webp"
+  },
+  "streetProfiles": {
+    "bytes": 3366123,
+    "records": 8507,
+    "yorkStreetExplorer": {
+      "correctedFractionSum": 11.55,
+      "groundPixels": 2666,
+      "lengthM": 1438.1,
+      "measuredFractionSum": 11.48
+    },
+    "yorkStreetPublishedAnchor": {
+      "correctedFractionSum": 11.74,
+      "grain": "Phase 2 arterial with 8 to 15 m walking band",
+      "groundPixels": 902,
+      "lengthM": 640.4,
+      "measuredFractionSum": 11.70
+    }
+  },
+  "upload": {
+    "objects": 10159,
+    "rejectedPreReleasePrefix": "fg04/class/v1",
+    "seconds": 154,
+    "verifiedPublicSamples": 3
+  }
+}

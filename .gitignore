@@ -45,3 +45,7 @@ data/processed/fg04/*.tif
 # Recreated by data/scripts/33_fg04_tiles.py, published by 34_fg04_upload.py.
 # manifest.json IS committed: the site reads it at build time.
 public/data/fg04/tiles/
+
+# Phase 3 point classifications are a separate R2 product. The builder stages
+# them outside public/, and this rule prevents the 10,159 WebPs entering git.
+data/processed/fg04/class-tiles-v*/
