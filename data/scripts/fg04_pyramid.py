@@ -138,7 +138,7 @@ R2_BUCKET = "toronto-micro-atlas-tiles"
 # cached copy for a year. That is not a caching bug to work around with a
 # purge, it is what immutable means. The version segment is the fix, and a
 # purge is only the rescue when someone forgets to bump it.
-TILE_VERSION = "v2"
+TILE_VERSION = "v3"
 TILE_BASE_URL = f"https://tiles.torontomicroatlas.com/fg04/{TILE_VERSION}"
 # Local dev serves the same tree out of `public/`, so the map works before
 # anything is uploaded.

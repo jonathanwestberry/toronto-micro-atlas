@@ -5,7 +5,7 @@
     -79.10860313445477,
     43.867051319436264
   ],
-  "bytesTotal": 352781566,
+  "bytesTotal": 351624530,
   "channels": 3,
   "countAggregation": "mean of the four children, rounded half up. The mask aggregates by majority vote per bit, which cannot preserve the mean count, so above the native zoom the count channel is the unbiased average and the mask is the best per-bit answer.",
   "countBandStarts": {
@@ -91,10 +91,10 @@
   ],
   "tileSize": 256,
   "tileUrlTemplates": {
-    "corrected": "https://tiles.torontomicroatlas.com/fg04/v2/corrected/{z}/{x}/{y}.webp",
-    "raw": "https://tiles.torontomicroatlas.com/fg04/v2/raw/{z}/{x}/{y}.webp"
+    "corrected": "https://tiles.torontomicroatlas.com/fg04/v3/corrected/{z}/{x}/{y}.webp",
+    "raw": "https://tiles.torontomicroatlas.com/fg04/v3/raw/{z}/{x}/{y}.webp"
   },
-  "tileVersion": "v2",
+  "tileVersion": "v3",
   "tilesProjected": 20318,
   "tilesProjectedByZoom": {
     "12": 84,
@@ -103,6 +103,13 @@
     "15": 3900,
     "16": 15048
   },
-  "tilesWritten": 10248,
+  "tilesWritten": 10246,
+  "tilesWrittenByZoom": {
+    "12": 54,
+    "13": 158,
+    "14": 538,
+    "15": 1980,
+    "16": 7516
+  },
   "timezone": "America/Toronto"
 }

@@ -27,6 +27,7 @@ import json
 import os
 import time
 
+import geopandas as gpd
 import numpy as np
 import rasterio
 from PIL import Image
@@ -36,17 +37,37 @@ from rasterio.warp import transform_bounds
 from rasterio.windows import Window
 
 import fg04_pyramid as pyramid
+import fg04_canopy as canopy
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.abspath(os.path.join(HERE, ".."))
 ROOT = os.path.abspath(os.path.join(DATA, ".."))
 PROCESSED = os.path.join(DATA, "processed", "fg04")
+LAND_COVER = os.path.join(DATA, "raw", "fg04", "landcover",
+                          "LandCover2018.gdb")
 OUT = os.path.join(ROOT, "public", "data", "fg04")
 TILES = os.path.join(OUT, "tiles")
 DIST = os.path.join(ROOT, "dist")
 
 WEB_MERCATOR = "EPSG:3857"
 MERCATOR_SPAN = 20037508.342789244
+
+
+def derived_is_current(path: str, sources: list[str]) -> bool:
+    """A derivative is reusable only when it is at least as new as its inputs."""
+    if not os.path.exists(path) or not all(os.path.exists(p) for p in sources):
+        return False
+    built = os.stat(path).st_mtime_ns
+    return all(built >= os.stat(source).st_mtime_ns for source in sources)
+
+
+def count_values(bits, ground, under_canopy=None):
+    """Ground-masked shaded-frame counts, including the leaf-on override."""
+    counts = pyramid.shaded_hours(bits)
+    if under_canopy is not None:
+        counts = np.where(ground & under_canopy,
+                          pyramid.MAX_BIT + 1, counts)
+    return np.where(ground, counts, 0).astype("uint8")
 
 
 def count_raster(surface: str) -> str:
@@ -67,12 +88,19 @@ def count_raster(surface: str) -> str:
     nothing else.
     """
     path = os.path.join(PROCESSED, f"count-{surface}.tif")
-    if os.path.exists(path):
+    sources = [os.path.join(PROCESSED, f"shade-{surface}.tif"),
+               os.path.join(PROCESSED, "ground.tif")]
+    if derived_is_current(path, sources):
         return path
 
     started = time.time()
-    with rasterio.open(os.path.join(PROCESSED, f"shade-{surface}.tif")) as src, \
-         rasterio.open(os.path.join(PROCESSED, "ground.tif")) as ground_src:
+    with rasterio.open(sources[0]) as src, rasterio.open(sources[1]) as ground_src:
+        trees = None
+        if surface == "corrected":
+            cover = gpd.read_file(LAND_COVER, layer="LandCover2018",
+                                  columns=["gridcode"])
+            trees = cover[cover["gridcode"] == canopy.TREE_CODE].to_crs(src.crs)
+            tree_index = trees.sindex
         profile = src.profile.copy()
         profile.update(dtype="uint8", nodata=0, compress="deflate",
                        predictor=2, tiled=True, blockxsize=512,
@@ -81,8 +109,16 @@ def count_raster(surface: str) -> str:
             for _, window in src.block_windows(1):
                 bits = src.read(1, window=window)
                 ground = ground_src.read(1, window=window) == 1
-                counts = np.where(ground, pyramid.shaded_hours(bits), 0)
-                sink.write(counts.astype("uint8"), 1, window=window)
+                under_canopy = None
+                if trees is not None:
+                    transform = rasterio.windows.transform(window, src.transform)
+                    bounds = rasterio.windows.bounds(window, src.transform)
+                    nearby = trees.iloc[list(tree_index.intersection(bounds))]
+                    under_canopy = canopy.class_mask(
+                        nearby, {canopy.TREE_CODE}, bits.shape,
+                        transform, src.crs)
+                sink.write(count_values(bits, ground, under_canopy), 1,
+                           window=window)
     print(f"count raster {surface}: {time.time() - started:.0f} s", flush=True)
     return path
 
@@ -100,9 +136,10 @@ def ground_fraction_raster() -> str:
     average or it is not a fraction.
     """
     path = os.path.join(PROCESSED, "ground-fraction.tif")
-    if os.path.exists(path):
+    source = os.path.join(PROCESSED, "ground.tif")
+    if derived_is_current(path, [source]):
         return path
-    with rasterio.open(os.path.join(PROCESSED, "ground.tif")) as src:
+    with rasterio.open(source) as src:
         profile = src.profile.copy()
         profile.update(dtype="uint8", nodata=None, compress="deflate",
                        predictor=2, tiled=True, blockxsize=512,
