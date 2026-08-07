@@ -58,7 +58,29 @@ def derived_is_current(path: str, sources: list[str]) -> bool:
     if not os.path.exists(path) or not all(os.path.exists(p) for p in sources):
         return False
     built = os.stat(path).st_mtime_ns
-    return all(built >= os.stat(source).st_mtime_ns for source in sources)
+    inputs = []
+    for source in sources:
+        if os.path.isdir(source):
+            nested = [os.path.join(folder, name)
+                      for folder, _, names in os.walk(source)
+                      for name in names]
+            inputs.append(source)
+            inputs.extend(nested)
+        else:
+            inputs.append(source)
+    return all(built >= os.stat(source).st_mtime_ns for source in inputs)
+
+
+def count_sources(surface: str) -> list[str]:
+    """Data and implementation inputs that determine a count derivative."""
+    sources = [os.path.join(PROCESSED, f"shade-{surface}.tif"),
+               os.path.join(PROCESSED, "ground.tif"),
+               os.path.abspath(__file__),
+               os.path.abspath(canopy.__file__),
+               os.path.abspath(pyramid.__file__)]
+    if surface == "corrected":
+        sources.append(LAND_COVER)
+    return sources
 
 
 def count_values(bits, ground, under_canopy=None):
@@ -88,12 +110,12 @@ def count_raster(surface: str) -> str:
     nothing else.
     """
     path = os.path.join(PROCESSED, f"count-{surface}.tif")
-    sources = [os.path.join(PROCESSED, f"shade-{surface}.tif"),
-               os.path.join(PROCESSED, "ground.tif")]
+    sources = count_sources(surface)
     if derived_is_current(path, sources):
         return path
 
     started = time.time()
+    temporary = f"{path}.tmp"
     with rasterio.open(sources[0]) as src, rasterio.open(sources[1]) as ground_src:
         trees = None
         if surface == "corrected":
@@ -105,20 +127,26 @@ def count_raster(surface: str) -> str:
         profile.update(dtype="uint8", nodata=0, compress="deflate",
                        predictor=2, tiled=True, blockxsize=512,
                        blockysize=512, BIGTIFF="YES")
-        with rasterio.open(path, "w", **profile) as sink:
-            for _, window in src.block_windows(1):
-                bits = src.read(1, window=window)
-                ground = ground_src.read(1, window=window) == 1
-                under_canopy = None
-                if trees is not None:
-                    transform = rasterio.windows.transform(window, src.transform)
-                    bounds = rasterio.windows.bounds(window, src.transform)
-                    nearby = trees.iloc[list(tree_index.intersection(bounds))]
-                    under_canopy = canopy.class_mask(
-                        nearby, {canopy.TREE_CODE}, bits.shape,
-                        transform, src.crs)
-                sink.write(count_values(bits, ground, under_canopy), 1,
-                           window=window)
+        try:
+            with rasterio.open(temporary, "w", **profile) as sink:
+                for _, window in src.block_windows(1):
+                    bits = src.read(1, window=window)
+                    ground = ground_src.read(1, window=window) == 1
+                    under_canopy = None
+                    if trees is not None:
+                        transform = rasterio.windows.transform(window,
+                                                               src.transform)
+                        bounds = rasterio.windows.bounds(window, src.transform)
+                        nearby = trees.iloc[list(tree_index.intersection(bounds))]
+                        under_canopy = canopy.class_mask(
+                            nearby, {canopy.TREE_CODE}, bits.shape,
+                            transform, src.crs)
+                    sink.write(count_values(bits, ground, under_canopy), 1,
+                               window=window)
+            os.replace(temporary, path)
+        finally:
+            if os.path.exists(temporary):
+                os.remove(temporary)
     print(f"count raster {surface}: {time.time() - started:.0f} s", flush=True)
     return path
 

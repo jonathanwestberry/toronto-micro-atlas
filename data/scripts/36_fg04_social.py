@@ -18,7 +18,7 @@ that hour and nothing else. The palette is the guide's own shade ramp read
 from `src/styles/fg04.css`: the end that means sun nearly all day, and the
 end that means blocked almost throughout.
 
-Usage: python 36_fg04_social.py [--surface raw] [--dry-run]
+Usage: python 36_fg04_social.py [--dry-run]
 """
 
 import argparse
@@ -53,6 +53,7 @@ SOCIAL = os.path.join(ROOT, "public", "social")
 # 1200 x 1260 m of Toronto with no resampling anywhere.
 PANEL_W, PANEL_H = 600, 630
 EARLY_HOUR, LATE_HOUR = 13, 18
+SURFACE = "raw"
 MIN_GROUND = 0.30           # a block that is mostly lake shows nothing
 MIN_ARTERIAL_M = 200.0      # and one nobody can place shows nothing either
 
@@ -142,7 +143,7 @@ def named_arterial_metres(bounds, arterial, index):
     return float(clipped[keep].length.sum()), names
 
 
-def choose(surface, blocks):
+def choose(surface):
     raw_path = os.path.join(PROCESSED, f"shade-{surface}.tif")
     ground_path = os.path.join(PROCESSED, "ground.tif")
     for path in (raw_path, ground_path):
@@ -215,13 +216,13 @@ def render(best, early, late, surface):
     return add_editorial_context(Image.fromarray(canvas, mode="RGB"))
 
 
-def main(surface, dry_run):
-    best, early, late, crs = choose(surface, None)
+def main(dry_run):
+    best, early, late, crs = choose(SURFACE)
     print(json.dumps({k: v for k, v in best.items() if k != "bounds"},
                      indent=2))
     print(f"bounds {best['bounds']} in {crs}")
 
-    image = render(best, early, late, surface)
+    image = render(best, early, late, SURFACE)
     os.makedirs(SOCIAL, exist_ok=True)
     out = os.path.join(SOCIAL, "og-throwing-shade.jpg")
     if dry_run:
@@ -231,7 +232,7 @@ def main(surface, dry_run):
     print(f"wrote {out} at {image.size[0]}x{image.size[1]}")
 
     record = dict(best)
-    record["surface"] = surface
+    record["surface"] = SURFACE
     record["hours"] = [EARLY_HOUR, LATE_HOUR]
     record["image_text"] = {
         "title": "Throwing Shade",
@@ -248,10 +249,12 @@ def main(surface, dry_run):
         handle.write("\n")
 
 
-if __name__ == "__main__":
+def parse_args(argv=None):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--surface", default="raw", choices=("raw",
-                                                             "corrected"))
     parser.add_argument("--dry-run", action="store_true")
-    args = parser.parse_args()
-    main(args.surface, args.dry_run)
+    return parser.parse_args(argv)
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    main(args.dry_run)

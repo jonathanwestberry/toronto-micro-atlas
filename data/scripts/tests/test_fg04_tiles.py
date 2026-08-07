@@ -103,6 +103,29 @@ class DerivedRasterFreshnessTests(unittest.TestCase):
 
         self.assertFalse(tiles.derived_is_current(derivative, sources))
 
+    def test_newer_file_inside_source_directory_makes_derivative_stale(self):
+        source = self.root / "landcover.gdb"
+        source.mkdir()
+        child = source / "a00000001.gdbtable"
+        child.touch()
+        os.utime(child, (103, 103))
+        os.utime(source, (100, 100))
+        derivative = self.file_at("count.tif", 102)
+
+        self.assertFalse(
+            tiles.derived_is_current(derivative, [str(source)]))
+
+    def test_corrected_count_tracks_land_cover_and_implementation(self):
+        sources = tiles.count_sources("corrected")
+
+        self.assertIn(tiles.LAND_COVER, sources)
+        self.assertIn(str(Path(tiles.canopy.__file__).resolve()), sources)
+        self.assertIn(str(Path(tiles.pyramid.__file__).resolve()), sources)
+        self.assertIn(str(Path(tiles.__file__).resolve()), sources)
+
+    def test_raw_count_does_not_depend_on_land_cover(self):
+        self.assertNotIn(tiles.LAND_COVER, tiles.count_sources("raw"))
+
 
 class CountValueTests(unittest.TestCase):
     def test_counts_only_ground_pixels(self):
