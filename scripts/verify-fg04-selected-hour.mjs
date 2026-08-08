@@ -193,7 +193,7 @@ function cdpClient(webSocketUrl) {
   };
 }
 
-const proofExpression = `(() => {
+const proofExpression = `(async () => {
   const explorer = window.__fg04Explorer;
   if (!explorer || explorer.maps.length !== 2) return { ready: false };
   if (!explorer.maps.every(({ map }) => map.isStyleLoaded())) return { ready: false };
@@ -202,42 +202,11 @@ const proofExpression = `(() => {
   const pointProfile = explorer.getPointResult();
   if (!pointProfile) return { ready: false };
 
-  const evaluate = (expression, elevation, scope = new Map()) => {
-    if (!Array.isArray(expression)) return expression;
-    const [operator, ...args] = expression;
-    if (operator === 'elevation') return elevation;
-    if (operator === '+') return evaluate(args[0], elevation, scope) + evaluate(args[1], elevation, scope);
-    if (operator === '/') return evaluate(args[0], elevation, scope) / evaluate(args[1], elevation, scope);
-    if (operator === '%') return evaluate(args[0], elevation, scope) % evaluate(args[1], elevation, scope);
-    if (operator === 'round') return Math.round(evaluate(args[0], elevation, scope));
-    if (operator === 'floor') return Math.floor(evaluate(args[0], elevation, scope));
-    if (operator === '==') return evaluate(args[0], elevation, scope) === evaluate(args[1], elevation, scope);
-    if (operator === '>=') return evaluate(args[0], elevation, scope) >= evaluate(args[1], elevation, scope);
-    if (operator === '<') return evaluate(args[0], elevation, scope) < evaluate(args[1], elevation, scope);
-    if (operator === 'all') return args.every((value) => evaluate(value, elevation, scope));
-    if (operator === 'var') return scope.get(args[0]);
-    if (operator === 'case') {
-      for (let index = 0; index < args.length - 1; index += 2) {
-        if (evaluate(args[index], elevation, scope)) return evaluate(args[index + 1], elevation, scope);
-      }
-      return evaluate(args.at(-1), elevation, scope);
-    }
-    if (operator === 'let') {
-      const local = new Map(scope);
-      for (let index = 0; index < args.length - 1; index += 2) {
-        local.set(args[index], evaluate(args[index + 1], elevation, local));
-      }
-      return evaluate(args.at(-1), elevation, local);
-    }
-    throw new Error('unsupported proof operator ' + operator);
-  };
-
   const raw = explorer.maps.find(({ surface }) => surface === 'raw').map;
   const corrected = explorer.maps.find(({ surface }) => surface === 'corrected').map;
-  const rawExpression = raw.getPaintProperty('shade-selected-hour', 'color-relief-color');
-  const correctedExpression = corrected.getPaintProperty('shade-selected-hour', 'color-relief-color');
-  const knownShaded = evaluate(rawExpression, 64982.3);
-  const knownSunlit = evaluate(rawExpression, 58720.7);
+  const tileUrl = (map) => map.getStyle().sources.shade.tiles[0];
+  const raw13 = tileUrl(raw);
+  const corrected13 = tileUrl(corrected);
   const input = document.querySelector('[data-fg04-hour]');
   const output = document.querySelector('[data-fg04-hour-output]');
   const initialOutput = output.value;
@@ -264,21 +233,35 @@ const proofExpression = `(() => {
 
   input.value = '16';
   input.dispatchEvent(new Event('input', { bubbles: true }));
-  const raw16 = raw.getPaintProperty('shade-selected-hour', 'color-relief-color');
-  const corrected16 = corrected.getPaintProperty('shade-selected-hour', 'color-relief-color');
   input.dispatchEvent(new Event('change', { bubbles: true }));
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    if (Array.from(document.querySelectorAll('[data-map-stage]'))
+      .every((stage) => stage.dataset.mapState === 'ready')) break;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  const raw16 = tileUrl(raw);
+  const corrected16 = tileUrl(corrected);
 
   const checks = {
     nativeRange: input.type === 'range' && input.min === '6' && input.max === '20' && input.step === '1',
     defaultOutput: initialOutput === '13:00 EDT',
     defaultUrlHasNoHour,
-    known13Separation: knownShaded !== knownSunlit,
-    known13Pixels: { shaded: knownShaded, sunlit: knownSunlit },
-    same13Expression: JSON.stringify(rawExpression) === JSON.stringify(correctedExpression),
-    same16Expression: JSON.stringify(raw16) === JSON.stringify(corrected16),
-    expressionChanged: JSON.stringify(rawExpression) !== JSON.stringify(raw16),
-    correctedCanopy: corrected.getLayer('shade-under-canopy') !== undefined && raw.getLayer('shade-under-canopy') === undefined,
-    countHidden: explorer.maps.every(({ map }) => map.getLayoutProperty('shade-count', 'visibility') === 'none'),
+    rasterLayers: explorer.maps.every(({ map }) => (
+      map.getLayer('shade-selected-hour')?.type === 'raster'
+    )),
+    measured13Source: raw13.startsWith('fg04shade://raw/') && raw13.endsWith('?hour=13'),
+    corrected13Source: corrected13.startsWith('fg04shade://corrected/')
+      && corrected13.endsWith('?hour=13'),
+    shared13Hour: new URL(raw13).searchParams.get('hour')
+      === new URL(corrected13).searchParams.get('hour'),
+    shared16Hour: new URL(raw16).searchParams.get('hour')
+      === new URL(corrected16).searchParams.get('hour'),
+    sourceChanged: raw13 !== raw16 && corrected13 !== corrected16
+      && raw16.endsWith('?hour=16') && corrected16.endsWith('?hour=16'),
+    encodedLayersGone: explorer.maps.every(({ map }) => (
+      map.getLayer('shade-count') === undefined
+      && map.getLayer('shade-under-canopy') === undefined
+    )),
     sameCamera,
     selectedOutput: output.value === '16:00 EDT',
     selectedUrl: new URL(location.href).searchParams.get('hour') === '16',
@@ -298,9 +281,7 @@ const proofExpression = `(() => {
     profileSelectedHourChanged: document.querySelectorAll('[data-fg04-point-strip] [data-selected="true"]').length === 1
       && document.querySelector('[data-fg04-point-selected-time]')?.textContent === 'Selected hour, 16:00 EDT',
   };
-  const passed = Object.entries(checks).every(([key, value]) => (
-    key === 'known13Pixels' || value === true
-  ));
+  const passed = Object.values(checks).every((value) => value === true);
   return {
     ready: true, passed, checks, centres, pointProfile,
     debug: {
@@ -531,7 +512,7 @@ const keyboardProofExpression = `(() => {
     rangeHome: proof.homeOutput === '06:00 EDT' && proof.homeHour === '6',
     rangeEnd: proof.endOutput === '20:00 EDT' && proof.endHour === '20',
     rangeArrow: proof.arrowOutput === '19:00 EDT' && proof.arrowHour === '19',
-    sharedHour: proof.sameMapExpression === true,
+    sharedHour: proof.sameMapRasterHour === true,
     mapEnter: proof.pointStatus === 'ground'
       && proof.pointMarkers === 2
       && proof.pointUrl !== null,
@@ -652,13 +633,13 @@ async function prepareKeyboardProof(cdp) {
     'range ArrowLeft key',
   );
   await evaluateRuntime(cdp, `(() => {
-    const maps = window.__fg04Explorer.maps.map(({ map }) => (
-      map.getPaintProperty('shade-selected-hour', 'color-relief-color')
+    const hours = window.__fg04Explorer.maps.map(({ map }) => (
+      new URL(map.getStyle().sources.shade.tiles[0]).searchParams.get('hour')
     ));
     Object.assign(window.__fg04KeyboardProof, {
       arrowOutput: document.querySelector('[data-fg04-hour-output]')?.value,
       arrowHour: new URL(location.href).searchParams.get('hour'),
-      sameMapExpression: JSON.stringify(maps[0]) === JSON.stringify(maps[1]),
+      sameMapRasterHour: hours[0] === '19' && hours[1] === '19',
     });
     document.querySelector('[data-fg04-map="raw"] .maplibregl-canvas')?.focus();
   })()`);
@@ -753,7 +734,88 @@ async function prepareKeyboardProof(cdp) {
   })()`);
 }
 
-async function runBrowser(executable, url, profile, expression, label, prepare = null) {
+async function captureRenderedPixels(cdp) {
+  const layout = await evaluateRuntime(cdp, `(() => {
+    const scope = document.querySelector('[data-fg04-maps]');
+    const color = (token) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1;
+      canvas.height = 1;
+      const context = canvas.getContext('2d');
+      context.fillStyle = getComputedStyle(scope).getPropertyValue(token).trim();
+      context.fillRect(0, 0, 1, 1);
+      return Array.from(context.getImageData(0, 0, 1, 1).data).slice(0, 3);
+    };
+    return {
+      colors: {
+        shaded: color('--fg04-selected-shaded'),
+        sunlit: color('--fg04-selected-sunlit'),
+      },
+      maps: ['raw', 'corrected'].map((surface) => {
+        const canvas = document.querySelector(
+          '[data-fg04-map="' + surface + '"] .maplibregl-canvas',
+        );
+        const rect = canvas.getBoundingClientRect();
+        return {
+          surface,
+          x: rect.left + scrollX,
+          y: rect.top + scrollY,
+          width: rect.width,
+          height: rect.height,
+        };
+      }),
+    };
+  })()`);
+
+  const results = [];
+  for (const map of layout.maps) {
+    const screenshot = await cdp.call('Page.captureScreenshot', {
+      format: 'png',
+      fromSurface: true,
+      captureBeyondViewport: true,
+      clip: {
+        x: map.x,
+        y: map.y,
+        width: map.width,
+        height: map.height,
+        scale: 1,
+      },
+    });
+    const pixels = await evaluateRuntime(cdp, `(async () => {
+      const image = new Image();
+      image.src = ${JSON.stringify(`data:image/png;base64,${screenshot.data}`)};
+      await image.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      context.drawImage(image, 0, 0);
+      const bytes = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      const shaded = ${JSON.stringify(layout.colors.shaded)};
+      const sunlit = ${JSON.stringify(layout.colors.sunlit)};
+      let shadedPixels = 0;
+      let sunlitPixels = 0;
+      for (let offset = 0; offset < bytes.length; offset += 4) {
+        if (bytes[offset] === shaded[0] && bytes[offset + 1] === shaded[1]
+          && bytes[offset + 2] === shaded[2]) shadedPixels += 1;
+        if (bytes[offset] === sunlit[0] && bytes[offset + 1] === sunlit[1]
+          && bytes[offset + 2] === sunlit[2]) sunlitPixels += 1;
+      }
+      return { width: canvas.width, height: canvas.height, shadedPixels, sunlitPixels };
+    })()`, true);
+    results.push({ surface: map.surface, ...pixels });
+  }
+  if (results.some(({ shadedPixels, sunlitPixels }) => (
+    shadedPixels < 25 || sunlitPixels < 25
+  ))) {
+    throw new Error(`selected-hour canvas has no visible shade data: ${JSON.stringify(results)}`);
+  }
+  return results;
+}
+
+async function runBrowser(
+  executable, url, profile, expression, label, prepare = null, provePixels = false,
+) {
   const child = spawn(executable, [
     '--headless=new',
     '--disable-background-networking',
@@ -781,6 +843,7 @@ async function runBrowser(executable, url, profile, expression, label, prepare =
     const cdp = cdpClient(target.webSocketDebuggerUrl);
     try {
       await cdp.call('Runtime.enable');
+      await cdp.call('Page.enable');
       if (prepare) await prepare(cdp);
       for (let attempt = 0; attempt < 300; attempt += 1) {
         const result = await cdp.call('Runtime.evaluate', {
@@ -797,6 +860,7 @@ async function runBrowser(executable, url, profile, expression, label, prepare =
           if (!value.passed) {
             throw new Error(`${label} browser proof failed: ${JSON.stringify(value)}`);
           }
+          if (provePixels) value.renderedPixels = await captureRenderedPixels(cdp);
           return value;
         }
         await delay(100);
@@ -854,7 +918,7 @@ try {
   const url = `http://127.0.0.1:${address.port}`
     + `/guides/throwing-shade/?${query}`;
   const result = await runBrowser(
-    browserPath(), url, pointBrowserProfile, proofExpression, 'selected-hour',
+    browserPath(), url, pointBrowserProfile, proofExpression, 'selected-hour', null, true,
   );
   const streetQuery = new URLSearchParams({
     tiles: 'local',

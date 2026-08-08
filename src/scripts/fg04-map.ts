@@ -3,8 +3,11 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { createMapStage } from './map-stage';
 import {
   resolveFg04TileTemplate,
-  selectedHourLayerContracts,
 } from './fg04-core.mjs';
+import {
+  createShadeTileProtocol,
+  shadeTileTemplate,
+} from './fg04-render.mjs';
 import {
   createLatestPointRequest,
   loadPointProfile,
@@ -34,29 +37,18 @@ import {
  * labelled in words, because Mauve and Plum sit 2.11 apart in contrast and
  * colour alone cannot carry which surface is which.
  *
- * The count is drawn by MapLibre, not by us. The tiles are read as an
- * ordinary `raster-dem` source, and a `color-relief` layer runs the unpacked
- * value through the guide's ramp. No shader of our own, no tile loading of
- * our own.
+ * MapLibre cannot evaluate the selected-hour bit expression in a
+ * `color-relief` layer. Its style validator accepts the expression, but the
+ * renderer only creates a ramp for a top-level `interpolate` and silently
+ * paints every other expression transparent. The browser therefore decodes
+ * each visible v3 tile into a two-colour raster for the selected hour, then
+ * gives that ordinary raster tile back to MapLibre for pan and zoom.
  *
  * The tiles are built to ride MapLibre's default "mapbox" unpack,
  * `R*6553.6 + G*25.6 + B*0.1 - 10000`, with the shaded-hours count in red and
  * the hour bitmask in green and blue. The mask can add at most 6553.5, just
  * under one step of red, so each count owns a band of the unpacked value that
  * no other count reaches. The band edges come from the manifest.
- *
- * The obvious route was `encoding: "custom"` with blueFactor 1. The style
- * spec documents it and the validator accepts it, and it does not work:
- * MapLibre 5.24 sends `encoding` to the tile worker without the factors, so
- * the decoder runs with them undefined. Found by putting a garish ramp on the
- * layer and looking at what came back, which is also why `step` is not used
- * below: `color-relief-color` accepts a `step` expression and then paints
- * nothing at all.
- *
- * The ramp is read from CSS at runtime rather than written here. It was
- * decided in `src/styles/fg04.css` as --fg04-shade-1 to --fg04-shade-6 and
- * this map does not get to invent its own. Reading the computed values means
- * a change there moves the map, instead of the map holding a stale copy.
  *
  * This guide maps SHADE. Not temperature, not heat, not coolness. The ramp is
  * monotonic in luminance and has no hue axis, deliberately: a two-hue ramp
@@ -98,40 +90,6 @@ interface Manifest {
 
 const MANIFEST_URL = '/data/fg04/manifest.json';
 
-/**
- * Count bands, matching the comments beside the tokens in fg04.css. A step
- * rather than a smooth interpolation because the ramp is six decisions, not a
- * gradient, and a reader matching a patch of ground to a legend swatch needs
- * the patch to actually be one of the six.
- *
- * The floor is 1, never 0: the 06:00 frame sits at 0.38 degrees above the
- * horizon and is shaded everywhere by construction, so no ground pixel in
- * Toronto scores zero.
- */
-const BANDS: Array<{ from: number; token: string; label: string }> = [
-  { from: 1, token: '--fg04-shade-1', label: '1' },
-  { from: 2, token: '--fg04-shade-2', label: '2 to 4' },
-  { from: 5, token: '--fg04-shade-3', label: '5 to 7' },
-  { from: 8, token: '--fg04-shade-4', label: '8 to 10' },
-  { from: 11, token: '--fg04-shade-5', label: '11 to 13' },
-  { from: 14, token: '--fg04-shade-6', label: '14 to 15' },
-];
-
-/** Resolve the ramp from CSS, from an element inside the .fg04 scope. */
-function readRamp(scope: Element): string[] {
-  const styles = getComputedStyle(scope);
-  return BANDS.map(({ token }) => {
-    const value = styles.getPropertyValue(token).trim();
-    if (!value) {
-      throw new Error(
-        `${token} is not defined on the .fg04 scope. The map reads the ramp `
-        + 'from src/styles/fg04.css and does not carry its own copy.',
-      );
-    }
-    return value;
-  });
-}
-
 interface SelectedColors {
   shaded: string;
   sunlit: string;
@@ -154,34 +112,18 @@ function readSelectedColors(scope: Element): SelectedColors {
   };
 }
 
-/**
- * A `color-relief-color` ramp with hard edges between the six bands.
- *
- * Built as an `interpolate` with a flat pair of stops per band rather than
- * the `step` this obviously wants, because `color-relief-color` validates a
- * `step` expression and then renders nothing. The plateaus give the same hard
- * edges: the reader matching a patch of ground to a legend swatch needs the
- * patch to actually be one of the six, not a point on a gradient.
- */
-function reliefRamp(ramp: string[], bandStart: (count: number) => number): unknown[] {
-  const expression: unknown[] = ['interpolate', ['linear'], ['elevation']];
-  // A count of zero is not "never shaded", it is not ground: a roof, a tree
-  // crown, the lake, or ground the flight never covered. Every figure in this
-  // guide is a ground figure, so anything that is not ground shows the page
-  // behind it rather than the lightest step of the ramp.
-  expression.push(bandStart(0), 'rgba(0, 0, 0, 0)');
-  expression.push(bandStart(1) - 0.001, 'rgba(0, 0, 0, 0)');
-  BANDS.forEach((band, index) => {
-    const from = bandStart(band.from);
-    const next = index + 1 < BANDS.length
-      ? bandStart(BANDS[index + 1].from)
-      : bandStart(16);
-    expression.push(from, ramp[index]);
-    // Just inside the top of the band, so the colour is flat across it and
-    // the change to the next colour happens in a hair rather than a gradient.
-    expression.push(next - 0.001, ramp[index]);
-  });
-  return expression;
+function colorBytes(value: string): [number, number, number, number] {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1;
+  canvas.height = 1;
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context) throw new Error('browser did not provide a color canvas');
+  context.clearRect(0, 0, 1, 1);
+  context.fillStyle = value;
+  context.fillRect(0, 0, 1, 1);
+  return Array.from(context.getImageData(0, 0, 1, 1).data) as [
+    number, number, number, number,
+  ];
 }
 
 function tileTemplate(manifest: Manifest, surface: string): string {
@@ -207,43 +149,22 @@ function buildMap(
   container: HTMLElement,
   manifest: Manifest,
   surface: string,
-  ramp: string[],
   colors: SelectedColors,
   hour: number,
   camera: [number, number, number] | null,
 ): maplibregl.Map {
   const [west, south, east, north] = manifest.bounds;
-  const bandStart = (count: number): number => {
-    const value = manifest.countBandStarts[String(count)];
-    if (value === undefined) {
-      throw new Error(`the manifest has no band start for a count of ${count}`);
-    }
-    return value;
-  };
 
   const sources: Record<string, unknown> = {
     shade: {
-      type: 'raster-dem',
-      tiles: [tileTemplate(manifest, surface)],
+      type: 'raster',
+      tiles: [shadeTileTemplate(surface, hour)],
       tileSize: manifest.tileSize,
       minzoom: manifest.minZoom,
       maxzoom: manifest.maxZoom,
-      encoding: 'mapbox',
+      bounds: manifest.bounds,
     },
   };
-  if (surface === 'corrected') {
-    sources.classification = {
-      type: 'raster-dem',
-      tiles: [classificationTemplate(manifest)],
-      tileSize: manifest.tileSize,
-      minzoom: manifest.minZoom,
-      maxzoom: manifest.maxZoom,
-      encoding: 'mapbox',
-    };
-  }
-  const selectedLayers = selectedHourLayerContracts(
-    surface, hour, manifest, colors,
-  );
   const view = camera === null
     ? {
         bounds: [[west, south], [east, north]] as [
@@ -268,15 +189,13 @@ function buildMap(
           paint: { 'background-color': colors.background },
         },
         {
-          id: 'shade-count',
-          type: 'color-relief',
+          id: 'shade-selected-hour',
+          type: 'raster',
           source: 'shade',
-          layout: { visibility: 'none' },
           paint: {
-            'color-relief-color': reliefRamp(ramp, bandStart) as never,
+            'raster-resampling': 'nearest',
           },
         },
-        ...(selectedLayers as never[]),
       ],
     },
     ...view,
@@ -648,9 +567,35 @@ export async function initShadeMap(): Promise<void> {
     committedState = { ...state };
   }
 
-  const ramp = readRamp(root);
   const colors = readSelectedColors(root);
-  const maps: Array<{ map: maplibregl.Map; surface: string }> = [];
+  maplibregl.removeProtocol('fg04shade');
+  maplibregl.addProtocol(
+    'fg04shade',
+    createShadeTileProtocol({
+      manifest: {
+        ...manifest,
+        tileUrlTemplates: {
+          raw: tileTemplate(manifest, 'raw'),
+          corrected: tileTemplate(manifest, 'corrected'),
+        },
+        classification: {
+          ...manifest.classification,
+          tileUrlTemplate: classificationTemplate(manifest),
+        },
+      },
+      colors: {
+        shaded: colorBytes(colors.shaded),
+        sunlit: colorBytes(colors.sunlit),
+        noData: colorBytes(colors.noData),
+      },
+    }),
+  );
+  const maps: Array<{
+    map: maplibregl.Map;
+    surface: string;
+    stage: ReturnType<typeof createMapStage>;
+    failed: boolean;
+  }> = [];
   const stages: Array<NonNullable<ReturnType<typeof createMapStage>>> = [];
   const diagnosticErrors: string[] = [];
 
@@ -664,9 +609,8 @@ export async function initShadeMap(): Promise<void> {
     // The map is built before the stage wraps it: the stage holds scroll-zoom
     // back until the reader interacts, and it needs a live map to hold.
     const map = buildMap(
-      container, manifest, surface, ramp, colors, state.hour, state.map,
+      container, manifest, surface, colors, state.hour, state.map,
     );
-    maps.push({ map, surface });
 
     const stage = createMapStage({
       root: shell,
@@ -674,12 +618,13 @@ export async function initShadeMap(): Promise<void> {
       onRetry: () => window.location.reload(),
     });
     if (stage) stages.push(stage);
-    let surfaceFailed = false;
+    const entry = { map, surface, stage, failed: false };
+    maps.push(entry);
     map.on('load', () => {
-      if (!surfaceFailed) stage?.setState('ready');
+      if (!entry.failed) stage?.setState('ready');
     });
     map.on('error', (event) => {
-      surfaceFailed = true;
+      entry.failed = true;
       diagnosticErrors.push(event.error?.message ?? 'unknown map error');
       stage?.setState('error', 'The shade tiles could not load.');
     });
@@ -933,17 +878,14 @@ export async function initShadeMap(): Promise<void> {
 
   const applyHour = (hour: number): void => {
     state = { ...state, hour };
-    maps.forEach(({ map, surface }) => {
-      const layers = selectedHourLayerContracts(
-        surface, hour, manifest, colors,
-      );
-      layers.forEach((layer) => {
-        map.setPaintProperty(
-          layer.id,
-          'color-relief-color',
-          layer.paint['color-relief-color'] as never,
-        );
+    maps.forEach((entry) => {
+      entry.failed = false;
+      entry.stage?.setState('loading', `Loading shade at ${hour}:00 EDT`);
+      entry.map.once('idle', () => {
+        if (state.hour === hour && !entry.failed) entry.stage?.setState('ready');
       });
+      const source = entry.map.getSource('shade') as maplibregl.RasterTileSource;
+      source.setTiles([shadeTileTemplate(entry.surface, hour)]);
     });
     updateHourChrome(root, hour);
     if (activePoint) renderPointProfile(root, activePoint, hour, manifest);
@@ -1067,6 +1009,7 @@ export async function initShadeMap(): Promise<void> {
     streetLoadGeneration += 1;
     stages.forEach((stage) => stage.destroy());
     maps.forEach(({ map }) => map.remove());
+    maplibregl.removeProtocol('fg04shade');
     delete cleanupWindow.__fg04Explorer;
     delete cleanupWindow.__fg04Cleanup;
   };

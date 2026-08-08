@@ -11,6 +11,11 @@ import {
   selectedHourReliefExpression,
   tileAddressForLngLat,
 } from '../src/scripts/fg04-core.mjs';
+import {
+  createShadeTileProtocol,
+  renderShadePixels,
+  shadeTileTemplate,
+} from '../src/scripts/fg04-render.mjs';
 
 const HOURS = Object.freeze({
   6: 0, 7: 1, 8: 2, 9: 3, 10: 4, 11: 5, 12: 6, 13: 7,
@@ -70,6 +75,130 @@ test('a real v3 pixel decodes to the Python reference mask', () => {
     { count: 10, mask: 0x7c67 },
   );
   assert.equal(hourBit(0x7c67, 13, HOURS), false);
+});
+
+test('the browser materializes selected-hour shade pixels before MapLibre draws them', () => {
+  const pixels = new Uint8ClampedArray([
+    11, 112, 255, 255,
+    10, 124, 103, 255,
+    0, 0, 0, 255,
+  ]);
+  const rendered = renderShadePixels({
+    pixels,
+    classificationPixels: null,
+    surface: 'raw',
+    hour: 13,
+    hourBits: HOURS,
+    colors: {
+      shaded: [24, 27, 35, 255],
+      sunlit: [255, 254, 195, 255],
+      noData: [0, 0, 0, 0],
+    },
+  });
+
+  assert.deepEqual(Array.from(rendered), [
+    24, 27, 35, 255,
+    255, 254, 195, 255,
+    0, 0, 0, 0,
+  ]);
+});
+
+test('the corrected browser raster shades every under-canopy pixel at the selected hour', () => {
+  const rendered = renderShadePixels({
+    pixels: new Uint8ClampedArray([
+      0, 0, 0, 255,
+      10, 124, 103, 255,
+    ]),
+    classificationPixels: new Uint8ClampedArray([
+      3, 0, 0, 255,
+      2, 0, 0, 255,
+    ]),
+    surface: 'corrected',
+    hour: 13,
+    hourBits: HOURS,
+    colors: {
+      shaded: [24, 27, 35, 255],
+      sunlit: [255, 254, 195, 255],
+      noData: [0, 0, 0, 0],
+    },
+  });
+
+  assert.deepEqual(Array.from(rendered), [
+    24, 27, 35, 255,
+    255, 254, 195, 255,
+  ]);
+});
+
+test('selected-hour raster tile URLs change with the shared clock hour', () => {
+  assert.equal(
+    shadeTileTemplate('raw', 13),
+    'fg04shade://raw/{z}/{x}/{y}?hour=13',
+  );
+  assert.equal(
+    shadeTileTemplate('corrected', 18),
+    'fg04shade://corrected/{z}/{x}/{y}?hour=18',
+  );
+});
+
+test('the corrected tile protocol combines v3 shade and class v2 without changing either source', async () => {
+  const requested = [];
+  const tiles = {
+    corrected: {
+      width: 2,
+      height: 1,
+      pixels: new Uint8ClampedArray([
+        0, 0, 0, 255,
+        10, 124, 103, 255,
+      ]),
+    },
+    classification: {
+      width: 2,
+      height: 1,
+      pixels: new Uint8ClampedArray([
+        3, 0, 0, 255,
+        2, 0, 0, 255,
+      ]),
+    },
+  };
+  const protocol = createShadeTileProtocol({
+    manifest: {
+      hourBits: HOURS,
+      tileUrlTemplates: {
+        raw: 'https://tiles.example/v3/raw/{z}/{x}/{y}.webp',
+        corrected: 'https://tiles.example/v3/corrected/{z}/{x}/{y}.webp',
+      },
+      classification: {
+        tileUrlTemplate: 'https://tiles.example/class/v2/{z}/{x}/{y}.webp',
+      },
+    },
+    colors: {
+      shaded: [24, 27, 35, 255],
+      sunlit: [255, 254, 195, 255],
+      noData: [0, 0, 0, 0],
+    },
+    fetchImpl: async (url) => {
+      requested.push(url);
+      return { ok: true, status: 200, blob: async () => url };
+    },
+    decodeTileBlob: async (url) => (
+      url.includes('/class/') ? tiles.classification : tiles.corrected
+    ),
+    imageFromPixels: async (tile) => tile,
+  });
+
+  const result = await protocol(
+    { url: 'fg04shade://corrected/16/18316/23917?hour=13' },
+    new AbortController(),
+  );
+
+  assert.deepEqual(requested, [
+    'https://tiles.example/v3/corrected/16/18316/23917.webp',
+    'https://tiles.example/class/v2/16/18316/23917.webp',
+  ]);
+  assert.deepEqual(Array.from(result.data.pixels), [
+    24, 27, 35, 255,
+    255, 254, 195, 255,
+  ]);
 });
 
 test('invalid channel bytes are rejected instead of truncated', () => {
