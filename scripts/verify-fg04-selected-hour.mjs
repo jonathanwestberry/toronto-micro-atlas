@@ -174,7 +174,18 @@ function cdpClient(webSocketUrl) {
         pending.set(id, { resolveCall, rejectCall });
       });
       socket.send(JSON.stringify({ id, method, params }));
-      return result;
+      let timeoutId;
+      const timeout = new Promise((_, rejectCall) => {
+        timeoutId = setTimeout(() => {
+          pending.delete(id);
+          rejectCall(new Error(`${method} did not return in 10 seconds`));
+        }, 10_000);
+      });
+      try {
+        return await Promise.race([result, timeout]);
+      } finally {
+        clearTimeout(timeoutId);
+      }
     },
     close() {
       socket.close();
@@ -512,7 +523,237 @@ const missingStreetExpression = `(() => {
   return { ready: true, passed: Object.values(checks).every(Boolean), checks };
 })()`;
 
-async function runBrowser(executable, url, profile, expression, label) {
+const keyboardProofExpression = `(() => {
+  const proof = window.__fg04KeyboardProof;
+  if (!proof?.finished) return { ready: false };
+  const checks = {
+    defaultHour: proof.defaultOutput === '13:00 EDT' && proof.defaultUrlHasNoHour,
+    rangeHome: proof.homeOutput === '06:00 EDT' && proof.homeHour === '6',
+    rangeEnd: proof.endOutput === '20:00 EDT' && proof.endHour === '20',
+    rangeArrow: proof.arrowOutput === '19:00 EDT' && proof.arrowHour === '19',
+    sharedHour: proof.sameMapExpression === true,
+    mapEnter: proof.pointStatus === 'ground'
+      && proof.pointMarkers === 2
+      && proof.pointUrl !== null,
+    noPointRefetchOnHour: proof.pointCacheBeforeHour === 3
+      && proof.pointCacheAfterHour === 3,
+    streetSearch: proof.searchValue === 'York Street'
+      && proof.focusedResult === 'York Street',
+    streetEnter: proof.streetId === 'york-street'
+      && proof.streetRows === 15
+      && proof.everyStreetRowPaired === true
+      && proof.pointCleared === true,
+    shareKeyboard: proof.shareText === 'Copied'
+      && proof.shareFocused === true
+      && proof.shareStatus === 'View link copied.'
+      && proof.copiedUrl === proof.finalUrl,
+  };
+  return {
+    ready: true,
+    passed: Object.values(checks).every(Boolean),
+    checks,
+    proof,
+  };
+})()`;
+
+const KEYBOARD_KEYS = {
+  ArrowLeft: { code: 'ArrowLeft', key: 'ArrowLeft', windowsVirtualKeyCode: 37 },
+  ArrowRight: { code: 'ArrowRight', key: 'ArrowRight', windowsVirtualKeyCode: 39 },
+  End: { code: 'End', key: 'End', windowsVirtualKeyCode: 35 },
+  Enter: { code: 'Enter', key: 'Enter', windowsVirtualKeyCode: 13 },
+  Home: { code: 'Home', key: 'Home', windowsVirtualKeyCode: 36 },
+  Tab: { code: 'Tab', key: 'Tab', windowsVirtualKeyCode: 9 },
+};
+
+async function evaluateRuntime(cdp, expression, awaitPromise = false) {
+  const result = await cdp.call('Runtime.evaluate', {
+    expression,
+    returnByValue: true,
+    awaitPromise,
+  });
+  if (result.exceptionDetails) {
+    throw new Error(result.exceptionDetails.exception?.description
+      ?? result.exceptionDetails.text);
+  }
+  return result.result?.value;
+}
+
+async function waitForRuntime(cdp, expression, label) {
+  for (let attempt = 0; attempt < 300; attempt += 1) {
+    if (await evaluateRuntime(cdp, expression, true)) return;
+    await delay(100);
+  }
+  throw new Error(`${label} did not finish in 30 seconds`);
+}
+
+async function dispatchKey(cdp, name) {
+  const key = KEYBOARD_KEYS[name];
+  if (!key) throw new Error(`unknown keyboard proof key: ${name}`);
+  if (name === 'Enter') {
+    await cdp.call('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...key });
+    await cdp.call('Input.dispatchKeyEvent', {
+      type: 'char',
+      ...key,
+      text: '\r',
+      unmodifiedText: '\r',
+    });
+  } else {
+    await cdp.call('Input.dispatchKeyEvent', { type: 'keyDown', ...key });
+  }
+  await cdp.call('Input.dispatchKeyEvent', { type: 'keyUp', ...key });
+}
+
+async function prepareKeyboardProof(cdp) {
+  await waitForRuntime(
+    cdp,
+    `Boolean(window.__fg04Explorer
+      && window.__fg04Explorer.maps.length === 2
+      && window.__fg04Explorer.maps.every(({ map }) => map.isStyleLoaded())
+      && window.__fg04Explorer.getStreetCount() === 8507)`,
+    'keyboard explorer readiness',
+  );
+  await evaluateRuntime(cdp, `(() => {
+    const input = document.querySelector('[data-fg04-hour]');
+    const output = document.querySelector('[data-fg04-hour-output]');
+    window.__fg04KeyboardProof = {
+      defaultOutput: output?.value,
+      defaultUrlHasNoHour: !new URL(location.href).searchParams.has('hour'),
+    };
+    input.focus();
+    return document.activeElement === input;
+  })()`);
+
+  await dispatchKey(cdp, 'Home');
+  await waitForRuntime(
+    cdp,
+    `document.querySelector('[data-fg04-hour-output]')?.value === '06:00 EDT'`,
+    'range Home key',
+  );
+  await evaluateRuntime(cdp, `Object.assign(window.__fg04KeyboardProof, {
+    homeOutput: document.querySelector('[data-fg04-hour-output]')?.value,
+    homeHour: new URL(location.href).searchParams.get('hour'),
+  })`);
+
+  await dispatchKey(cdp, 'End');
+  await waitForRuntime(
+    cdp,
+    `document.querySelector('[data-fg04-hour-output]')?.value === '20:00 EDT'`,
+    'range End key',
+  );
+  await evaluateRuntime(cdp, `Object.assign(window.__fg04KeyboardProof, {
+    endOutput: document.querySelector('[data-fg04-hour-output]')?.value,
+    endHour: new URL(location.href).searchParams.get('hour'),
+  })`);
+
+  await dispatchKey(cdp, 'ArrowLeft');
+  await waitForRuntime(
+    cdp,
+    `document.querySelector('[data-fg04-hour-output]')?.value === '19:00 EDT'`,
+    'range ArrowLeft key',
+  );
+  await evaluateRuntime(cdp, `(() => {
+    const maps = window.__fg04Explorer.maps.map(({ map }) => (
+      map.getPaintProperty('shade-selected-hour', 'color-relief-color')
+    ));
+    Object.assign(window.__fg04KeyboardProof, {
+      arrowOutput: document.querySelector('[data-fg04-hour-output]')?.value,
+      arrowHour: new URL(location.href).searchParams.get('hour'),
+      sameMapExpression: JSON.stringify(maps[0]) === JSON.stringify(maps[1]),
+    });
+    document.querySelector('[data-fg04-map="raw"] .maplibregl-canvas')?.focus();
+  })()`);
+
+  await dispatchKey(cdp, 'Enter');
+  await waitForRuntime(
+    cdp,
+    `Boolean(window.__fg04Explorer.getPointResult()
+      && document.querySelectorAll('.fg04-point-marker').length === 2)`,
+    'map Enter key',
+  );
+  await evaluateRuntime(cdp, `Object.assign(window.__fg04KeyboardProof, {
+    pointStatus: window.__fg04Explorer.getPointResult()?.status,
+    pointMarkers: document.querySelectorAll('.fg04-point-marker').length,
+    pointUrl: new URL(location.href).searchParams.get('point'),
+    pointCacheBeforeHour: window.__fg04Explorer.getPointCacheSize(),
+  })`);
+
+  await evaluateRuntime(cdp, `document.querySelector('[data-fg04-hour]').focus()`);
+  await dispatchKey(cdp, 'ArrowRight');
+  await waitForRuntime(
+    cdp,
+    `document.querySelector('[data-fg04-hour-output]')?.value === '20:00 EDT'`,
+    'cached point hour key',
+  );
+  await evaluateRuntime(cdp, `(() => {
+    Object.assign(window.__fg04KeyboardProof, {
+      pointCacheAfterHour: window.__fg04Explorer.getPointCacheSize(),
+    });
+    document.querySelector('[data-fg04-street-search]').focus();
+  })()`);
+
+  await cdp.call('Input.insertText', { text: 'York Street' });
+  await waitForRuntime(
+    cdp,
+    `document.querySelector('.fg04-street__result')?.textContent === 'York Street'`,
+    'keyboard street search',
+  );
+  await dispatchKey(cdp, 'Tab');
+  const tabState = await evaluateRuntime(cdp, `Object.assign(window.__fg04KeyboardProof, {
+    searchValue: document.querySelector('[data-fg04-street-search]')?.value,
+    focusedResult: document.activeElement?.classList.contains('fg04-street__result')
+      ? document.activeElement.textContent : null,
+    focusedTag: document.activeElement?.tagName,
+    focusedClass: document.activeElement?.className,
+  })`);
+  if (tabState.focusedResult !== 'York Street') {
+    throw new Error(`Tab did not focus York Street: ${JSON.stringify(tabState)}`);
+  }
+  await dispatchKey(cdp, 'Enter');
+  await waitForRuntime(
+    cdp,
+    `window.__fg04Explorer.getStreetResult()?.id === 'york-street'`,
+    'street result Enter key',
+  );
+  await evaluateRuntime(cdp, `Object.assign(window.__fg04KeyboardProof, {
+    streetId: window.__fg04Explorer.getStreetResult()?.id,
+    streetRows: document.querySelectorAll('[data-fg04-street-table] tr').length,
+    everyStreetRowPaired: Array.from(document.querySelectorAll('[data-fg04-street-table] tr'))
+      .every((row) => row.querySelectorAll('td').length === 2),
+    pointCleared: window.__fg04Explorer.getPointResult() === null
+      && document.querySelectorAll('.fg04-point-marker').length === 0,
+  })`);
+
+  await evaluateRuntime(cdp, `(() => {
+    window.__fg04KeyboardProof.copiedUrl = null;
+    try {
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText: async (value) => {
+          window.__fg04KeyboardProof.copiedUrl = value;
+        } },
+      });
+    } catch {}
+    document.querySelector('[data-fg04-share]').focus();
+  })()`);
+  await dispatchKey(cdp, 'Enter');
+  await waitForRuntime(
+    cdp,
+    `document.querySelector('[data-fg04-share]')?.textContent.trim() === 'Copied'`,
+    'share Enter key',
+  );
+  await evaluateRuntime(cdp, `(() => {
+    const share = document.querySelector('[data-fg04-share]');
+    Object.assign(window.__fg04KeyboardProof, {
+      shareText: share?.textContent.trim(),
+      shareFocused: document.activeElement === share,
+      shareStatus: document.querySelector('[data-fg04-share-status]')?.textContent,
+      finalUrl: location.href,
+      finished: true,
+    });
+  })()`);
+}
+
+async function runBrowser(executable, url, profile, expression, label, prepare = null) {
   const child = spawn(executable, [
     '--headless=new',
     '--disable-background-networking',
@@ -540,6 +781,7 @@ async function runBrowser(executable, url, profile, expression, label) {
     const cdp = cdpClient(target.webSocketDebuggerUrl);
     try {
       await cdp.call('Runtime.enable');
+      if (prepare) await prepare(cdp);
       for (let attempt = 0; attempt < 300; attempt += 1) {
         const result = await cdp.call('Runtime.evaluate', {
           expression,
@@ -592,6 +834,7 @@ if (!existsSync(resolve(DIST, 'guides/throwing-shade/index.html'))) {
 const server = createServer(serve);
 const pointBrowserProfile = mkdtempSync(join(tmpdir(), 'fg04-point-proof-'));
 const streetBrowserProfile = mkdtempSync(join(tmpdir(), 'fg04-street-proof-'));
+const keyboardBrowserProfile = mkdtempSync(join(tmpdir(), 'fg04-keyboard-proof-'));
 const recoveryProfiles = Array.from({ length: 5 }, (_, index) => (
   mkdtempSync(join(tmpdir(), `fg04-recovery-${index}-`))
 ));
@@ -623,6 +866,16 @@ try {
     browserPath(), streetUrl, streetBrowserProfile,
     streetProofExpression, 'street-profile',
   );
+  const keyboardQuery = new URLSearchParams({
+    tiles: 'local',
+    map: '-79.38445,43.65395,16',
+  });
+  const keyboardUrl = `http://127.0.0.1:${address.port}`
+    + `/guides/throwing-shade/?${keyboardQuery}`;
+  const keyboardResult = await runBrowser(
+    browserPath(), keyboardUrl, keyboardBrowserProfile,
+    keyboardProofExpression, 'keyboard', prepareKeyboardProof,
+  );
   const recoveryCases = [
     ['manifest-retry', manifestRetryExpression, ''],
     ['measured-retry', mapRetryExpression('raw'), ''],
@@ -648,6 +901,7 @@ try {
   }
   result.tileRequests = tileRequests;
   result.streetProof = streetResult;
+  result.keyboardProof = keyboardResult;
   result.recoveryProofs = recoveryResults;
   console.log(`FG04 selected-hour browser proof passed: ${JSON.stringify(result)}`);
 } finally {
@@ -656,6 +910,9 @@ try {
     recursive: true, force: true, maxRetries: 5, retryDelay: 100,
   });
   rmSync(streetBrowserProfile, {
+    recursive: true, force: true, maxRetries: 5, retryDelay: 100,
+  });
+  rmSync(keyboardBrowserProfile, {
     recursive: true, force: true, maxRetries: 5, retryDelay: 100,
   });
   recoveryProfiles.forEach((profile) => rmSync(profile, {
