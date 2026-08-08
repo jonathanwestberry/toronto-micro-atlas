@@ -223,6 +223,7 @@ test('the release decoder fetches the R2 tile directly in Chrome', () => {
 
 test('the selected-hour browser gate proves visible shaded and sunlit pixels', () => {
   const verifier = readFileSync(explorerVerifierPath, 'utf8');
+  assert.match(verifier, /CDP_TIMEOUT_MS\s*=\s*30_000/);
   assert.match(verifier, /Page\.captureScreenshot/);
   assert.match(verifier, /renderedPixels/);
   assert.match(verifier, /shadedPixels/);

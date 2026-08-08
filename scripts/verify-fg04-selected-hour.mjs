@@ -13,6 +13,8 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const DIST = resolve(ROOT, 'dist');
+const CDP_TIMEOUT_MS = 30_000;
+const BROWSER_START_ATTEMPTS = 600;
 const MIME = new Map([
   ['.css', 'text/css; charset=utf-8'],
   ['.html', 'text/html; charset=utf-8'],
@@ -139,7 +141,7 @@ const delay = (milliseconds) => new Promise((resolveDelay) => {
 
 async function waitForDebugPort(profile) {
   const activePort = join(profile, 'DevToolsActivePort');
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+  for (let attempt = 0; attempt < BROWSER_START_ATTEMPTS; attempt += 1) {
     if (existsSync(activePort)) {
       const [port] = readFileSync(activePort, 'utf8').trim().split('\n');
       return Number(port);
@@ -178,8 +180,8 @@ function cdpClient(webSocketUrl) {
       const timeout = new Promise((_, rejectCall) => {
         timeoutId = setTimeout(() => {
           pending.delete(id);
-          rejectCall(new Error(`${method} did not return in 10 seconds`));
-        }, 10_000);
+          rejectCall(new Error(`${method} did not return in 30 seconds`));
+        }, CDP_TIMEOUT_MS);
       });
       try {
         return await Promise.race([result, timeout]);
@@ -832,7 +834,7 @@ async function runBrowser(
   try {
     const port = await waitForDebugPort(profile);
     let target;
-    for (let attempt = 0; attempt < 100; attempt += 1) {
+    for (let attempt = 0; attempt < BROWSER_START_ATTEMPTS; attempt += 1) {
       const targets = await fetch(`http://127.0.0.1:${port}/json/list`)
         .then((response) => response.json());
       target = targets.find((candidate) => candidate.type === 'page');
