@@ -42,6 +42,14 @@ const socialPath = new URL(
   import.meta.url,
 );
 const stylePath = new URL('../src/styles/fg04.css', import.meta.url);
+const browserFixturePath = new URL(
+  './fixtures/fg04-browser-decode.html',
+  import.meta.url,
+);
+const browserVerifierPath = new URL(
+  '../scripts/verify-fg04-browser-decode.mjs',
+  import.meta.url,
+);
 
 const readRoute = () => (existsSync(routePath) ? readFileSync(routePath, 'utf8') : '');
 
@@ -162,6 +170,14 @@ test('the paired explorer panes may shrink to the 320 px reading frame', () => {
     /\.fg04-maps__pane\s*\{[^}]*min-width:\s*0;/s,
     'MapLibre attribution must not impose its min-content width on a map pane',
   );
+});
+
+test('the release decoder fetches the R2 tile directly in Chrome', () => {
+  const fixture = readFileSync(browserFixturePath, 'utf8');
+  const verifier = readFileSync(browserVerifierPath, 'utf8');
+  assert.match(fixture, /fetch\(proof\.tile\.url\)/);
+  assert.doesNotMatch(fixture, /__fg04_live_tile/);
+  assert.doesNotMatch(verifier, /__fg04_live_tile/);
 });
 
 test('the guide publishes an accessible 1200 by 630 social comparison', () => {

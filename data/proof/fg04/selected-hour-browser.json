@@ -73,8 +73,9 @@
     "classificationV2Requests": 132,
     "correctedV3Requests": 159,
     "measuredV3Requests": 159,
-    "proofMode": "same-origin local proxy of live R2 bytes",
-    "productionCorsStillMissing": true
+    "proofMode": "direct browser fetch of live R2 bytes",
+    "cdnCachePurgeScope": "tiles.torontomicroatlas.com hostname only",
+    "productionCorsStillMissing": false
   },
   "tile": [
     16,

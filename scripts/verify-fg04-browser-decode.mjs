@@ -13,7 +13,6 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const FIXTURE = '/tests/fixtures/fg04-browser-decode.html';
-const LIVE_TILE = 'https://tiles.torontomicroatlas.com/fg04/v3/raw/16/18316/23917.webp';
 const MIME = new Map([
   ['.html', 'text/html; charset=utf-8'],
   ['.json', 'application/json; charset=utf-8'],
@@ -37,22 +36,6 @@ function browserPath() {
 
 async function serveFile(request, response) {
   const pathname = new URL(request.url, 'http://127.0.0.1').pathname;
-  if (pathname === '/__fg04_live_tile') {
-    try {
-      const tile = await fetch(LIVE_TILE, {
-        headers: { 'user-agent': 'Mozilla/5.0 Chrome/151 FG04 proof' },
-      });
-      if (!tile.ok) throw new Error(`live tile ${tile.status}`);
-      response.writeHead(200, {
-        'content-type': tile.headers.get('content-type') ?? 'image/webp',
-        'cache-control': 'no-store',
-      });
-      response.end(Buffer.from(await tile.arrayBuffer()));
-    } catch (error) {
-      response.writeHead(502).end(error instanceof Error ? error.message : String(error));
-    }
-    return;
-  }
   const relative = normalize(pathname).replace(/^\/+/, '');
   const file = resolve(ROOT, relative);
   if (!file.startsWith(`${ROOT}/`)) {

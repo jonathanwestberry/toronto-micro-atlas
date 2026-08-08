@@ -23,7 +23,7 @@
         if (!proofResponse.ok) throw new Error(`proof fixture ${proofResponse.status}`);
         const proof = await proofResponse.json();
 
-        const tileResponse = await fetch('/__fg04_live_tile');
+        const tileResponse = await fetch(proof.tile.url);
         if (!tileResponse.ok) throw new Error(`live tile ${tileResponse.status}`);
         const bitmap = await createImageBitmap(await tileResponse.blob());
         const canvas = document.createElement('canvas');

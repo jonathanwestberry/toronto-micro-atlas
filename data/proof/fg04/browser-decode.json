@@ -14,8 +14,11 @@
     "httpStatus": 200,
     "contentType": "image/webp",
     "cacheControl": "public, max-age=31536000, immutable",
-    "corsReadable": false,
-    "proofTransport": "The local verifier proxies the live response byte-for-byte onto its own origin. Chrome still performs the WebP and canvas decode. Production R2 CORS remains a release blocker."
+    "corsReadable": true,
+    "corsPolicy": "Public read-only GET and HEAD with Access-Control-Allow-Origin: * and ETag exposed.",
+    "cdnCachePurgedAt": "2026-08-07",
+    "cdnCachePurgeScope": "tiles.torontomicroatlas.com hostname only",
+    "proofTransport": "Chrome fetches the live R2 URL directly across origins, decodes the WebP through canvas, and verifies both selected-hour bits against the Python reference."
   },
   "selectedHour": 13,
   "selectedBit": 7,
@@ -39,5 +42,5 @@
       }
     ]
   },
-  "browserContract": "fetch live R2 bytes through the same-origin proof proxy, createImageBitmap, drawImage, getImageData, decodeTilePixel, hourBit"
+  "browserContract": "fetch the live R2 URL directly across origins, createImageBitmap, drawImage, getImageData, decodeTilePixel, hourBit"
 }
