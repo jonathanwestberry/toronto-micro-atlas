@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { test } from 'node:test';
 
 /**
@@ -37,6 +38,8 @@ const routePath = new URL(
   '../dist/guides/throwing-shade/index.html',
   import.meta.url,
 );
+const homePath = new URL('../dist/index.html', import.meta.url);
+const aboutPath = new URL('../dist/about/index.html', import.meta.url);
 const socialPath = new URL(
   '../public/social/og-throwing-shade.jpg',
   import.meta.url,
@@ -50,8 +53,14 @@ const browserVerifierPath = new URL(
   '../scripts/verify-fg04-browser-decode.mjs',
   import.meta.url,
 );
+const explorerVerifierPath = new URL(
+  '../scripts/verify-fg04-selected-hour.mjs',
+  import.meta.url,
+);
 
 const readRoute = () => (existsSync(routePath) ? readFileSync(routePath, 'utf8') : '');
+const readHome = () => (existsSync(homePath) ? readFileSync(homePath, 'utf8') : '');
+const readAbout = () => (existsSync(aboutPath) ? readFileSync(aboutPath, 'utf8') : '');
 
 const jpegDimensions = (path) => {
   const bytes = readFileSync(path);
@@ -163,6 +172,38 @@ test('build publishes the exact shade guide route', () => {
   );
 });
 
+test('the Throwing Shade card references an asset that exists in the build', () => {
+  const card = mainMarkup(readHome()).match(
+    /<a[^>]+href="\/guides\/throwing-shade\/"[^>]+class="[^"]*guide-card[^"]*"[\s\S]*?<\/a>/,
+  )?.[0] ?? '';
+  const source = card.match(/<img[^>]+src="([^"]+)"/)?.[1];
+  assert.ok(source, 'The Throwing Shade card must have a cover image');
+  assert.equal(
+    existsSync(resolve(new URL('../dist', import.meta.url).pathname, source.replace(/^\//, ''))),
+    true,
+    `The Throwing Shade card image does not exist in dist: ${source}`,
+  );
+});
+
+test('the shared header includes Throwing Shade', () => {
+  const header = readHome().match(/<header\b[\s\S]*?<\/header>/)?.[0] ?? '';
+  assert.match(header, /href="\/guides\/throwing-shade\/"[^>]*>Throwing Shade<\/a>/);
+});
+
+test('the shared footer includes Throwing Shade', () => {
+  const footer = readHome().match(/<footer\b[\s\S]*?<\/footer>/)?.[0] ?? '';
+  assert.match(footer, /href="\/guides\/throwing-shade\/"[^>]*>Throwing Shade<\/a>/);
+});
+
+test('About names all four published field guides', () => {
+  const html = readAbout();
+  assert.match(html, />Four ways to read the city<\/h2>/);
+  const item = mainMarkup(html).match(
+    /<a href="\/guides\/throwing-shade\/"[^>]*>[\s\S]*?<\/a>/,
+  )?.[0] ?? '';
+  assert.equal(visibleText(item), '04 Throwing Shade');
+});
+
 test('the paired explorer panes may shrink to the 320 px reading frame', () => {
   const css = readFileSync(stylePath, 'utf8');
   assert.match(
@@ -178,6 +219,15 @@ test('the release decoder fetches the R2 tile directly in Chrome', () => {
   assert.match(fixture, /fetch\(proof\.tile\.url\)/);
   assert.doesNotMatch(fixture, /__fg04_live_tile/);
   assert.doesNotMatch(verifier, /__fg04_live_tile/);
+});
+
+test('the selected-hour browser gate proves visible shaded and sunlit pixels', () => {
+  const verifier = readFileSync(explorerVerifierPath, 'utf8');
+  assert.match(verifier, /Page\.captureScreenshot/);
+  assert.match(verifier, /renderedPixels/);
+  assert.match(verifier, /shadedPixels/);
+  assert.match(verifier, /sunlitPixels/);
+  assert.doesNotMatch(verifier, /getPaintProperty\([^)]*color-relief-color/);
 });
 
 test('the guide publishes an accessible 1200 by 630 social comparison', () => {

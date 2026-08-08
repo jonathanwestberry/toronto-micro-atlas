@@ -9,6 +9,7 @@ theme: fg04
 subjectTag: "Shade, towers & trees"
 tagline: "The city thins at one"
 order: 4
+cover: "/social/og-throwing-shade.jpg"
 ---
 
 Throwing Shade maps where the sun is blocked at ground level, hour by hour, across one modelled day. It reads the city twice: once from the surface the aircraft measured, and once with the trees given their summer leaves back. The second reading moves the shadiest neighbourhoods out of downtown entirely, which is the argument the guide exists to make.
