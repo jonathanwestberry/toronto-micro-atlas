@@ -64,6 +64,9 @@ jobs:
       - name: Test built site contract
         run: npm run test:web:contract
 
+      - name: Prove FG04 renders visible selected-hour pixels
+        run: npm run verify:fg04-explorer
+
       - name: Verify FG04 release candidate
         run: npm run verify:fg04-release
 

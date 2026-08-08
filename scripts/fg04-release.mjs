@@ -228,6 +228,7 @@ export function assertFg04Workflow(workflow) {
     'npm run check',
     'npm run build',
     'npm run test:web:contract',
+    'npm run verify:fg04-explorer',
     'npm run verify:fg04-release',
     'npm audit --omit=dev',
     'cloudflare/wrangler-action@v4',
