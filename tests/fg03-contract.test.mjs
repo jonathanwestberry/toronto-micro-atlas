@@ -457,10 +457,12 @@ test('production headers preserve indexing, caching, and browser security', () =
   // to https://cloudflareinsights.com/cdn-cgi/rum with no CSP violation.
   // Nothing else third-party is allowed in.
   assert.match(headers, /script-src [^;]*https:\/\/static\.cloudflareinsights\.com/);
-  // connect-src is deliberately NOT widened. The beacon carries a `version`,
-  // which makes it report same-origin to /cdn-cgi/rum for the edge to pick up,
-  // so no cross-origin connection is needed and none is granted.
-  assert.match(headers, /connect-src 'self';/);
+  // The analytics beacon remains same-origin. The only cross-origin connection
+  // is the public read-only R2 hostname used by the FG04 shade explorer.
+  assert.match(
+    headers,
+    /connect-src 'self' https:\/\/tiles\.torontomicroatlas\.com;/,
+  );
   assert.equal(
     (headers.match(/cloudflareinsights\.com/g) ?? []).length,
     1,
