@@ -338,10 +338,15 @@ test('manifest defaults drive checked controls, status, description, and lifecyc
     html,
     /Showing 6 current open facility records for 10 p\.m\., public access, and a 400 m walk\./,
   );
-  assert.match(
-    html,
-    /name="description" content="At 10 p\.m\., Toronto has 7,994 grouped transit points with scheduled activity but only 6 documented unrestricted washroom access points\./,
-  );
+  // The point of this assertion is that the manifest's live figures reach the
+  // meta description, not that the sentence around them never changes. Pinning
+  // the prose made a shortening of an over-long description read as a
+  // regression, so it now checks the snapshot label and both counts.
+  const description = html.match(/name="description" content="([^"]*)"/)?.[1];
+  assert.ok(description, 'the guide must publish a meta description');
+  assert.match(description, /10 p\.m\./);
+  assert.match(description, /7,994/);
+  assert.match(description, /\b6\b/);
   assert.match(html, /data-fg03-runtime/);
 });
 

@@ -10,6 +10,7 @@ lng: -79.39456
 neighbourhood: "Lawrence Park / North Toronto"
 landscapeSystem: "Blythwood Ravine / Burke Brook / Don River watershed"
 preview: "The trail through Blythwood Ravine passes under Mount Pleasant Road, where the road becomes a concrete ceiling and the path continues beneath it. For a few seconds you are inside the city's infrastructure. Then the ravine opens again on the other side."
+metaDescription: "The Blythwood Ravine trail passes under Mount Pleasant Road, running beneath the traffic at the ravine system's deepest point. Where to find the underpass."
 sources:
   - label: "City of Toronto, Blythwood Ravine Park"
     url: "https://www.toronto.ca/explore-enjoy/parks-recreation/places-spaces/parks-and-recreation-facilities/location/?id=322&title=Blythwood-Ravine-Park"

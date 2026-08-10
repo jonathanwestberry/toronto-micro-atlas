@@ -10,6 +10,7 @@ lng: -79.41510
 neighbourhood: "Casa Loma / Wychwood"
 landscapeSystem: "Nordheimer Ravine / Castle Frank Creek"
 preview: "At St. Clair and Bathurst, a busy midtown corner gives way to a steep wooded ravine. The path drops fast into old oak canopy, shade, and slope, and the street recedes behind the crest. Beneath the trail, a buried creek follows the valley it carved."
+metaDescription: "At St. Clair and Bathurst, a path drops into Nordheimer Ravine under old oaks. Castle Frank Brook runs buried below, but the valley it cut still reads."
 sources:
   - label: "City of Toronto, Nordheimer Ravine"
     url: "https://www.toronto.ca/explore-enjoy/parks-recreation/places-spaces/parks-and-recreation-facilities/location/?id=213&title=Nordheimer-Ravine"

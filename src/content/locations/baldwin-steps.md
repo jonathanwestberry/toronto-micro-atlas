@@ -10,6 +10,7 @@ lng: -79.40821
 neighbourhood: "Davenport / Wychwood"
 landscapeSystem: "Davenport Escarpment / former Lake Iroquois shoreline"
 preview: "The Baldwin Steps climb the Davenport escarpment from Davenport Road up to the grounds of Spadina Museum and Casa Loma. The stairs follow the edge of a landform that is not a ravine: it is the old shoreline of a glacial lake that once covered this part of the city."
+metaDescription: "Stairs climbing from Davenport Road up to Casa Loma, along the old shoreline of a glacial lake. Where the escarpment starts and how to read it."
 sources:
   - label: "City of Toronto, Spadina Museum"
     url: "https://www.toronto.ca/explore-enjoy/history-art-culture/museums/spadina-museum/"

@@ -10,6 +10,7 @@ lng: -79.37489
 neighbourhood: "Rosedale"
 landscapeSystem: "Rosedale Valley Ravine / Don River tributary"
 preview: "A pedestrian bridge crosses the Rosedale Valley Ravine at treetop height, then a tunnel passes under Bloor Street. Two thresholds in sequence: the crossing hangs you over the valley, and the tunnel slips you beneath the everyday city before letting you out at a different grade."
+metaDescription: "A footbridge over the Rosedale Valley Ravine, then a tunnel under Bloor. Two thresholds in a row, rebuilt in 2025, in a sequence Toronto rarely repeats."
 sources:
   - label: "City of Toronto, Glen Road Pedestrian Bridge project"
     url: "https://www.toronto.ca/community-people/get-involved/public-consultations/infrastructure-projects/glen-road-bridge/"

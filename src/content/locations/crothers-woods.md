@@ -10,6 +10,7 @@ lng: -79.36366
 neighbourhood: "Don Valley / Leaside"
 landscapeSystem: "Don River valley / Cudmore Creek tributary"
 preview: "Where Pottery Road meets Bayview Avenue, a trailhead kiosk and a restored wetland mark the way into Crothers Woods. It is an infrastructural threshold: hard road edge giving way to wetland, wooded slope, and natural-surface trails climbing into the Don Valley."
+metaDescription: "The Cudmore Creek trailhead at Pottery Road and Bayview opened in 2025: a kiosk, a lookout, a restored wetland, and trails climbing into Crothers Woods."
 sources:
   - label: "City of Toronto, Cudmore Creek Wetland and Trailhead"
     url: "https://www.toronto.ca/city-government/planning-development/construction-new-facilities/park-facility-projects/cudmore-creek-wetland-trailhead/"

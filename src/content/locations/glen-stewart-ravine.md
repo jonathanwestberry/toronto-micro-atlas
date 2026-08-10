@@ -10,6 +10,7 @@ lng: -79.29301
 neighbourhood: "The Beaches"
 landscapeSystem: "Glen Stewart Ravine / Kingston Road plateau edge"
 preview: "From the south side of Kingston Road in the Beaches, a wooden staircase drops into Glen Stewart Ravine. The change is fast: one moment you are on a residential main street, the next you are on a boardwalk in a tight forested ravine, following a creek corridor south."
+metaDescription: "Wooden stairs drop from Kingston Road in the Beaches into Glen Stewart Ravine, where a boardwalk follows Ames Creek south under close canopy."
 sources:
   - label: "City of Toronto, Glen Stewart Ravine"
     url: "https://www.toronto.ca/explore-enjoy/parks-recreation/places-spaces/parks-and-recreation-facilities/location/?id=3596&title=Glen-Stewart-Ravine"

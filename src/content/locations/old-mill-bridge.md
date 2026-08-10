@@ -10,6 +10,7 @@ lng: -79.49179
 neighbourhood: "Old Mill / Humber Valley"
 landscapeSystem: "Humber River / Lake Ontario floodplain"
 preview: "A stone-faced arch bridge crosses the Humber River where the valley opens on both sides. One approach is a residential street; the other is a river corridor of mature trees, marshy edges, and a trail running south toward the lake."
+metaDescription: "A 1916 stone arch carries Old Mill Bridge over the Humber, where the valley opens wide enough to read as a landscape rather than a gap between streets."
 sources:
   - label: "City of Toronto, Discovery Walk: Humber River, Old Mill and Marshes (PDF)"
     url: "https://www.toronto.ca/wp-content/uploads/2017/11/8fc8-Discovery-Walk-Humber-River-Old-Mill-Marshes.pdf"

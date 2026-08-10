@@ -44,6 +44,12 @@ const locations = defineCollection({
     neighbourhood: z.string(),
     landscapeSystem: z.string(),
     preview: z.string(),
+    // `preview` is editorial prose and renders in the guide's map panel, so it
+    // runs long by design. Search results cut a description around 155
+    // characters, which silently discarded the tail of all eight of these. The
+    // meta description is therefore its own field rather than a truncation of
+    // the prose, and the max() is a build-time guard so it cannot drift back.
+    metaDescription: z.string().max(155).optional(),
     sources: z.array(
       z.object({
         label: z.string(),

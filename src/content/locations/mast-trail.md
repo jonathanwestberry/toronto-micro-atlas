@@ -10,6 +10,7 @@ lng: -79.13594
 neighbourhood: "Rouge / Scarborough"
 landscapeSystem: "Rouge River valley / Rouge National Urban Park"
 preview: "The Mast Trail begins at the Glen Rouge Day Use Area on Kingston Road and climbs steeply into the Rouge Valley. Within a few hundred metres the trailhead infrastructure falls away and the ridge rises through dense forest. The city does not follow."
+metaDescription: "The Mast Trail climbs a wooded ridge above the Rouge Valley from the Glen Rouge Day Use Area on Kingston Road. The most demanding entry in Rouge park."
 sources:
   - label: "Parks Canada, Mast Trail"
     url: "https://parks.canada.ca/pn-np/on/rouge/activ/sentiers-trails/mast"

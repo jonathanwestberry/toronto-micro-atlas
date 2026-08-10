@@ -240,19 +240,21 @@ export const accessLabelFor = (access: InterventionProperties['accessCondition']
   readerLabel('access', access, 'Access condition not published');
 export const closureLabelFor = (category: string): string =>
   readerLabel('closure', category, 'Not classified');
+// Meta description only: this string never renders on the page, it fills
+// <meta name="description"> on the guide and its map route. Search results cut
+// a description around 155 characters, so both branches stay inside that while
+// keeping the live figures, which are the whole reason to click.
 export const guideDescription = gatePassed
-  ? `At ${defaultSnapshotLabel}, Toronto has ${number.format(
+  ? `At ${defaultSnapshotLabel}, ${number.format(
       defaultPhase1.activeTransitPointCount,
-    )} grouped transit points with scheduled activity but only ${number.format(
+    )} Toronto transit points still have scheduled service. Only ${number.format(
       defaultPhase1.unrestrictedOpenAccessPointCount,
-    )} documented unrestricted washroom access points. This guide maps the gap and publishes ${number.format(
-      manifest.gate.auditedOpportunityCount,
-    )} audited opportunities.`
-  : `At ${defaultSnapshotLabel}, Toronto has ${number.format(
+    )} public washrooms are documented open. This guide maps the gap.`
+  : `At ${defaultSnapshotLabel}, ${number.format(
       defaultPhase1.activeTransitPointCount,
-    )} grouped transit points with scheduled activity but only ${number.format(
+    )} Toronto transit points still have scheduled service. Only ${number.format(
       defaultPhase1.unrestrictedOpenAccessPointCount,
-    )} documented unrestricted washroom access points. The dated proof remains published, but rankings are withheld because the recommendation gate failed.`;
+    )} public washrooms are documented open. Rankings are withheld.`;
 
 export const defaultResults = gatePassed
   ? interventions.features

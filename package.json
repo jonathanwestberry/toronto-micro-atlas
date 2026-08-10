@@ -11,7 +11,7 @@
     "build-hero-map": "node scripts/build-hero-map.mjs",
     "check": "astro check",
     "test:web": "node --experimental-strip-types --test tests/atlas-events.test.mjs tests/fg03-state.test.mjs tests/fg03-results.test.mjs tests/fg03-map.test.mjs tests/fg04-core.test.mjs tests/fg04-point.test.mjs tests/fg04-runtime.test.mjs tests/fg04-state.test.mjs tests/fg04-streets.test.mjs tests/map-url.test.mjs tests/map-stage.test.mjs",
-    "test:web:contract": "node --test tests/fg03-contract.test.mjs tests/fg04-content.test.mjs tests/fg04-release.test.mjs",
+    "test:web:contract": "node --test tests/fg03-contract.test.mjs tests/fg04-content.test.mjs tests/fg04-release.test.mjs tests/seo-meta.test.mjs",
     "verify:fg04-browser": "node scripts/verify-fg04-browser-decode.mjs",
     "verify:fg04-explorer": "node scripts/verify-fg04-selected-hour.mjs",
     "verify:fg04-release": "node scripts/verify-fg04-release.mjs",
