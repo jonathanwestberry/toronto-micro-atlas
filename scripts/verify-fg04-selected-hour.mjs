@@ -143,8 +143,13 @@ async function waitForDebugPort(profile) {
   const activePort = join(profile, 'DevToolsActivePort');
   for (let attempt = 0; attempt < BROWSER_START_ATTEMPTS; attempt += 1) {
     if (existsSync(activePort)) {
+      // Chrome creates this file and then writes to it, so existence alone is
+      // not readiness: a read landing inside that window returns '' and
+      // Number('') is 0, which sends the caller to fetch a port nothing is
+      // listening on. Only a parsed positive integer counts as the port.
       const [port] = readFileSync(activePort, 'utf8').trim().split('\n');
-      return Number(port);
+      const parsed = Number(port);
+      if (Number.isInteger(parsed) && parsed > 0) return parsed;
     }
     await delay(50);
   }
@@ -834,14 +839,29 @@ async function runBrowser(
   try {
     const port = await waitForDebugPort(profile);
     let target;
+    let lastListError = null;
     for (let attempt = 0; attempt < BROWSER_START_ATTEMPTS; attempt += 1) {
-      const targets = await fetch(`http://127.0.0.1:${port}/json/list`)
-        .then((response) => response.json());
-      target = targets.find((candidate) => candidate.type === 'page');
-      if (target) break;
+      // Writing the port file and accepting connections on it are two separate
+      // events, in that order. A fetch landing between them rejects with
+      // ECONNREFUSED, and an uncaught rejection here escaped the retry loop
+      // entirely: the loop guarded against "no page target yet" but not against
+      // the earlier and likelier "port not listening yet", so the whole gate
+      // died on the first attempt. CI hit exactly this on 2026-08-10. Treat a
+      // connection error as one more reason to retry.
+      try {
+        const targets = await fetch(`http://127.0.0.1:${port}/json/list`)
+          .then((response) => response.json());
+        target = targets.find((candidate) => candidate.type === 'page');
+        if (target) break;
+      } catch (error) {
+        lastListError = error;
+      }
       await delay(50);
     }
-    if (!target) throw new Error('Chrome did not expose the explorer page');
+    if (!target) {
+      throw new Error('Chrome did not expose the explorer page'
+        + (lastListError ? `: ${lastListError.message}` : ''));
+    }
     const cdp = cdpClient(target.webSocketDebuggerUrl);
     try {
       await cdp.call('Runtime.enable');

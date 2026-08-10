@@ -62,8 +62,12 @@ async function waitForDebugPort(profile) {
   const activePort = join(profile, 'DevToolsActivePort');
   for (let attempt = 0; attempt < 100; attempt += 1) {
     if (existsSync(activePort)) {
+      // Existence is not readiness: Chrome creates the file and then writes it,
+      // so a read inside that window yields '' and Number('') is 0. Only a
+      // parsed positive integer counts as the port.
       const [port] = readFileSync(activePort, 'utf8').trim().split('\n');
-      return Number(port);
+      const parsed = Number(port);
+      if (Number.isInteger(parsed) && parsed > 0) return parsed;
     }
     await delay(50);
   }
@@ -120,14 +124,25 @@ async function runBrowser(executable, url, profile) {
   try {
     const port = await waitForDebugPort(profile);
     let target;
+    let lastListError = null;
     for (let attempt = 0; attempt < 100; attempt += 1) {
-      const targets = await fetch(`http://127.0.0.1:${port}/json/list`)
-        .then((response) => response.json());
-      target = targets.find((candidate) => candidate.type === 'page');
-      if (target) break;
+      // The port file is written before the endpoint accepts connections, so a
+      // fetch in between rejects with ECONNREFUSED. Uncaught, that rejection
+      // escapes the retry loop and kills the gate on the first attempt.
+      try {
+        const targets = await fetch(`http://127.0.0.1:${port}/json/list`)
+          .then((response) => response.json());
+        target = targets.find((candidate) => candidate.type === 'page');
+        if (target) break;
+      } catch (error) {
+        lastListError = error;
+      }
       await delay(50);
     }
-    if (!target) throw new Error('Chrome did not expose the proof page');
+    if (!target) {
+      throw new Error('Chrome did not expose the proof page'
+        + (lastListError ? `: ${lastListError.message}` : ''));
+    }
     const cdp = cdpClient(target.webSocketDebuggerUrl);
     try {
       await cdp.call('Runtime.enable');
