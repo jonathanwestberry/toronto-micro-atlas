@@ -17,6 +17,7 @@ const newestTime = Math.max(...guides.map((g) => g.data.published.getTime()));
 <Base
   title="Field guides"
   description="Every Toronto Micro-Atlas field guide: interactive maps that each take one specific way the city works."
+  breadcrumbs={[{ name: 'Toronto Micro-Atlas', path: '/' }]}
 >
   <section class="guides-index" aria-labelledby="guides-heading">
     <div class="guides-index-inner">

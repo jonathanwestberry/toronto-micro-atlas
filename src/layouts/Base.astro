@@ -20,6 +20,19 @@ interface Props {
   articleUpdated?: string;
   articleAuthor?: string;
   /**
+   * Site-relative path this page should canonicalise to instead of its own URL.
+   * The expanded /map routes use it to point at their parent guide: they are the
+   * same guide in a bigger frame, not a second document, and Google declined to
+   * index all three of them on their own merits.
+   */
+  canonicalPath?: string;
+  /**
+   * Breadcrumb trail for structured data, root first, excluding the current
+   * page (which is appended automatically from `title`). Paths are
+   * site-relative and get the base prefix applied here.
+   */
+  breadcrumbs?: { name: string; path: string }[];
+  /**
    * Full-height pages (the expanded map routes): the footer is dropped and
    * main fills whatever the header leaves, so the page itself never scrolls.
    * The header stays, because an expanded map is a page of the publication,
@@ -49,6 +62,8 @@ const {
   articlePublished,
   articleUpdated,
   articleAuthor = 'Jonathan Westberry',
+  canonicalPath,
+  breadcrumbs,
   fullHeight = false,
   guideTheme,
 } = Astro.props;
@@ -57,32 +72,68 @@ const siteTitle = 'Toronto Micro-Atlas';
 const pageTitle = title ? `${title} | ${siteTitle}` : siteTitle;
 const resolvedOgTitle = ogTitle ?? title ?? siteTitle;
 const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
-const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://torontomicroatlas.com');
+const siteOrigin = Astro.site ?? 'https://torontomicroatlas.com';
+const canonicalURL = new URL(canonicalPath ? `${base}${canonicalPath}` : Astro.url.pathname, siteOrigin);
 // og:image must be an absolute URL; scrapers (X, LinkedIn, Slack) won't resolve relative paths
 const ogImageURL = new URL(`${base}${ogImage ?? '/social/og-default.jpg'}`, Astro.site ?? 'https://torontomicroatlas.com');
 const isArticle = Boolean(articlePublished);
 const articleModified = articleUpdated ?? articlePublished;
-const articleJsonLd = isArticle
-  ? JSON.stringify({
-      '@context': 'https://schema.org',
-      '@type': 'Article',
-      headline: resolvedOgTitle,
-      description,
-      image: ogImageURL.href,
-      datePublished: articlePublished,
-      dateModified: articleModified,
-      mainEntityOfPage: canonicalURL.href,
-      author: {
-        '@type': 'Person',
-        name: articleAuthor,
+
+/*
+  Structured data. Previously only the two guides that passed `articlePublished`
+  emitted anything at all, so 16 of the site's 18 pages went out with no schema
+  and Google had nothing to read the publication as. WebSite and Organization
+  now ship on every page and carry stable @ids, so the Article and the
+  breadcrumb trail reference them instead of restating the publisher inline.
+*/
+const siteUrl = new URL('/', siteOrigin).href;
+const orgId = `${siteUrl}#publication`;
+const authorId = `${siteUrl}#author`;
+
+const graph: Record<string, unknown>[] = [
+  { '@type': 'WebSite', '@id': `${siteUrl}#website`, name: siteTitle, url: siteUrl, publisher: { '@id': orgId } },
+  { '@type': 'Organization', '@id': orgId, name: siteTitle, url: siteUrl, founder: { '@id': authorId } },
+  { '@type': 'Person', '@id': authorId, name: articleAuthor, url: 'https://jonathan-westberry.com/' },
+];
+
+if (isArticle) {
+  graph.push({
+    '@type': 'Article',
+    headline: resolvedOgTitle,
+    description,
+    image: ogImageURL.href,
+    datePublished: articlePublished,
+    dateModified: articleModified,
+    mainEntityOfPage: canonicalURL.href,
+    url: canonicalURL.href,
+    author: { '@id': authorId },
+    publisher: { '@id': orgId },
+  });
+}
+
+if (breadcrumbs?.length) {
+  graph.push({
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      ...breadcrumbs.map((crumb, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        name: crumb.name,
+        item: new URL(`${base}${crumb.path}`, siteOrigin).href,
+      })),
+      {
+        '@type': 'ListItem',
+        position: breadcrumbs.length + 1,
+        name: title ?? siteTitle,
+        item: canonicalURL.href,
       },
-      publisher: {
-        '@type': 'Organization',
-        name: siteTitle,
-        url: new URL('/', Astro.site ?? 'https://torontomicroatlas.com').href,
-      },
-    }).replaceAll('<', '\\u003c')
-  : undefined;
+    ],
+  });
+}
+
+// `<` is escaped so a title or description containing markup can never close
+// the script element early.
+const jsonLd = JSON.stringify({ '@context': 'https://schema.org', '@graph': graph }).replaceAll('<', '\\u003c');
 const path = Astro.url.pathname;
 const onGuides = path.includes('/guides/');
 const onAbout = path.includes('/about');
@@ -159,7 +210,7 @@ const onAbout = path.includes('/about');
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImageURL.href} />
     {ogImageAlt && <meta name="twitter:image:alt" content={ogImageAlt} />}
-    {articleJsonLd && <script is:inline type="application/ld+json" set:html={articleJsonLd} />}
+    <script is:inline type="application/ld+json" set:html={jsonLd} />
 
     <style is:global>
       /* ============================================================

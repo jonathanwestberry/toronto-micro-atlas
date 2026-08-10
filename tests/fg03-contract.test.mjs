@@ -432,8 +432,36 @@ test('FG03 publishes article metadata and the verified social card', () => {
   assert.match(html, /property="article:published_time" content="2026-07-25"/);
   assert.match(html, /property="article:modified_time" content="2026-07-25"/);
   assert.match(html, /type="application\/ld\+json"/);
-  assert.match(html, /"@type":"Article"/);
-  assert.match(html, /"author":\{"@type":"Person","name":"Jonathan Westberry"\}/);
+
+  // Assert the meaning, not the serialization. The layout now emits one @graph
+  // per page holding WebSite, Organization and Person, and the Article points at
+  // the Person by @id rather than restating it inline. Matching the old inline
+  // author string would fail on a change that is strictly better structured
+  // data, so the check walks the graph instead.
+  const graph = JSON.parse(
+    html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1],
+  )['@graph'];
+  const byType = (t) => graph.find((node) => node['@type'] === t);
+
+  const article = byType('Article');
+  assert.ok(article, 'the guide must publish an Article node');
+  assert.equal(article.datePublished, '2026-07-25');
+
+  const person = byType('Person');
+  assert.equal(person.name, 'Jonathan Westberry');
+  assert.equal(article.author['@id'], person['@id'], 'the Article must credit that Person');
+
+  const org = byType('Organization');
+  assert.equal(org.name, 'Toronto Micro-Atlas');
+  assert.equal(article.publisher['@id'], org['@id']);
+
+  // The visible breadcrumb has a machine-readable twin ending on this page.
+  const crumbs = byType('BreadcrumbList').itemListElement;
+  assert.deepEqual(
+    crumbs.map((c) => c.name),
+    ['Toronto Micro-Atlas', 'Field guides', 'When Toronto Has to Go'],
+  );
+  assert.equal(crumbs.at(-1).item, 'https://torontomicroatlas.com/guides/when-toronto-has-to-go/');
 });
 
 test('production headers preserve indexing, caching, and browser security', () => {
