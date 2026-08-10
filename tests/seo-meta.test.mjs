@@ -59,6 +59,26 @@ test('every page has a unique meta description inside the snippet budget', () =>
   assert.deepEqual(duplicates, [], 'pages sharing a meta description');
 });
 
+test('internal links point at the built path, not a redirect to it', () => {
+  // Every route builds to <path>/index.html, so a slashless href earns a 308
+  // before the page loads. The expand-map links did exactly that on all three
+  // guides, and Search Console counts the two forms as competing URLs.
+  const offenders = [];
+  for (const file of pages) {
+    const html = readFileSync(join(DIST, file), 'utf8');
+    for (const href of html.match(/href="\/[^"]*"/g) ?? []) {
+      const path = href.slice(6, -1).split(/[?#]/)[0];
+      if (path === '/' || path.endsWith('/')) continue;
+      // Real files (assets, favicon, data downloads) legitimately have no
+      // trailing slash. The bound is 8 so .geojson counts as an extension.
+      if (/\.[a-z0-9]{2,8}$/i.test(path)) continue;
+      if (path.startsWith('/cdn-cgi/')) continue;
+      offenders.push(`${file} -> ${path}`);
+    }
+  }
+  assert.deepEqual([...new Set(offenders)], [], 'internal links missing a trailing slash');
+});
+
 test('every page has exactly one canonical link and one title', () => {
   for (const file of pages) {
     const html = readFileSync(join(DIST, file), 'utf8');

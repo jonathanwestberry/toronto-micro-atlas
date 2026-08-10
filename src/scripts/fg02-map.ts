@@ -1256,7 +1256,7 @@ export function initSidewalkForest(options: InitSidewalkForestOptions = {}): voi
     // "zoom", so the embedded stage never takes one. Driving the map yourself
     // is what /guides/sidewalk-forest/map is for.
     gestures: expanded ? 'gated' : 'inert',
-    expandPath: expanded ? undefined : `${base}guides/sidewalk-forest/map`.replace(/\/{2,}/g, '/'),
+    expandPath: expanded ? undefined : `${base}guides/sidewalk-forest/map/`.replace(/\/{2,}/g, '/'),
     onRetry: () => forest.reloadLayers(),
   });
 

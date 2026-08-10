@@ -62,7 +62,9 @@ export interface MapStageOptions {
    * expand link switch off; the map owns the viewport and scroll-zoom is native.
    */
   expanded?: boolean;
-  /** Absolute path of the expand route, e.g. `/guides/sidewalk-forest/map`. */
+  /** Absolute path of the expand route, e.g. `/guides/sidewalk-forest/map/`.
+   *  Keep the trailing slash: the built route is a directory, and omitting it
+   *  costs a 308 on every expand. */
   expandPath?: string;
   /** Called when the reader hits Retry in the error state. */
   onRetry?: () => void;

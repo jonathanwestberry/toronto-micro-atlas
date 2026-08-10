@@ -1189,7 +1189,7 @@ export function initGuideMap(options: InitGuideMapOptions = {}): void {
   const stage = createMapStage({
     map,
     expanded: options.expanded ?? false,
-    expandPath: options.expanded ? undefined : `${baseUrl}guides/hidden-landscapes/map`.replace(/\/{2,}/g, '/'),
+    expandPath: options.expanded ? undefined : `${baseUrl}guides/hidden-landscapes/map/`.replace(/\/{2,}/g, '/'),
     onRetry: () => {
       failedSources.clear();
       guideMap.refetchSources();

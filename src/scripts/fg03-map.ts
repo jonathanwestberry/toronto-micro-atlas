@@ -2368,7 +2368,7 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
       expanded: isExpandedRoute,
       expandPath: isExpandedRoute
         ? undefined
-        : `${withBase('guides/when-toronto-has-to-go/map')}`,
+        : `${withBase('guides/when-toronto-has-to-go/map/')}`,
     });
     if (isExpandedRoute) {
       map.once('idle', () => mapStage?.focusMap());
