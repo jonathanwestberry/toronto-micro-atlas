@@ -11,20 +11,37 @@ https://toronto-micro-atlas.pages.dev/*
 https://:version.toronto-micro-atlas.pages.dev/*
   X-Robots-Tag: noindex, nofollow
 
+# The five HTML rules below deliberately omit `no-transform`.
+#
+# It was here to stop Cloudflare auto-injecting its analytics beacon, because
+# the beacon belongs in the layout where it is reviewable in git. That worked,
+# but `no-transform` is not a scalpel: it tells the edge to leave the response
+# body completely alone, and compression is a body transformation, so every
+# page shipped uncompressed. The heaviest guide went out at 47.7 kB instead of
+# roughly 12 kB, on a publication people open on a phone, outdoors, on cellular.
+#
+# Checked on 2026-08-10 before removing it: the 404 route never carried
+# `no-transform`, so the edge was free to rewrite it, and it came back
+# byte-identical to the build with exactly one beacon tag. Nothing is being
+# injected. Zone transforms are all off (Rocket Loader, auto-minify, Mirage,
+# Polish); Brotli is on.
+#
+# If auto-injection is ever switched back on, the fix is to turn it off at
+# Cloudflare, not to re-add `no-transform` and pay for it in bytes.
 /
-  Cache-Control: public, no-cache, must-revalidate, no-transform
+  Cache-Control: public, no-cache, must-revalidate
 
 /index.html
-  Cache-Control: public, no-cache, must-revalidate, no-transform
+  Cache-Control: public, no-cache, must-revalidate
 
 /about/*
-  Cache-Control: public, no-cache, must-revalidate, no-transform
+  Cache-Control: public, no-cache, must-revalidate
 
 /guides/*
-  Cache-Control: public, no-cache, must-revalidate, no-transform
+  Cache-Control: public, no-cache, must-revalidate
 
 /404.html
-  Cache-Control: public, no-cache, must-revalidate, no-transform
+  Cache-Control: public, no-cache, must-revalidate
 
 /data/fg03/2026-07-21/manifest.json
   Cache-Control: public, no-cache, must-revalidate

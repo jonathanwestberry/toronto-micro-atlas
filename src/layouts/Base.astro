@@ -157,14 +157,20 @@ const onAbout = path.includes('/about');
       Cloudflare Web Analytics, loaded explicitly rather than left to
       Cloudflare's automatic injection.
 
-      Auto-injection cannot reach this site. Every real page ships with
-      `no-transform` in its Cache-Control (public/_headers), a direct
-      instruction to Cloudflare and every other intermediary not to alter the
-      response body, so the edge correctly declines to insert anything. The
-      only pages it ever reached were 404s, which go out with `no-store`.
-      Keeping `no-transform` and writing the tag ourselves is the right way
-      round: the HTML nobody else edits, and a third-party script host that is
-      reviewable in git.
+      The beacon is written here, by hand, so the third-party script host is
+      reviewable in git rather than appearing at the edge.
+
+      This used to be enforced with `no-transform` on every HTML route, which
+      told Cloudflare not to alter the response body at all. It worked, and it
+      also disabled compression, because compression is a body transformation:
+      every page shipped uncompressed, the heaviest guide at 47.7 kB rather
+      than roughly 12 kB. `no-transform` was removed on 2026-08-10 after
+      checking that auto-injection is not actually running. The 404 route never
+      carried the directive, so the edge was free to rewrite it, and it came
+      back byte-identical to the build with exactly one beacon tag.
+
+      The manual tag is what keeps this honest now, not the header. The
+      contract test asserts every built page carries exactly one beacon.
 
       `version` is load-bearing, not decoration. The beacon picks its reporting
       endpoint from it. With a version set it POSTs same-origin to

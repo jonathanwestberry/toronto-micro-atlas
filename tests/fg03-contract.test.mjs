@@ -508,23 +508,38 @@ test('production headers preserve indexing, caching, and browser security', () =
       headers,
       new RegExp(
         `(?:^|\\n)${escapedRoute}\\n\\s+Cache-Control: `
-        + 'public, no-cache, must-revalidate, no-transform',
+        + 'public, no-cache, must-revalidate$',
+        'm',
       ),
-      `HTML route must prevent automatic third-party transformation: ${route}`,
+      `HTML route must revalidate on every request: ${route}`,
     );
   }
+
+  // This used to assert `no-transform` on all five HTML routes, to stop
+  // Cloudflare injecting its analytics beacon. It did stop that, and it also
+  // stopped compression, because compressing a response is a body
+  // transformation and the directive does not distinguish. Every page shipped
+  // uncompressed, the heaviest guide at 47.7 kB against roughly 12 kB brotli.
+  //
+  // Removed on 2026-08-10 after testing the premise rather than trusting it:
+  // the 404 route never carried the directive, so the edge could rewrite it
+  // freely, and it returned byte-identical to the build with one beacon tag.
+  // Zone transforms are all off; Brotli is on. Re-adding the directive to fix
+  // a future injection would be the wrong lever: turn injection off instead.
+  // Count directives, not prose: the file explains the removal in a comment
+  // block, and that explanation names the directive it is about.
+  const directives = headers
+    .split('\n')
+    .filter((line) => !line.trimStart().startsWith('#'))
+    .join('\n');
   assert.equal(
-    (headers.match(/\bno-transform\b/g) ?? []).length,
-    5,
-    'Only the five HTML cache rules may disable Cloudflare transformation',
+    (directives.match(/\bno-transform\b/g) ?? []).length,
+    0,
+    'no-transform disables compression as well as injection; do not reintroduce it',
   );
 
-  // no-transform stays, and that is why the beacon is written into the layout
-  // by hand rather than left to Cloudflare's edge injection. no-transform tells
-  // every intermediary not to rewrite our HTML, which is worth keeping, and it
-  // is also the reason auto-injection reached only the 404 route (sent with
-  // no-store) and never a real page. Shipping the tag ourselves means analytics
-  // that work, HTML nobody else edits, and a script host reviewable in git.
+  // The single hand-written beacon below is now the whole guarantee, so the
+  // per-page assertion that follows carries the weight the header used to.
   const beaconMarkup = /cloudflareinsights|beacon\.min\.js|data-cf-beacon/i;
   const htmlFiles = readdirSync(distPath, { recursive: true })
     .filter((path) => path.endsWith('.html'));
