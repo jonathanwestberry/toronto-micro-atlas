@@ -255,6 +255,7 @@
 .map-stage__howto-title {
   margin: 0;
   font-family: var(--font-display);
+  font-weight: 400;
   font-size: 1.25rem;
   line-height: 1;
   letter-spacing: 0.02em;

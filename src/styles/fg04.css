@@ -95,6 +95,7 @@
    headings: a different voice from its own sections, and no rank over them. */
 .fg04 h1 {
   font-family: var(--font-heading);
+  font-weight: 400;
   font-size: clamp(2.75rem, 7vw, var(--text-5xl));
   line-height: 0.95;
   letter-spacing: 0.01em;
@@ -118,6 +119,7 @@
 
 .fg04-chapter h2 {
   font-family: var(--font-heading);
+  font-weight: 400;
   font-size: var(--text-3xl);
   line-height: 1.08;
   letter-spacing: 0.01em;
@@ -191,6 +193,7 @@
 
 .fg04-pair__value {
   font-family: var(--font-heading);
+  font-weight: 400;
   font-size: var(--text-3xl);
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -235,6 +238,7 @@
 .fg04-street__title {
   margin: 0 0 var(--space-1);
   font-family: var(--font-heading);
+  font-weight: 400;
   font-size: var(--text-xl);
   color: var(--atlas-ink);
 }
@@ -345,6 +349,7 @@
 .fg04-street__name {
   margin: 0;
   font-family: var(--font-heading);
+  font-weight: 400;
   font-size: var(--text-xl);
   color: var(--atlas-ink);
 }
@@ -733,6 +738,7 @@
 
 .fg04-maps__title {
   font-family: var(--font-heading);
+  font-weight: 400;
   font-size: var(--text-2xl);
   color: var(--atlas-ink);
   margin-bottom: var(--space-2);
@@ -979,6 +985,7 @@
 .fg04-point__title {
   margin: 0 0 var(--space-1);
   font-family: var(--font-heading);
+  font-weight: 400;
   font-size: var(--text-xl);
   color: var(--atlas-ink);
 }

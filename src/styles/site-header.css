@@ -51,7 +51,7 @@ body[data-full-height] .site-header {
 
 .site-masthead {
   font-family: var(--font-heading);
-  font-weight: 900;
+  font-weight: 400;
   font-size: var(--text-sm);
   letter-spacing: 0.14em;
   text-transform: uppercase;

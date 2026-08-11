@@ -1,7 +1,6 @@
 /* Survey Document design tokens */
 
 /* Font faces */
-@import "@fontsource-variable/archivo/wght.css";
 @import "@fontsource-variable/source-serif-4/wght.css";
 /* Family type voices (Bebas display + Space Mono data/labels). @font-face
    declarations only; the browser fetches these woff2 files lazily, when an
@@ -53,7 +52,7 @@
 
   /* Font families. Atlas voice = Bebas display + Space Mono interface/label +
      Source Serif reading body. (--font-display / --font-mono defined below.) */
-  --font-heading: "Bebas Neue", "Archivo Variable", system-ui, sans-serif;
+  --font-heading: "Bebas Neue", system-ui, sans-serif;
   --font-body: "Source Serif 4 Variable", Georgia, serif;
   --font-ui: "Space Mono", ui-monospace, "SFMono-Regular", monospace;
 
@@ -187,10 +186,11 @@
   /* ==========================================================================
      Type voices (THREE VOICES). --font-display and --font-mono are the shared
      family signature; the atlas keeps a reading serif for body (--font-body).
-     Existing --font-heading / --font-ui stay on Archivo in Phase 1 so nothing
-     re-renders; the redesign phases repoint headings/UI to these.
+     Archivo was the pre-redesign face and was held as a fallback so nothing
+     re-rendered mid-migration. FG03 was the last route still on it; with that
+     repointed the family is gone from the project entirely.
      ========================================================================== */
-  --font-display: "Bebas Neue", "Archivo Variable", system-ui, sans-serif;
+  --font-display: "Bebas Neue", system-ui, sans-serif;
   --font-mono:    "Space Mono", ui-monospace, "SFMono-Regular", monospace;
 
   /* ==========================================================================

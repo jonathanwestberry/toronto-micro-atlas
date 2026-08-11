@@ -29,9 +29,15 @@
   --fg03-warning: #7b5221;
   --fg03-error: #87291f;
   --fg03-success: #315f4c;
-  --fg03-display: "Archivo Variable", system-ui, sans-serif;
-  --fg03-body: "Source Serif 4 Variable", Georgia, serif;
-  --fg03-ui: "Archivo Variable", system-ui, sans-serif;
+  /* The three voices, taken from the shared tokens rather than restated.
+     These stayed on Archivo through the redesign so nothing re-rendered
+     mid-migration, and were never moved back, which left FG03 the only route
+     off the site's type system. Archivo has a 100-900 weight axis and the
+     rules below were written against it; Bebas Neue ships one weight and
+     Space Mono two, so the weights moved with the families. */
+  --fg03-display: var(--font-display);
+  --fg03-body: var(--font-body);
+  --fg03-ui: var(--font-mono);
 
   background: var(--fg03-paper);
   color: var(--fg03-ink);
@@ -151,7 +157,7 @@
 .fg03-result-rank {
   font-family: var(--fg03-ui);
   font-size: 0.75rem;
-  font-weight: 750;
+  font-weight: 700;
   letter-spacing: 0.11em;
   line-height: 1.35;
   text-transform: uppercase;
@@ -221,13 +227,13 @@
 .fg03 h4 {
   color: var(--fg03-ink);
   font-family: var(--fg03-display);
+  font-weight: 400;
   text-wrap: balance;
 }
 
 .fg03 h1 {
   font-size: clamp(3rem, 13vw, 6.75rem);
-  font-weight: 850;
-  letter-spacing: -0.055em;
+  letter-spacing: 0.01em;
   line-height: 0.88;
   max-width: 9ch;
 }
@@ -258,9 +264,9 @@
 }
 
 .fg03-finding-statement strong {
-  font-family: var(--fg03-display);
+  font-family: var(--fg03-body);
   font-variant-numeric: tabular-nums;
-  font-weight: 850;
+  font-weight: 800;
 }
 
 .fg03-finding-note {
@@ -291,7 +297,7 @@
 .fg03-notes h2,
 .fg03-series h2 {
   font-size: clamp(2rem, 7vw, 3.75rem);
-  font-weight: 800;
+  font-weight: 400;
   letter-spacing: -0.04em;
   line-height: 0.98;
 }
@@ -320,8 +326,9 @@
 
 .fg03-snapshot-time {
   font-family: var(--fg03-display);
+  font-weight: 400;
   font-size: 1.5rem;
-  font-weight: 800;
+  letter-spacing: 0.01em;
   line-height: 1;
 }
 
@@ -336,7 +343,7 @@
   font-family: var(--fg03-ui);
   font-size: 1.75rem;
   font-variant-numeric: tabular-nums;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.035em;
 }
 
@@ -364,17 +371,17 @@
 .fg03-access-caveat-number {
   color: var(--fg03-mauve);
   font-family: var(--fg03-display);
+  font-weight: 400;
   font-size: clamp(3.5rem, 12vw, 6rem);
   font-variant-numeric: tabular-nums;
-  font-weight: 850;
-  letter-spacing: -0.06em;
+  letter-spacing: 0.01em;
   line-height: 0.8;
 }
 
 .fg03-access-caveat h3,
 .fg03-grain-note h3 {
   font-size: 1.375rem;
-  font-weight: 800;
+  font-weight: 400;
   line-height: 1.1;
   margin-bottom: 0.5rem;
 }
@@ -458,7 +465,7 @@
   display: block;
   font-family: var(--fg03-ui);
   font-size: 0.75rem;
-  font-weight: 750;
+  font-weight: 700;
   letter-spacing: 0.08em;
   margin-bottom: 0.5rem;
   text-transform: uppercase;
@@ -491,7 +498,7 @@
   display: flex;
   font-family: var(--fg03-ui);
   font-size: 0.8125rem;
-  font-weight: 650;
+  font-weight: 700;
   justify-content: center;
   line-height: 1.2;
   min-height: 2.75rem;
@@ -534,7 +541,7 @@
   margin: 0.85rem 0 0.4rem;
   font-family: var(--fg03-ui);
   font-size: 0.6875rem;
-  font-weight: 750;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--fg03-ink-muted);
@@ -805,7 +812,7 @@
 }
 
 .fg03-shape-name {
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .fg03-symbol {
@@ -845,7 +852,7 @@
   background: none;
   border: 0;
   font-size: 1rem;
-  font-weight: 800;
+  font-weight: 700;
   height: auto;
   line-height: 0.75rem;
   text-align: center;
@@ -923,7 +930,7 @@
 
 .fg03-map-title-count {
   font-size: 0.9375rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.2;
 }
 
@@ -993,7 +1000,7 @@
 
 .fg03-map-card-head h4 {
   font-size: 1rem;
-  font-weight: 800;
+  font-weight: 400;
   line-height: 1.25;
 }
 
@@ -1111,7 +1118,7 @@
 
 .fg03-results-header h3 {
   font-size: 1.75rem;
-  font-weight: 800;
+  font-weight: 400;
   line-height: 1;
 }
 
@@ -1149,7 +1156,7 @@
 
 .fg03-result-summary h4 {
   font-size: 1.25rem;
-  font-weight: 800;
+  font-weight: 400;
   line-height: 1.15;
 }
 
@@ -1177,7 +1184,7 @@
   font-family: var(--fg03-ui);
   font-size: 1.125rem;
   font-variant-numeric: tabular-nums;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .fg03-result-map-button {
@@ -1336,7 +1343,7 @@
 .fg03-note-grid dt {
   font-family: var(--fg03-ui);
   font-size: 0.8125rem;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .fg03-downloads a {
@@ -1381,13 +1388,14 @@
   color: var(--fg03-mauve);
   font-family: var(--fg03-ui);
   font-size: 0.6875rem;
-  font-weight: 750;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .fg03-series a strong {
   font-family: var(--fg03-display);
+  font-weight: 400;
   font-size: 1.375rem;
   line-height: 1.1;
 }
