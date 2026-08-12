@@ -156,7 +156,7 @@ const RAW_AND_CORRECTED = [
   ['6.027', '7.034', 'NIA mean shaded hours'],
   ['6.246', '7.240', 'non-NIA mean shaded hours'],
   ['0.219', '0.206', 'NIA gap'],
-  ['6.00', '6.17', 'transit stop mean shaded hours'],
+  ['6.00', '7.00', 'transit stop mean shaded hours'],
   ['1.85', '1.86', 'sunniest arterial'],
   ['9.99', '10.65', 'shadiest arterial outside downtown'],
   ['10.90', '11.30', 'shadiest neighbourhood'],
@@ -526,5 +526,53 @@ test('the internal id and the retired series naming stay out of the copy', () =>
     copy,
     /\bguide (?:0\d|four|4)\b/i,
     'Guides are not numbered in public copy',
+  );
+});
+
+/**
+ * Nothing in this file opened the proof file until now, and that is precisely
+ * how three wrong numbers shipped together: a 20:00 frame the data never
+ * produced, a top-five span that contradicted the ranking table printed six
+ * lines above it, and a bare-transit-stop count written as "three" when it was
+ * 533. Every one of them was checkable against statistics.json. The pairs in
+ * RAW_AND_CORRECTED above only ever caught figures the stats script already
+ * printed, so anything derived, or anything the script summarised away, was
+ * unguarded. So the proof file is opened here.
+ */
+const statsPath = new URL('../data/proof/fg04/statistics.json', import.meta.url);
+const readStats = () => JSON.parse(readFileSync(statsPath, 'utf8'));
+
+test('the bare transit stop count in the copy is the count in the proof file', () => {
+  const bare = readStats().transit_stops_no_usable_shade_both_surfaces;
+  assert.ok(
+    bare,
+    'statistics.json must publish the both-surfaces bare stop count. '
+    + 'The per-surface "sunniest" list cannot stand in for it.',
+  );
+
+  assert.ok(
+    readCopy().includes(String(bare.count)),
+    `The guide must print ${bare.count}: stops with no usable shade on either `
+    + 'surface. "sunniest" is an argsort slice of a large tied set, so it can '
+    + 'name five stops and can never say how many exist. Reading the count off '
+    + `that list gave "three" and understated this by ${bare.count - 3}.`,
+  );
+});
+
+test('the corrected top-five span matches the corrected top five', () => {
+  const top = readStats().surfaces.corrected.shadiest_neighbourhoods;
+  const span = Math.round(
+    (top[0].mean_shaded_hours - top[top.length - 1].mean_shaded_hours) * 100,
+  ) / 100;
+
+  const claimed = readCopy().match(/top five spans\s*([0-9]+\.[0-9]+)\s*hours/);
+  assert.ok(claimed, 'Chapter three must state the span of the corrected top five');
+  assert.equal(
+    Number(claimed[1]),
+    span,
+    'Chapter three exists to calibrate how small the reversal is, so a wrong '
+    + 'span there misleads worse than a wrong span anywhere else on the page. '
+    + `The table directly above it runs ${top[0].mean_shaded_hours} to `
+    + `${top[top.length - 1].mean_shaded_hours}.`,
   );
 });

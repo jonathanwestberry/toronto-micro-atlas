@@ -230,7 +230,8 @@
             "name": "The Queensway at Royal York Rd",
             "shaded_hours": 1
           }
-        ]
+        ],
+        "no_usable_shade": 635
       }
     },
     "corrected": {
@@ -425,30 +426,36 @@
       },
       "transit_stops": {
         "count": 8432,
-        "mean_shaded_hours": 6.17,
+        "mean_shaded_hours": 7.0,
         "sunniest": [
           {
-            "name": "Midland Ave at Emblem Crt",
+            "name": "Weston Rd at Fenmar Dr North Side",
             "shaded_hours": 1
           },
           {
-            "name": "Cummer Ave at Snowcrest Ave (West)",
+            "name": "Jane St at Wilson Ave North Side",
             "shaded_hours": 1
           },
           {
-            "name": "Warden Ave at Roper Rd (North Commuter Parking Lot)",
+            "name": "Triton Rd at Brimley Rd",
             "shaded_hours": 1
           },
           {
-            "name": "Marlee Ave at Stayner Ave",
+            "name": "Jones Ave at Shudell Ave",
             "shaded_hours": 1
           },
           {
-            "name": "Kingston Rd at Highland Creek Overpass",
+            "name": "Kingston Rd at St Clair Ave East",
             "shaded_hours": 1
           }
-        ]
+        ],
+        "no_usable_shade": 553
       }
     }
+  },
+  "transit_stops_no_usable_shade_both_surfaces": {
+    "count": 533,
+    "of_total": 8432,
+    "share_percent": 6.32
   }
 }

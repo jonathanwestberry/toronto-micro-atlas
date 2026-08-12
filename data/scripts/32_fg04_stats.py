@@ -402,6 +402,14 @@ def summarise(surface, data, frames, hoods, nia, segments, stops,
         "transit_stops": {
             "count": int(len(stops)),
             "mean_shaded_hours": round(float(stop_hours.mean()), 2),
+            # A stop at exactly one shaded frame has only the 06:00 frame, the
+            # one that counts the whole city as shaded before anything is
+            # measured. So one frame means no shade in any hour worth waiting
+            # in. Published as a count because "sunniest" below is an
+            # argsort slice of a large tied set: it can name five stops and
+            # can never say how many there are. The guide printed three names
+            # and called it a list of addresses. It is not.
+            "no_usable_shade": int((stop_hours == 1).sum()),
             "sunniest": [
                 {"name": str(stops.iloc[int(i)].get("name")),
                  "shaded_hours": int(stop_hours[int(i)])}
@@ -450,11 +458,31 @@ def main(block: int) -> None:
             "frames": FRAMES,
         },
         "surfaces": {
+            # trees= is not optional here. Without it sample_stops() skips the
+            # corrected surface's under-canopy rule and every stop standing
+            # under a street tree is reported as sunlit. That omission shipped
+            # once: it published a corrected stop mean of 6.17 against a
+            # citywide corrected mean of 7.197, which should have looked wrong
+            # on its face, and it is 7.00 once the rule fires.
             surface: summarise(surface, accum[surface], frames,
                                hoods, nia, segments, stops,
-                               downtown=downtown)
+                               trees=trees, downtown=downtown)
             for surface in SURFACES
         },
+    }
+
+    # The count that matters is the one no per-surface block can hold: stops
+    # with no usable shade on BOTH surfaces. A stop that is bare only on the
+    # measured surface may simply be standing under a tree the spring flight
+    # could not see, so the intersection is the honest set.
+    both = None
+    for surface in SURFACES:
+        bare = sample_stops(stops, surface, trees) == 1
+        both = bare if both is None else (both & bare)
+    report["transit_stops_no_usable_shade_both_surfaces"] = {
+        "count": int(both.sum()),
+        "of_total": int(len(stops)),
+        "share_percent": round(float(both.sum()) / len(stops) * 100, 2),
     }
 
     os.makedirs(PROOF, exist_ok=True)
