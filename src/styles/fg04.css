@@ -1168,3 +1168,77 @@
     gap: var(--space-2);
   }
 }
+
+/* ============================================================
+   The expanded route: /guides/throwing-shade/map
+
+   The guide's article column is `min(100% - 2.5rem, 52rem)`, which is a
+   reading measure and the right width for prose. The explorer inherited it and
+   then halved it for two panes, so each map got 404 px to show a 43 km city
+   from a surface computed at 2 m. Measured against Sidewalk Forest's 1425x844
+   stage on the same viewport, that was one tenth the area.
+
+   A reading measure and a map measure are different problems. This route keeps
+   the reading measure for the prose that is still prose (the standfirst and the
+   legend facts stay capped) and lets the maps have the page.
+   ============================================================ */
+
+.fg04--map-route {
+  width: min(100% - 2.5rem, 90rem);
+  margin-inline: auto;
+  padding-block: var(--space-6);
+}
+
+.fg04-route-title {
+  font-family: var(--font-heading);
+  font-weight: 400;
+  font-size: var(--text-2xl);
+  color: var(--atlas-ink);
+  margin-bottom: var(--space-2);
+}
+
+/* The stage takes its height from the guide (see the note on .fg04-maps
+   .map-stage__frame above). On the route the constraint is the viewport, not a
+   4:3 box, so the ratio is released rather than overridden with a taller one. */
+.fg04-maps--expanded .map-stage__frame {
+  aspect-ratio: auto;
+  height: min(72vh, 46rem);
+  min-height: 22rem;
+}
+
+.fg04-maps--expanded {
+  padding-block: var(--space-4) var(--space-10);
+}
+
+.fg04-route-noscript {
+  max-width: var(--measure);
+  color: var(--atlas-ink-muted);
+  margin-block: var(--space-6);
+}
+
+/* ============================================================
+   The task line and the route link
+   ============================================================ */
+
+/* Sized above the standfirst because it is the instruction and the standfirst
+   is the caveat. Hierarchy by weight and colour rather than by size alone, so
+   it does not compete with the section heading directly above it. */
+.fg04-maps__task {
+  font-family: var(--font-ui);
+  font-weight: 700;
+  color: var(--atlas-ink);
+  margin-bottom: var(--space-2);
+}
+
+.fg04-share__link {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--atlas-link);
+  text-underline-offset: 0.25em;
+  /* SC 2.5.8: this is a primary affordance on the route, so it carries a real
+     target rather than the height of its own text. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding-inline: var(--space-2);
+}

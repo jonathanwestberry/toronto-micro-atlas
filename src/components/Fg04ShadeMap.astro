@@ -22,8 +22,24 @@ import MapStage from './MapStage.astro';
  */
 interface Props {
   id?: string;
+  /**
+   * True on /guides/throwing-shade/map, where the explorer is the page rather
+   * than a figure inside it.
+   *
+   * The other three guides expand into a locked full-viewport route, because
+   * each is one map with panels floating over it. This explorer is two maps
+   * plus a legend, a point profile and a street profile, all of which are
+   * documents that scroll. Locking it to the viewport would mean rebuilding
+   * every panel as an overlay rail. So the expanded form here is a WIDE route,
+   * not a full-height one: same addressable URL, same way back, no 66ch cage.
+   */
+  expanded?: boolean;
 }
-const { id = 'fg04-shade' } = Astro.props as Props;
+const { id = 'fg04-shade', expanded = false } = Astro.props as Props;
+
+const base = import.meta.env.BASE_URL.replace(/\/+$/, '');
+const guideHref = `${base}/guides/throwing-shade/`;
+const mapHref = `${base}/guides/throwing-shade/map/`;
 
 const SURFACES = [
   {
@@ -39,10 +55,22 @@ const SURFACES = [
 ];
 ---
 
-<section class="fg04-maps" data-fg04-maps aria-labelledby={`${id}-title`}>
+<section
+  class:list={['fg04-maps', expanded && 'fg04-maps--expanded']}
+  data-fg04-maps
+  aria-labelledby={`${id}-title`}
+>
   <h2 class="fg04-maps__title" id={`${id}-title`}>
     Explore shade by clock hour
   </h2>
+
+  <!-- A map with no stated task is furniture. Every citywide figure on this
+       page is an average, and you cannot read an average off a map, so until
+       the reader is given something to look up there is nothing here for them
+       to do. This is the one line that turns the explorer into a tool. -->
+  <p class="fg04-maps__task">
+    Look up a street you walk, or a stop you wait at.
+  </p>
 
   <p class="fg04-maps__standfirst">
     The same ground twice. The map on the left is what the lidar measured. The
@@ -94,6 +122,14 @@ const SURFACES = [
       role="status"
       aria-live="polite"
     />
+    <!-- One control for one destination, at section level rather than on each
+         pane. The other guides hang "Expand map" off the stage because each has
+         one map per stage; here two panes share a single explorer, so the thing
+         that expands is the section, not a pane. Two identical expand buttons
+         would be the literal translation of the pattern and the wrong one. -->
+    <a class="fg04-share__link" href={expanded ? guideHref : mapHref}>
+      {expanded ? 'Back to the guide' : 'Open the full map'}
+    </a>
   </div>
 
   <div class="fg04-maps__pair">

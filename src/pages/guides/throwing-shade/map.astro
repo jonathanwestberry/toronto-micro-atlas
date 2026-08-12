@@ -1,0 +1,52 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Fg04ShadeMap from '../../../components/Fg04ShadeMap.astro';
+import '../../../styles/fg04.css';
+
+/*
+ * The shade explorer as its own address.
+ *
+ * Locked decision 7 of the redesign put every guide's map at an addressable
+ * /guides/<slug>/map. Three guides shipped one and this one did not, so its
+ * explorer stayed inside the article's 66ch column: measured on the live site,
+ * each pane was 404x303 against Sidewalk Forest's 1425x844 stage, one tenth the
+ * area, showing a 43 km city at roughly 106 m per screen pixel from a surface
+ * computed at 2 m.
+ *
+ * This route is WIDE rather than full-height, which is a deliberate departure
+ * from the other three. They lock the viewport because each is a single map
+ * with panels floating over it. This explorer is two maps plus a legend, a
+ * point profile and a street profile, and those are documents that scroll.
+ * Locking the viewport would mean rebuilding every panel as an overlay rail,
+ * which is a larger change than the problem needs. What the reader was missing
+ * was width and an address, and both arrive here.
+ *
+ * canonicalPath points at the guide on purpose: this is a second view of the
+ * same content, not a second page competing for it.
+ */
+
+const base = import.meta.env.BASE_URL.replace(/\/+$/, '');
+const guideHref = `${base}/guides/throwing-shade/`;
+---
+
+<Base
+  title="Out of the Sun, full map"
+  description="Explore Toronto's ground shade hour by hour, on the measured surface and the leaf-on corrected one side by side."
+  ogImage="/social/og-throwing-shade.jpg"
+  ogImageAlt="The same Toronto streets at 13:00 and 18:00 on 21 July 2026, with shaded ground shown in dark charcoal."
+  canonicalPath="/guides/throwing-shade/"
+  guideTheme="fg04"
+>
+  <div class="fg04 fg04--map-route">
+    <h1 class="fg04-route-title">Out of the Sun, full map</h1>
+    <Fg04ShadeMap expanded />
+
+    <noscript>
+      <p class="fg04-route-noscript">
+        The interactive map needs JavaScript.
+        <a href={guideHref}>Read the guide</a>, which covers the same ground in
+        prose and publishes every figure twice.
+      </p>
+    </noscript>
+  </div>
+</Base>

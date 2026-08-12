@@ -592,3 +592,74 @@ test('the corrected top-five span matches the corrected top five', () => {
     + `${top[top.length - 1].mean_shaded_hours}.`,
   );
 });
+
+/**
+ * The expand route.
+ *
+ * Locked decision 7 of the redesign put every guide's map at an addressable
+ * /guides/<slug>/map. Three guides shipped one; this one did not, and nothing
+ * failed, because no test asserted the decision. Its explorer stayed inside the
+ * article's 52rem reading measure and then halved it for two panes: measured on
+ * the live site, 404x303 per pane against Sidewalk Forest's 1425x844 stage.
+ *
+ * A reading measure and a map measure are different problems, and the guide
+ * that had to show a 43 km city was the one wearing the reading measure.
+ */
+const mapRoutePath = new URL(
+  '../dist/guides/throwing-shade/map/index.html',
+  import.meta.url,
+);
+const readMapRoute = () =>
+  (existsSync(mapRoutePath) ? readFileSync(mapRoutePath, 'utf8') : '');
+
+test('the shade guide has an addressable expanded map route', () => {
+  assert.equal(
+    existsSync(mapRoutePath),
+    true,
+    'Expected /guides/throwing-shade/map/ to build. Every other guide has one, '
+    + 'and the redesign locked it as the map model for the whole atlas.',
+  );
+});
+
+test('the guide and its map route link to each other', () => {
+  assert.match(
+    mainMarkup(readRoute()),
+    /href="\/guides\/throwing-shade\/map\/"[^>]*>\s*Open the full map\s*</,
+    'The guide must offer a way into the expanded map.',
+  );
+  assert.match(
+    mainMarkup(readMapRoute()),
+    /href="\/guides\/throwing-shade\/"[^>]*>\s*Back to the guide\s*</,
+    'The expanded route must offer a way back, or it is a dead end.',
+  );
+});
+
+test('the expanded route drops the reading measure and keeps both surfaces', () => {
+  const html = readMapRoute();
+  assert.match(
+    html,
+    /class="[^"]*fg04-maps--expanded/,
+    'The route must mark the explorer expanded, which is what releases the '
+    + '4:3 frame and lets the maps have the page.',
+  );
+  const copy = visibleText(mainMarkup(html));
+  for (const label of ['Measured, leaf-off', 'Leaf-on corrected']) {
+    assert.ok(
+      copy.includes(label),
+      `The expanded route must still name both surfaces in words: "${label}". `
+      + 'A bigger map is not a licence to publish one surface.',
+    );
+  }
+});
+
+test('the map explorer states a task before it shows a map', () => {
+  for (const [name, html] of [['guide', readRoute()], ['route', readMapRoute()]]) {
+    assert.match(
+      visibleText(mainMarkup(html)),
+      /Look up a street you walk, or a stop you wait at\./,
+      `The ${name} must tell the reader what the map is for. Every citywide `
+      + 'figure on this page is an average, and an average cannot be read off '
+      + 'a map, so without a stated task the explorer is furniture.',
+    );
+  }
+});
