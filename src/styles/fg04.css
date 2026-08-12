@@ -1281,3 +1281,41 @@
     min-height: 20rem;
   }
 }
+
+/* ============================================================
+   Method sections read as apparatus, not as argument
+
+   Six chapters shared one treatment: same kicker, same 32px heading, same 18px
+   body. Nothing in the page said which one was the point, so the reader met the
+   correction apparatus at full volume before they had been given a reason to
+   care whether it was right.
+
+   The usual first lever for de-emphasis is colour, and it is already spent:
+   .fg04-chapter p is `--atlas-ink-muted` for every section on the page. Muting
+   the method further would mean inventing a fourth text colour below a token
+   that was contrast-solved for prose, which trades a hierarchy problem for an
+   accessibility one. So the lever here is size, one real step down on the
+   existing scale rather than a nudge: 32px to 26px on headings, 18px to 16px
+   on body. 16px is a normal reading size, not a small one; the method is
+   quieter, never harder to read.
+   ============================================================ */
+
+.fg04-chapter--method {
+  padding-block: var(--space-12);
+}
+
+.fg04-chapter--method h2 {
+  font-size: var(--text-2xl);
+}
+
+.fg04-chapter--method p,
+.fg04-chapter--method li {
+  font-size: var(--text-base);
+}
+
+/* The ranking table is the method's evidence and drops with it, but its own
+   figures keep their weight: the reversal is the one thing in this section a
+   reader is meant to be able to check at a glance. */
+.fg04-chapter--method .fg04-ranking__value {
+  font-size: var(--text-lg);
+}

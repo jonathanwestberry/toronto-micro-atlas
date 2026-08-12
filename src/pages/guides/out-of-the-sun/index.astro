@@ -53,12 +53,15 @@ import '../../../styles/fg04.css';
       </header>
 
       <!-- ============================================================
-           Chapter one. Opens on the behaviour, not on the data. No numbers
-           until the reader has been told what is being measured and, just as
-           importantly, what is not.
+           The opening. Behaviour, not data, and no number at all.
+
+           This used to be "Chapter one" of six identically weighted chapters,
+           which told the reader it was preamble to skip. It is the best prose
+           on the page and it is the only part that explains why a shade map is
+           worth having, so it is the opening now and it carries no chapter
+           label.
            ============================================================ -->
       <section class="fg04-chapter" id="the-map-you-were-already-using">
-        <span class="fg04-kicker">Chapter one</span>
         <h2>The map you were already using</h2>
 
         <p>
@@ -83,249 +86,29 @@ import '../../../styles/fg04.css';
             than a sunny lawn, and nothing here measures heat.
           </p>
         </div>
-
-        <p>
-          Here is the whole city, averaged across every hour of the modelled
-          day. The left figure is the surface the aircraft measured. The right
-          figure is the one this guide publishes. Chapter three says why.
-        </p>
-
-        <div class="fg04-pair">
-          <div class="fg04-pair__half fg04-pair__half--raw">
-            <span class="fg04-pair__label">Measured, leaf-off</span>
-            <span class="fg04-pair__value">6.201</span>
-            <span class="fg04-pair__note">
-              mean shaded hours of fifteen, citywide
-            </span>
-          </div>
-          <div class="fg04-pair__half fg04-pair__half--corrected">
-            <span class="fg04-pair__label">Leaf-on corrected</span>
-            <span class="fg04-pair__value">7.197</span>
-            <span class="fg04-pair__note">
-              the same ground, with the trees given their summer leaves back
-            </span>
-          </div>
-        </div>
       </section>
 
       <!-- ============================================================
-           The map. Placed here, after chapter one and before any number,
-           because chapter one is where the reader is told what is being
-           measured and what is not. A shade map shown before that invites
-           the reading this guide spends nine limits refusing.
-
-           Both surfaces, side by side. The correction reverses the ranking,
-           so a reader who can see one has to be able to see the other.
+           The map, second. It follows the scope note because a shade map shown
+           before it invites the reading this guide spends nine limits refusing,
+           and it precedes every finding because the findings are citywide
+           averages and an average cannot be read off a map. The reader gets the
+           thing they can act on before the thing they can only be told.
            ============================================================ -->
       <Fg04ShadeMap />
 
       <!-- ============================================================
-           Chapter two. The confirmed finding, and the one place the dawn and
-           dusk frames get explained. Every later shaded-hour count in the
-           guide depends on the reader having been told, once and plainly,
-           that the fifteen frames are not fifteen equal hours.
-           ============================================================ -->
-      <section class="fg04-chapter" id="noon-is-the-cruellest-hour">
-        <span class="fg04-kicker">Chapter two</span>
-        <h2>Noon is the cruellest hour</h2>
+           The finding. Two paired blocks, and they are the only two on the
+           page.
 
-        <p>
-          It is not, quite. The sun over Toronto peaks at <strong>13:25
-          EDT</strong> on 21 July, not at noon. Daylight saving takes an hour
-          of the blame. The rest is Toronto sitting west of the meridian its
-          time zone is named for. Shade is thinnest at the modelled hour
-          nearest that peak, and that hour is <strong>13:00</strong>.
-        </p>
-
-        <div class="fg04-pair">
-          <div class="fg04-pair__half fg04-pair__half--raw">
-            <span class="fg04-pair__label">Measured, leaf-off</span>
-            <span class="fg04-pair__value">10.73%</span>
-            <span class="fg04-pair__note">
-              of Toronto's ground in shade at 13:00
-            </span>
-          </div>
-          <div class="fg04-pair__half fg04-pair__half--corrected">
-            <span class="fg04-pair__label">Leaf-on corrected</span>
-            <span class="fg04-pair__value">20.73%</span>
-            <span class="fg04-pair__note">
-              of Toronto's ground in shade at 13:00, the day's minimum
-            </span>
-          </div>
-        </div>
-
-        <p>
-          Four fifths of the city stands in open sun at one in the afternoon.
-          That is the generous reading. The surface the aircraft measured puts
-          it nearer nine tenths.
-        </p>
-
-        <h3 class="fg04-kicker">What fifteen frames actually means</h3>
-
-        <p>
-          The day runs from <strong>06:00</strong> to <strong>20:00 EDT</strong>
-          on <strong>21 July 2026</strong>, sampled once an hour. Fifteen
-          frames, computed on a <strong>2 m grid</strong> across the whole
-          municipality. Every figure in this guide counts how many of those
-          fifteen frames found a patch of ground in shadow.
-        </p>
-
-        <p>
-          Fifteen frames are not fifteen equal hours. At 06:00 the sun sits
-          0.38&deg; above the horizon, at or below the point the model treats
-          as sunrise, so that frame finds the city <strong>shaded
-          everywhere</strong>. Every patch of ground in Toronto scores one
-          shaded hour before anything about it is measured. The 20:00 frame is
-          nearly as generous: 83.8% of ground in shade on the measured surface
-          and 85.2% corrected, with the sun under
-          8&deg;. So seven shaded hours means seven frames <em>of the modelled
-          day</em>, and two of them came free. It does not mean seven hours of
-          useful shade, and this guide never says it does.
-        </p>
-
-        <p>
-          The hours that settle anything are the ones in the middle. That is
-          why 13:00 is the frame worth arguing about.
-        </p>
-      </section>
-
-      <!-- ============================================================
-           Chapter three. The reversal, and the reason the whole correction
-           apparatus exists. The claim is narrow on purpose: the order of the
-           league table changes, the distances between its top entries do not
-           open up, and downtown keeps fourth and fifth. Anything stronger
-           than that is not in the data.
-           ============================================================ -->
-      <section class="fg04-chapter" id="the-month-the-plane-flew">
-        <span class="fg04-kicker">Chapter three</span>
-        <h2>The month the plane flew</h2>
-
-        <p>
-          Ask which part of Toronto sits in the most shade and the measured
-          surface answers immediately: downtown. Towers throw long shadows and
-          there are a great many towers in a small space. The three shadiest
-          neighbourhoods are all tower districts, and the ranking looks
-          settled.
-        </p>
-
-        <p>
-          Correct the same surface for summer leaves and the top of the table
-          turns over. All three of the new leaders are leafy midtown
-          neighbourhoods, and downtown leaves the top three entirely.
-        </p>
-
-        <div class="fg04-ranking">
-          <div class="fg04-ranking__col fg04-ranking__col--raw">
-            <p class="fg04-ranking__head">Measured, leaf-off</p>
-            <ol>
-              <li data-moved><span>Yonge-Bay Corridor</span><span class="fg04-ranking__value">10.90</span></li>
-              <li data-moved><span>Downtown Yonge East</span><span class="fg04-ranking__value">10.60</span></li>
-              <li data-moved><span>Church-Wellesley</span><span class="fg04-ranking__value">10.58</span></li>
-              <li><span>Wellington Place</span><span class="fg04-ranking__value">10.24</span></li>
-              <li><span>North St. James Town</span><span class="fg04-ranking__value">9.81</span></li>
-            </ol>
-          </div>
-          <div class="fg04-ranking__col fg04-ranking__col--corrected">
-            <p class="fg04-ranking__head">Leaf-on corrected</p>
-            <ol>
-              <li data-moved><span>Lawrence Park South</span><span class="fg04-ranking__value">11.30</span></li>
-              <li data-moved><span>Rosedale-Moore Park</span><span class="fg04-ranking__value">11.25</span></li>
-              <li data-moved><span>Mount Pleasant East</span><span class="fg04-ranking__value">11.17</span></li>
-              <li><span>Church-Wellesley</span><span class="fg04-ranking__value">11.07</span></li>
-              <li><span>Yonge-Bay Corridor</span><span class="fg04-ranking__value">11.01</span></li>
-            </ol>
-          </div>
-        </div>
-
-        <p>
-          The reason is the aircraft. Every lidar flight ever flown over
-          Toronto has been flown in spring, when the ground is visible and the
-          survey is cheap to fly. This one flew <strong>April to May
-          2023</strong>. A building looks the same in April as it does in July.
-          A tree does not. So the measured surface records every tower at its
-          full height and every deciduous crown as a bare frame, and the
-          ranking it produces is partly a picture of the month the plane flew.
-        </p>
-
-        <p>
-          That is the whole argument for correcting it, and it is why this
-          guide publishes two numbers everywhere instead of one.
-        </p>
-
-        <h3 class="fg04-kicker">How big is the reversal, honestly</h3>
-
-        <p>
-          Small, and worth saying so. Church-Wellesley and Yonge-Bay Corridor
-          are still fourth and fifth once corrected, and the whole corrected
-          top five spans <strong>0.29 hours</strong>, about seventeen minutes of
-          the modelled day. The order changed. The distances did not open up.
-          Downtown did not stop being shady, and on the other end of the table
-          it beats Downsview, at 3.57 measured and 3.90 corrected, by a wide
-          margin.
-        </p>
-
-        <p>
-          The correction is also the generous end of the range. Ground under a
-          leaf-on crown is counted as shaded for the whole modelled day, and
-          real crowns are not solid: light comes through them, and low sun
-          arrives sideways underneath them. The true answer sits somewhere
-          between these two columns, nearer the right one in July. That is the
-          honest claim, and it is smaller than a headline would like.
-        </p>
-
-        <h3 class="fg04-kicker">Towers still work</h3>
-
-        <p>
-          The shadiest single arterial in Toronto is <strong>York
-          Street</strong>, and it barely moves between the two surfaces.
-        </p>
-
-        <div class="fg04-pair">
-          <div class="fg04-pair__half fg04-pair__half--raw">
-            <span class="fg04-pair__label">Measured, leaf-off</span>
-            <span class="fg04-pair__value">11.70</span>
-            <span class="fg04-pair__note">
-              York Street, mean shaded hours of fifteen
-            </span>
-          </div>
-          <div class="fg04-pair__half fg04-pair__half--corrected">
-            <span class="fg04-pair__label">Leaf-on corrected</span>
-            <span class="fg04-pair__value">11.74</span>
-            <span class="fg04-pair__note">
-              York Street again, moved by four hundredths of an hour
-            </span>
-          </div>
-        </div>
-
-        <p>
-          York Street sits in a trench of towers and almost none of its shade
-          comes from trees, so the correction has nothing to add. The point of
-          this chapter is not that towers fail to shade a street. They shade it
-          reliably, and the aircraft measured them correctly the first time.
-          The point is that towers and trees buy shade differently, and a
-          spring flight can only see one of them properly.
-        </p>
-
-        <h3 class="fg04-kicker">The shadiest arterial outside downtown</h3>
-
-        <p>
-          The ranking outside downtown requires at least <strong>1 km of
-          sampled centreline</strong>. Without that floor, a 309.7 m Oxton
-          Avenue feature tagged as an arterial wins a citywide superlative it
-          is too short to carry. With the floor applied, <strong>St. Clair
-          Avenue East</strong> is the leader: 9.99 mean shaded hours on the
-          measured surface and 10.65 after the leaf-on correction, over 1.05
-          km of sampled centreline.
-        </p>
-      </section>
-
-      <!-- ============================================================
-           Chapter four. The finding is a contrast between two bands, never a
-           shortage. The pre-registered shortage condition failed, and this is
-           where the guide says so and retires the title it was built around.
+           .fg04-pair is the loudest component in this guide and it used to run
+           six times, on everything from this contrast to a January footnote.
+           When the heaviest treatment is applied to the point and to an aside
+           equally, nothing reads as the point. Every other paired figure is
+           now prose, which still publishes both numbers and no longer competes.
            ============================================================ -->
       <section class="fg04-chapter" id="the-bare-road-and-the-shaded-walk">
-        <span class="fg04-kicker">Chapter four</span>
+        <span class="fg04-kicker">The finding</span>
         <h2>The bare road and the shaded walk</h2>
 
         <p>
@@ -392,24 +175,6 @@ import '../../../styles/fg04.css';
           the sun all day and the pavement beside it does not.
         </p>
 
-        <h3 class="fg04-kicker">The hypothesis this guide came to test is dead</h3>
-
-        <p>
-          <strong>5.26% against a threshold of 25%.</strong> The guide went
-          looking for a citywide shade shortage on the walking network, wrote
-          the threshold down before computing anything, and did not find one.
-          It missed by nearly a factor of five. The title this guide would have carried
-          if the condition had held, The Great Toronto Shade Shortage, is
-          retired rather than kept back for a future run.
-        </p>
-
-        <p>
-          A guide that declares its own hypothesis dead is the most
-          trustworthy thing in this atlas. The alternative was to quietly swap
-          in the road band, publish 39.50% as though it were the sidewalk
-          finding, and keep the better title.
-        </p>
-
         <h3 class="fg04-kicker">Which band counts, and who chose it</h3>
 
         <p>
@@ -429,8 +194,17 @@ import '../../../styles/fg04.css';
           above for that reason. The road band clears 25% on either surface,
           and calling that a shortage for people on foot would be false.
         </p>
+      </section>
 
-        <h3 class="fg04-kicker">The places that really are sunless</h3>
+      <!-- ============================================================
+           The one countable human fact in the guide, and the reason it needed
+           its own section rather than a subheading inside the band chapter:
+           533 stops is the only finding here a person could act on, and it
+           spent its whole first week published as "three".
+           ============================================================ -->
+      <section class="fg04-chapter" id="the-places-that-really-are-sunless">
+        <span class="fg04-kicker">The finding, continued</span>
+        <h2>Five hundred and thirty-three stops</h2>
 
         <p>
           A failed citywide condition does not mean nowhere is short of shade.
@@ -471,18 +245,189 @@ import '../../../styles/fg04.css';
       </section>
 
       <!-- ============================================================
-           Chapter five. A published null, and deliberately the shortest
-           section on the page.
+           Method, and deliberately quieter than the two sections above it.
 
-           The numbers stay inline rather than going into a .fg04-pair block.
-           That is a judgement about weight, not a shortcut: the paired figure
-           is the loudest component in this guide, and giving a gap of twelve
-           minutes the same frame as the 13:00 finding would let the layout
-           make a claim the copy is refusing to make.
+           This was chapters two and three, running before the finding and at
+           the same visual weight, which meant a reader met the correction
+           apparatus before they had been given a reason to care whether it was
+           right. It is genuinely interesting and it is not the story. The
+           .fg04-chapter--method modifier is what says so.
            ============================================================ -->
-      <section class="fg04-chapter" id="what-the-map-did-not-find">
-        <span class="fg04-kicker">Chapter five</span>
-        <h2>What the map did not find</h2>
+      <section class="fg04-chapter fg04-chapter--method" id="the-month-the-plane-flew">
+        <span class="fg04-kicker">How this was measured</span>
+        <h2>Why every number here comes in twos</h2>
+
+        <p>
+          Averaged across every hour of the modelled day, Toronto's ground
+          reads <strong>6.201</strong> mean shaded hours of fifteen on the
+          surface the aircraft measured, and <strong>7.197</strong> on the same
+          ground with the trees given their summer leaves back. Every figure in
+          this guide is published both ways. Here is why.
+        </p>
+
+        <p>
+          Ask which part of Toronto sits in the most shade and the measured
+          surface answers immediately: downtown. Towers throw long shadows and
+          there are a great many towers in a small space. The three shadiest
+          neighbourhoods are all tower districts, and the ranking looks
+          settled.
+        </p>
+
+        <p>
+          Correct the same surface for summer leaves and the top of the table
+          turns over. All three of the new leaders are leafy midtown
+          neighbourhoods, and downtown leaves the top three entirely.
+        </p>
+
+        <div class="fg04-ranking">
+          <div class="fg04-ranking__col fg04-ranking__col--raw">
+            <p class="fg04-ranking__head">Measured, leaf-off</p>
+            <ol>
+              <li data-moved><span>Yonge-Bay Corridor</span><span class="fg04-ranking__value">10.90</span></li>
+              <li data-moved><span>Downtown Yonge East</span><span class="fg04-ranking__value">10.60</span></li>
+              <li data-moved><span>Church-Wellesley</span><span class="fg04-ranking__value">10.58</span></li>
+              <li><span>Wellington Place</span><span class="fg04-ranking__value">10.24</span></li>
+              <li><span>North St. James Town</span><span class="fg04-ranking__value">9.81</span></li>
+            </ol>
+          </div>
+          <div class="fg04-ranking__col fg04-ranking__col--corrected">
+            <p class="fg04-ranking__head">Leaf-on corrected</p>
+            <ol>
+              <li data-moved><span>Lawrence Park South</span><span class="fg04-ranking__value">11.30</span></li>
+              <li data-moved><span>Rosedale-Moore Park</span><span class="fg04-ranking__value">11.25</span></li>
+              <li data-moved><span>Mount Pleasant East</span><span class="fg04-ranking__value">11.17</span></li>
+              <li><span>Church-Wellesley</span><span class="fg04-ranking__value">11.07</span></li>
+              <li><span>Yonge-Bay Corridor</span><span class="fg04-ranking__value">11.01</span></li>
+            </ol>
+          </div>
+        </div>
+
+        <p>
+          The reason is the aircraft. Every lidar flight ever flown over
+          Toronto has been flown in spring, when the ground is visible and the
+          survey is cheap to fly. This one flew <strong>April to May
+          2023</strong>. A building looks the same in April as it does in July.
+          A tree does not. So the measured surface records every tower at its
+          full height and every deciduous crown as a bare frame, and the
+          ranking it produces is partly a picture of the month the plane flew.
+        </p>
+
+        <h3 class="fg04-kicker">How big is the reversal, honestly</h3>
+
+        <p>
+          Small, and worth saying so. Church-Wellesley and Yonge-Bay Corridor
+          are still fourth and fifth once corrected, and the whole corrected
+          top five spans <strong>0.29 hours</strong>, about seventeen minutes of
+          the modelled day. The order changed. The distances did not open up.
+          Downtown did not stop being shady, and on the other end of the table
+          it beats Downsview, at 3.57 measured and 3.90 corrected, by a wide
+          margin.
+        </p>
+
+        <p>
+          The correction is also the generous end of the range. Ground under a
+          leaf-on crown is counted as shaded for the whole modelled day, and
+          real crowns are not solid: light comes through them, and low sun
+          arrives sideways underneath them. The true answer sits somewhere
+          between these two columns, nearer the right one in July. That is the
+          honest claim, and it is smaller than a headline would like.
+        </p>
+
+        <h3 class="fg04-kicker">Towers still work</h3>
+
+        <p>
+          The shadiest single arterial in Toronto is <strong>York
+          Street</strong>, and it barely moves between the two surfaces: 11.70
+          mean shaded hours of fifteen measured, 11.74 corrected, four
+          hundredths of an hour apart. York Street sits in a trench of towers
+          and almost none of its shade comes from trees, so the correction has
+          nothing to add. The point is not that towers fail to shade a street.
+          They shade it reliably, and the aircraft measured them correctly the
+          first time. The point is that towers and trees buy shade differently,
+          and a spring flight can only see one of them properly.
+        </p>
+
+        <h3 class="fg04-kicker">The shadiest arterial outside downtown</h3>
+
+        <p>
+          The ranking outside downtown requires at least <strong>1 km of
+          sampled centreline</strong>. Without that floor, a 309.7 m Oxton
+          Avenue feature tagged as an arterial wins a citywide superlative it
+          is too short to carry. With the floor applied, <strong>St. Clair
+          Avenue East</strong> is the leader: 9.99 mean shaded hours on the
+          measured surface and 10.65 after the leaf-on correction, over 1.05
+          km of sampled centreline.
+        </p>
+
+        <h3 class="fg04-kicker">What fifteen frames actually means</h3>
+
+        <p>
+          The day runs from <strong>06:00</strong> to <strong>20:00 EDT</strong>
+          on <strong>21 July 2026</strong>, sampled once an hour. Fifteen
+          frames, computed on a <strong>2 m grid</strong> across the whole
+          municipality. Every figure in this guide counts how many of those
+          fifteen frames found a patch of ground in shadow.
+        </p>
+
+        <p>
+          Fifteen frames are not fifteen equal hours. At 06:00 the sun sits
+          0.38&deg; above the horizon, at or below the point the model treats
+          as sunrise, so that frame finds the city <strong>shaded
+          everywhere</strong>. Every patch of ground in Toronto scores one
+          shaded hour before anything about it is measured. The 20:00 frame is
+          nearly as generous: 83.8% of ground in shade on the measured surface
+          and 85.2% corrected, with the sun under 8&deg;. So seven shaded hours
+          means seven frames <em>of the modelled day</em>, and two of them came
+          free. It does not mean seven hours of useful shade, and this guide
+          never says it does.
+        </p>
+
+        <p>
+          The hours that settle anything are the ones in the middle. The sun
+          over Toronto peaks at <strong>13:25 EDT</strong> on 21 July, not at
+          noon: daylight saving takes an hour of the blame, and the rest is
+          Toronto sitting west of the meridian its time zone is named for.
+          Shade is thinnest at the modelled hour nearest that peak, and that
+          hour is <strong>13:00</strong>, when 10.73% of Toronto's ground is in
+          shade on the measured surface and 20.73% corrected. The corrected
+          fifth is the generous reading. The measured surface puts the city
+          nearer nine tenths in open sun.
+        </p>
+      </section>
+
+      <!-- ============================================================
+           Everything the guide tested and could not stand behind, in one
+           place, at method weight.
+
+           These were chapters four (in part), five and six: a dead hypothesis,
+           a null, and a single winter frame, each with its own heading and its
+           own chapter number, which gave three non-findings the same billing
+           as the finding. Collected here they read as what they are, and the
+           section is stronger for being one argument instead of three asides.
+           ============================================================ -->
+      <section class="fg04-chapter fg04-chapter--method" id="what-the-map-did-not-find">
+        <span class="fg04-kicker">What did not hold</span>
+        <h2>What I went looking for and did not find</h2>
+
+        <h3 class="fg04-kicker">The hypothesis this guide came to test is dead</h3>
+
+        <p>
+          <strong>5.26% against a threshold of 25%.</strong> The guide went
+          looking for a citywide shade shortage on the walking network, wrote
+          the threshold down before computing anything, and did not find one.
+          It missed by nearly a factor of five. The title this guide would have
+          carried if the condition had held, The Great Toronto Shade Shortage,
+          is retired rather than kept back for a future run.
+        </p>
+
+        <p>
+          A guide that declares its own hypothesis dead is the most
+          trustworthy thing in this atlas. The alternative was to quietly swap
+          in the road band, publish 39.50% as though it were the sidewalk
+          finding, and keep the better title.
+        </p>
+
+        <h3 class="fg04-kicker">Shade and the improvement areas</h3>
 
         <p>
           This guide expected shade to be handed out unevenly across the city
@@ -491,83 +436,41 @@ import '../../../styles/fg04.css';
           averages 6.027 shaded hours of fifteen against 6.246 outside, a gap
           of 0.219. After the leaf-on correction, the pair is 7.034 inside and
           7.240 outside, a gap of <strong>0.206 hours</strong>. That is about
-          twelve minutes, or 1.4% of the modelled day. The direction is the one you would
-          expect. The size does not carry a chapter, and dressing twelve
-          minutes as a finding about inequality would be dishonest. Two things
-          bound what the null is worth: the improvement-area designation is a
-          dated instrument that does not track today's canopy, and ground shade
-          at 2 m on one July day is not the only way to ask who has trees. This
-          is reported because it was tested, not because it found anything.
+          twelve minutes, or 1.4% of the modelled day. The direction is the one
+          you would expect. The size does not carry a chapter, and dressing
+          twelve minutes as a finding about inequality would be dishonest. Two
+          things bound what the null is worth: the improvement-area designation
+          is a dated instrument that does not track today's canopy, and ground
+          shade at 2 m on one July day is not the only way to ask who has
+          trees. This is reported because it was tested, not because it found
+          anything.
         </p>
-      </section>
 
-      <!-- ============================================================
-           Chapter six. One measured winter frame, kept deliberately narrow.
-
-           Written as shadow geometry only. The winter reversal is interesting
-           precisely because of what a January shadow does to a person
-           standing in it, and that is the one thing this guide is not
-           entitled to say, so it says so instead of reaching for it.
-
-           One frame supports a statement about midday coverage. It does not
-           support a statement about how long winter shade lasts.
-           ============================================================ -->
-      <section class="fg04-chapter" id="the-same-city-in-january">
-        <span class="fg04-kicker">Chapter six</span>
-        <h2>The same city in January</h2>
+        <h3 class="fg04-kicker">The same city in January</h3>
 
         <p>
           Everything above describes one day in July. At 12:00 EST on 21
-          January, the sun sits 26.24&deg; above the horizon. At the nearest
-          modelled hour to solar noon in July, it sits 66.19&deg;. The lower
-          January angle throws longer shadows, so more of the same ground is
-          shaded at that frame. One frame says how much ground is shaded at
-          midday. It does not say how long the shade stays there.
+          January, the sun sits 26.24&deg; above the horizon, against 66.19&deg;
+          at the nearest modelled hour to solar noon in July. The lower January
+          angle throws longer shadows, so more of the same ground is shaded at
+          that frame: <strong>47.22%</strong> measured, and 53.27% if the
+          correction is applied, though that second figure is a summer-foliage
+          counterfactual printed beside the measurement rather than a claim
+          about January's canopy. January trees are bare, so 47.22% is the
+          number to read, and it is just under half the city rather than most
+          of it.
         </p>
 
         <p>
-          Whether you want that shadow is not a question this map can answer.
-          It records where the sun reaches the ground. It says nothing about
-          what standing there is like, in either season.
-        </p>
-
-        <div class="fg04-pair">
-          <div class="fg04-pair__half fg04-pair__half--raw">
-            <span class="fg04-pair__label">Measured, leaf-off</span>
-            <span class="fg04-pair__value">47.22%</span>
-            <span class="fg04-pair__note">
-              ground shaded at 12:00 EST in January; this is the number to read
-              because January trees are bare
-            </span>
-          </div>
-          <div class="fg04-pair__half fg04-pair__half--corrected">
-            <span class="fg04-pair__label">Leaf-on corrected</span>
-            <span class="fg04-pair__value">53.27%</span>
-            <span class="fg04-pair__note">
-              a summer-foliage counterfactual, printed beside the measurement
-              rather than presented as January's canopy
-            </span>
-          </div>
-        </div>
-
-        <p>
-          In July, the comparable 13:00 frame puts 10.73% of ground in shade
-          on the measured surface and 20.73% after the leaf-on correction.
-          January's measured 47.22% is just under half, not most of the city.
+          One frame says how much ground is shaded at midday. It does not say
+          how long the shade stays there. And whether you want that shadow is
+          not a question this map can answer: it records where the sun reaches
+          the ground, and says nothing about what standing there is like, in
+          either season.
         </p>
       </section>
 
-      <!-- ============================================================
-           Limits.
-
-           A reader has to be able to disagree with this guide for a stated
-           reason, so each item names what it would change if it mattered to
-           you, rather than hedging in general. The two sentences about
-           temperature are reproduced here verbatim because this is the
-           section a sceptical reader opens first, and the copy contract
-           matches them exactly.
-           ============================================================ -->
-      <section class="fg04-limits" id="limits">
+            <section class="fg04-limits" id="limits">
         <h2>What this map cannot tell you</h2>
 
         <ol>
@@ -611,7 +514,7 @@ import '../../../styles/fg04.css';
 
           <li>
             <strong>One day of one year.</strong> Everything here is 21 July
-            2026, 06:00 to 20:00 EDT. Chapter six adds one measurement at
+            2026, 06:00 to 20:00 EDT. One measurement is added at
             12:00 EST on 21 January 2026. It compares midday coverage and says
             nothing about a full winter day or season.
           </li>
@@ -631,7 +534,7 @@ import '../../../styles/fg04.css';
 
           <li>
             <strong>The walk band was chosen after both bands were
-            computed</strong>, and that choice decides the title. Chapter four
+            computed</strong>, and that choice decides the title. The finding
             publishes the road band beside it so the choice can be checked
             rather than taken on trust.
           </li>
