@@ -35,7 +35,7 @@ import { test } from 'node:test';
  */
 
 const routePath = new URL(
-  '../dist/guides/throwing-shade/index.html',
+  '../dist/guides/out-of-the-sun/index.html',
   import.meta.url,
 );
 const homePath = new URL('../dist/index.html', import.meta.url);
@@ -184,13 +184,13 @@ test('build publishes the exact shade guide route', () => {
   assert.equal(
     existsSync(routePath),
     true,
-    'Expected /guides/throwing-shade/ to build an index.html file',
+    'Expected /guides/out-of-the-sun/ to build an index.html file',
   );
 });
 
 test('the Out of the Sun card references an asset that exists in the build', () => {
   const card = mainMarkup(readHome()).match(
-    /<a[^>]+href="\/guides\/throwing-shade\/"[^>]+class="[^"]*guide-card[^"]*"[\s\S]*?<\/a>/,
+    /<a[^>]+href="\/guides\/out-of-the-sun\/"[^>]+class="[^"]*guide-card[^"]*"[\s\S]*?<\/a>/,
   )?.[0] ?? '';
   const source = card.match(/<img[^>]+src="([^"]+)"/)?.[1];
   assert.ok(source, 'The Out of the Sun card must have a cover image');
@@ -203,19 +203,19 @@ test('the Out of the Sun card references an asset that exists in the build', () 
 
 test('the shared header includes Out of the Sun', () => {
   const header = readHome().match(/<header\b[\s\S]*?<\/header>/)?.[0] ?? '';
-  assert.match(header, /href="\/guides\/throwing-shade\/"[^>]*>Out of the Sun<\/a>/);
+  assert.match(header, /href="\/guides\/out-of-the-sun\/"[^>]*>Out of the Sun<\/a>/);
 });
 
 test('the shared footer includes Out of the Sun', () => {
   const footer = readHome().match(/<footer\b[\s\S]*?<\/footer>/)?.[0] ?? '';
-  assert.match(footer, /href="\/guides\/throwing-shade\/"[^>]*>Out of the Sun<\/a>/);
+  assert.match(footer, /href="\/guides\/out-of-the-sun\/"[^>]*>Out of the Sun<\/a>/);
 });
 
 test('About names all four published field guides', () => {
   const html = readAbout();
   assert.match(html, />Four ways to read the city<\/h2>/);
   const item = mainMarkup(html).match(
-    /<a href="\/guides\/throwing-shade\/"[^>]*>[\s\S]*?<\/a>/,
+    /<a href="\/guides\/out-of-the-sun\/"[^>]*>[\s\S]*?<\/a>/,
   )?.[0] ?? '';
   assert.equal(visibleText(item), '04 Out of the Sun');
 });
@@ -606,7 +606,7 @@ test('the corrected top-five span matches the corrected top five', () => {
  * that had to show a 43 km city was the one wearing the reading measure.
  */
 const mapRoutePath = new URL(
-  '../dist/guides/throwing-shade/map/index.html',
+  '../dist/guides/out-of-the-sun/map/index.html',
   import.meta.url,
 );
 const readMapRoute = () =>
@@ -616,7 +616,7 @@ test('the shade guide has an addressable expanded map route', () => {
   assert.equal(
     existsSync(mapRoutePath),
     true,
-    'Expected /guides/throwing-shade/map/ to build. Every other guide has one, '
+    'Expected /guides/out-of-the-sun/map/ to build. Every other guide has one, '
     + 'and the redesign locked it as the map model for the whole atlas.',
   );
 });
@@ -624,12 +624,12 @@ test('the shade guide has an addressable expanded map route', () => {
 test('the guide and its map route link to each other', () => {
   assert.match(
     mainMarkup(readRoute()),
-    /href="\/guides\/throwing-shade\/map\/"[^>]*>\s*Open the full map\s*</,
+    /href="\/guides\/out-of-the-sun\/map\/"[^>]*>\s*Open the full map\s*</,
     'The guide must offer a way into the expanded map.',
   );
   assert.match(
     mainMarkup(readMapRoute()),
-    /href="\/guides\/throwing-shade\/"[^>]*>\s*Back to the guide\s*</,
+    /href="\/guides\/out-of-the-sun\/"[^>]*>\s*Back to the guide\s*</,
     'The expanded route must offer a way back, or it is a dead end.',
   );
 });

@@ -15,12 +15,12 @@ test('canonical paths include only explorer state and the local tile opt-in', ()
     street: 'york-street',
   };
   assert.equal(
-    canonicalFg04Path('/guides/throwing-shade/', '#profile', state, false),
-    '/guides/throwing-shade/?hour=16&map=-79.38252%2C43.64545%2C15.00&street=york-street#profile',
+    canonicalFg04Path('/guides/out-of-the-sun/', '#profile', state, false),
+    '/guides/out-of-the-sun/?hour=16&map=-79.38252%2C43.64545%2C15.00&street=york-street#profile',
   );
   assert.equal(
-    canonicalFg04Path('/guides/throwing-shade/', '', state, true),
-    '/guides/throwing-shade/?hour=16&map=-79.38252%2C43.64545%2C15.00&street=york-street&tiles=local',
+    canonicalFg04Path('/guides/out-of-the-sun/', '', state, true),
+    '/guides/out-of-the-sun/?hour=16&map=-79.38252%2C43.64545%2C15.00&street=york-street&tiles=local',
   );
 });
 

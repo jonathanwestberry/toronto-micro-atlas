@@ -1,0 +1,11 @@
+# Cloudflare Pages redirects.
+#
+# The shade guide was published as "Throwing Shade" on 2026-08-06 and renamed
+# "Out of the Sun" on 2026-08-12. The old paths were indexed, so they get a real
+# 301 rather than being left to 404. The splat covers /map/ and any future child
+# route without needing a second rule to be remembered.
+#
+# Kept even after the old URLs drop out of the index: an inbound link from
+# anywhere that saw the guide in its first week still has to land.
+/guides/throwing-shade/*  /guides/out-of-the-sun/:splat  301
+/guides/throwing-shade    /guides/out-of-the-sun/        301

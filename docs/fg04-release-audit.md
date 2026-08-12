@@ -79,7 +79,7 @@ deployment command.
 
 The release verifier found 453 files and required all of these paths:
 
-- `guides/throwing-shade/index.html`
+- `guides/out-of-the-sun/index.html`
 - `data/fg04/manifest.json`
 - `data/fg04/street-profiles.json`
 - `social/og-throwing-shade.jpg`

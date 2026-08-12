@@ -23,7 +23,7 @@ import MapStage from './MapStage.astro';
 interface Props {
   id?: string;
   /**
-   * True on /guides/throwing-shade/map, where the explorer is the page rather
+   * True on /guides/out-of-the-sun/map, where the explorer is the page rather
    * than a figure inside it.
    *
    * The other three guides expand into a locked full-viewport route, because
@@ -38,8 +38,8 @@ interface Props {
 const { id = 'fg04-shade', expanded = false } = Astro.props as Props;
 
 const base = import.meta.env.BASE_URL.replace(/\/+$/, '');
-const guideHref = `${base}/guides/throwing-shade/`;
-const mapHref = `${base}/guides/throwing-shade/map/`;
+const guideHref = `${base}/guides/out-of-the-sun/`;
+const mapHref = `${base}/guides/out-of-the-sun/map/`;
 
 const SURFACES = [
   {

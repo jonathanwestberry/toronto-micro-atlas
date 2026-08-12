@@ -1170,7 +1170,7 @@
 }
 
 /* ============================================================
-   The expanded route: /guides/throwing-shade/map
+   The expanded route: /guides/out-of-the-sun/map
 
    The guide's article column is `min(100% - 2.5rem, 52rem)`, which is a
    reading measure and the right width for prose. The explorer inherited it and
@@ -1241,4 +1241,43 @@
   align-items: center;
   min-height: 2.75rem;
   padding-inline: var(--space-2);
+}
+
+/* ============================================================
+   The embedded explorer breaks out of the reading column
+
+   Fixing only the /map route left the map a reader actually meets, the one on
+   the guide page, at 404x303 per pane. That was the visible half of the
+   problem and it went untouched: you had to find and click "Open the full map"
+   before anything changed, which is exactly the discovery the reader was
+   already failing to make.
+
+   A reading measure and a map measure are different problems. The prose keeps
+   52rem, because 66ch is right for prose. The explorer is not prose.
+
+   `100vw` rather than `100%` because the article is the 52rem column and the
+   breakout has to be measured against the viewport. The 3rem inset absorbs a
+   classic scrollbar, which `100vw` counts and the viewport does not; verified
+   for zero horizontal overflow at 1440, 1280, 1024 and 960 rather than
+   reasoned about.
+
+   Gated at 60rem: below it the container is already `100% - 2.5rem`, so there
+   is nothing to break out of and a negative margin would only overflow.
+   ============================================================ */
+
+@media (min-width: 60rem) {
+  .fg04-maps:not(.fg04-maps--expanded) {
+    --fg04-breakout: min(100vw - 3rem, 78rem);
+    width: var(--fg04-breakout);
+    margin-inline: calc((52rem - var(--fg04-breakout)) / 2);
+  }
+
+  /* The pane grew, so the 4:3 box it was given for a half-column is now taller
+     than it needs to be. Height tracks the viewport instead, which is what
+     bounds a map the reader scrolls past rather than into. */
+  .fg04-maps:not(.fg04-maps--expanded) .map-stage__frame {
+    aspect-ratio: auto;
+    height: min(58vh, 34rem);
+    min-height: 20rem;
+  }
 }

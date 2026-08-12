@@ -1,6 +1,6 @@
 ---
 title: "Out of the Sun"
-slug: "throwing-shade"
+slug: "out-of-the-sun"
 description: "Where to find cover on a hot day in Toronto, hour by hour. And the 533 transit stops that have none."
 published: 2026-08-06
 updated: 2026-08-11

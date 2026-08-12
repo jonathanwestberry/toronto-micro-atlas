@@ -71,7 +71,7 @@ function remoteTile(pathname) {
 
 async function serve(request, response) {
   const pathname = new URL(request.url, 'http://127.0.0.1').pathname;
-  if (pathname === '/guides/throwing-shade/') scenarioPageLoads += 1;
+  if (pathname === '/guides/out-of-the-sun/') scenarioPageLoads += 1;
   if (
     failureScenario === 'manifest-retry'
     && scenarioPageLoads === 1
@@ -913,7 +913,7 @@ async function runBrowser(
   }
 }
 
-if (!existsSync(resolve(DIST, 'guides/throwing-shade/index.html'))) {
+if (!existsSync(resolve(DIST, 'guides/out-of-the-sun/index.html'))) {
   throw new Error('run the production build before the selected-hour proof');
 }
 
@@ -938,7 +938,7 @@ try {
     junk: 'drop-me',
   });
   const url = `http://127.0.0.1:${address.port}`
-    + `/guides/throwing-shade/?${query}`;
+    + `/guides/out-of-the-sun/?${query}`;
   const result = await runBrowser(
     browserPath(), url, pointBrowserProfile, proofExpression, 'selected-hour', null, true,
   );
@@ -947,7 +947,7 @@ try {
     street: 'york-street',
   });
   const streetUrl = `http://127.0.0.1:${address.port}`
-    + `/guides/throwing-shade/?${streetQuery}`;
+    + `/guides/out-of-the-sun/?${streetQuery}`;
   const streetResult = await runBrowser(
     browserPath(), streetUrl, streetBrowserProfile,
     streetProofExpression, 'street-profile',
@@ -957,7 +957,7 @@ try {
     map: '-79.38445,43.65395,16',
   });
   const keyboardUrl = `http://127.0.0.1:${address.port}`
-    + `/guides/throwing-shade/?${keyboardQuery}`;
+    + `/guides/out-of-the-sun/?${keyboardQuery}`;
   const keyboardResult = await runBrowser(
     browserPath(), keyboardUrl, keyboardBrowserProfile,
     keyboardProofExpression, 'keyboard', prepareKeyboardProof,
@@ -976,7 +976,7 @@ try {
     scenarioPageLoads = 0;
     scenarioStreetRequests = 0;
     const recoveryUrl = `http://127.0.0.1:${address.port}`
-      + `/guides/throwing-shade/?tiles=local${extraQuery}`;
+      + `/guides/out-of-the-sun/?tiles=local${extraQuery}`;
     recoveryResults[scenario] = await runBrowser(
       browserPath(), recoveryUrl, recoveryProfiles[index], expression, scenario,
     );
