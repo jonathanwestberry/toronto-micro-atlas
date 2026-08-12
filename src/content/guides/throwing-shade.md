@@ -1,15 +1,15 @@
 ---
-title: "Throwing Shade"
+title: "Out of the Sun"
 slug: "throwing-shade"
-description: "Fifteen hourly frames of Toronto's ground shade on 21 July 2026, modelled at 2 m. The shadiest neighbourhoods change once a spring lidar flight is corrected for summer leaves, and the citywide shortage this guide went looking for is not there."
+description: "Where to find cover on a hot day in Toronto, hour by hour. And the 533 transit stops that have none."
 published: 2026-08-06
-updated: 2026-08-06
+updated: 2026-08-11
 status: under-observation
 theme: fg04
-subjectTag: "Shade, towers & trees"
-tagline: "The city thins at one"
+subjectTag: "Shade & cover"
+tagline: "Where the cover is, hour by hour"
 order: 4
 cover: "/social/og-throwing-shade.jpg"
 ---
 
-Throwing Shade maps where the sun is blocked at ground level, hour by hour, across one modelled day. It reads the city twice: once from the surface the aircraft measured, and once with the trees given their summer leaves back. The second reading moves the shadiest neighbourhoods out of downtown entirely, which is the argument the guide exists to make.
+Out of the Sun maps where the sun is blocked at ground level, hour by hour, across one modelled day. At one in the afternoon four fifths of Toronto's ground stands in open sun. The shade that remains sits over the sidewalk and stops before the road, and 533 transit stops have none of it.

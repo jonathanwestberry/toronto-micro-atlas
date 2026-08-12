@@ -54,6 +54,11 @@ SOCIAL = os.path.join(ROOT, "public", "social")
 PANEL_W, PANEL_H = 600, 630
 EARLY_HOUR, LATE_HOUR = 13, 18
 SURFACE = "raw"
+
+# The share card is the one surface where the guide's title is a raster, so a
+# rename that misses this file ships a card contradicting the page. Declared
+# once and used by both the drawing and the proof record.
+TITLE = "Out of the Sun"
 MIN_GROUND = 0.30           # a block that is mostly lake shows nothing
 MIN_ARTERIAL_M = 200.0      # and one nobody can place shows nothing either
 
@@ -106,7 +111,7 @@ def add_editorial_context(image):
     # One compact footer gives the title a dependable reading surface without
     # shrinking or resampling the selected raster block.
     draw.rectangle((0, 528, 1200, 630), fill=SHADED)
-    draw.text((38, 530), "THROWING SHADE", font=display_66, fill=SUNLIT)
+    draw.text((38, 530), TITLE.upper(), font=display_66, fill=SUNLIT)
 
     draw.text((680, 544), "MEASURED, LEAF-OFF  |  21 JULY 2026",
               font=ui_16, fill=SUNLIT)
@@ -235,7 +240,7 @@ def main(dry_run):
     record["surface"] = SURFACE
     record["hours"] = [EARLY_HOUR, LATE_HOUR]
     record["image_text"] = {
-        "title": "Throwing Shade",
+        "title": TITLE,
         "panels": ["Toronto, 13:00", "Same ground, 18:00"],
         "surface": "Measured, leaf-off",
         "date": "21 July 2026",

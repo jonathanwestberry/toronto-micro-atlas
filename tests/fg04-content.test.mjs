@@ -188,27 +188,27 @@ test('build publishes the exact shade guide route', () => {
   );
 });
 
-test('the Throwing Shade card references an asset that exists in the build', () => {
+test('the Out of the Sun card references an asset that exists in the build', () => {
   const card = mainMarkup(readHome()).match(
     /<a[^>]+href="\/guides\/throwing-shade\/"[^>]+class="[^"]*guide-card[^"]*"[\s\S]*?<\/a>/,
   )?.[0] ?? '';
   const source = card.match(/<img[^>]+src="([^"]+)"/)?.[1];
-  assert.ok(source, 'The Throwing Shade card must have a cover image');
+  assert.ok(source, 'The Out of the Sun card must have a cover image');
   assert.equal(
     existsSync(resolve(new URL('../dist', import.meta.url).pathname, source.replace(/^\//, ''))),
     true,
-    `The Throwing Shade card image does not exist in dist: ${source}`,
+    `The Out of the Sun card image does not exist in dist: ${source}`,
   );
 });
 
-test('the shared header includes Throwing Shade', () => {
+test('the shared header includes Out of the Sun', () => {
   const header = readHome().match(/<header\b[\s\S]*?<\/header>/)?.[0] ?? '';
-  assert.match(header, /href="\/guides\/throwing-shade\/"[^>]*>Throwing Shade<\/a>/);
+  assert.match(header, /href="\/guides\/throwing-shade\/"[^>]*>Out of the Sun<\/a>/);
 });
 
-test('the shared footer includes Throwing Shade', () => {
+test('the shared footer includes Out of the Sun', () => {
   const footer = readHome().match(/<footer\b[\s\S]*?<\/footer>/)?.[0] ?? '';
-  assert.match(footer, /href="\/guides\/throwing-shade\/"[^>]*>Throwing Shade<\/a>/);
+  assert.match(footer, /href="\/guides\/throwing-shade\/"[^>]*>Out of the Sun<\/a>/);
 });
 
 test('About names all four published field guides', () => {
@@ -217,7 +217,7 @@ test('About names all four published field guides', () => {
   const item = mainMarkup(html).match(
     /<a href="\/guides\/throwing-shade\/"[^>]*>[\s\S]*?<\/a>/,
   )?.[0] ?? '';
-  assert.equal(visibleText(item), '04 Throwing Shade');
+  assert.equal(visibleText(item), '04 Out of the Sun');
 });
 
 test('the paired explorer panes may shrink to the 320 px reading frame', () => {
