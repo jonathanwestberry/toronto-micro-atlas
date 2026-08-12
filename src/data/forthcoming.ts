@@ -2,6 +2,11 @@
  * Guides under research, shown as muted "Forthcoming" cards in the gallery.
  * These have no page yet, so they carry no href. Promote one to a real guide
  * by adding a content file in src/content/guides/ and removing it here.
+ *
+ * Keep `description` to 85 characters, the same budget the guides collection
+ * enforces in src/content.config.ts. The card clamps to 3 lines and the blurb
+ * box narrows to 219px at the 640px breakpoint, so anything longer loses its
+ * own tail. There is no schema here to enforce it, so it is enforced by eye.
  */
 export interface ForthcomingGuide {
   title: string;
@@ -13,14 +18,12 @@ export const forthcoming: ForthcomingGuide[] = [
   {
     title: 'Farmers Markets',
     tag: 'Food & season',
-    description:
-      "A rotating atlas of Toronto's outdoor markets, mapped by neighbourhood and season.",
+    description: "Toronto's outdoor markets, mapped by neighbourhood and season.",
   },
   {
     title: 'Quiet Third Places',
     tag: 'Rest & refuge',
-    description:
-      'The libraries, reading rooms, lobbies, and garden corners where the city lets you sit still.',
+    description: 'The libraries, lobbies, and garden corners that let you sit still.',
   },
 ];
 

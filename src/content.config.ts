@@ -7,16 +7,25 @@ const guides = defineCollection({
   schema: z.object({
     title: z.string(),
     slug: z.string(),
-    description: z.string(),
+    // `description` is card copy and nothing else: the gallery cards on / and
+    // /guides/ are its only readers, and every page writes its own meta
+    // description separately. The card clamps to 3 lines, and the narrowest the
+    // blurb box ever gets is 219px, at the 640px two-column breakpoint. 85
+    // characters is what survives three lines there, so the max() is a
+    // build-time guard against copy that would silently lose its own tail.
+    description: z.string().max(85),
     published: z.coerce.date(),
     updated: z.coerce.date(),
-    status: z.enum(['live', 'under-observation']),
     // Gallery metadata (drives the homepage feature + /guides/ grid so a new
-    // guide is a content change, not markup).
+    // guide is a content change, not markup). Every field here has a reader in
+    // src/. `status`, `tagline` and `featured` used to sit alongside them and
+    // none of the three did: the card's status chip is computed from
+    // `published`, the card shows `subjectTag` rather than a tagline, and the
+    // gallery orders by `order` rather than promoting a featured guide. They
+    // were removed rather than rendered, since all three described an internal
+    // state the reader was never shown.
     theme: z.enum(['fg01', 'fg02', 'fg03', 'fg04']).optional(),
     subjectTag: z.string().optional(),
-    tagline: z.string().optional(),
-    featured: z.boolean().default(false),
     order: z.number().default(0),
     cover: z.string().optional(),
   }),

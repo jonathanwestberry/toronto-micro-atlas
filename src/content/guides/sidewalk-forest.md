@@ -1,13 +1,11 @@
 ---
 title: "Sidewalk Forest"
 slug: "sidewalk-forest"
-description: "Toronto keeps a ledger of every street tree it tends: 688,335 of them, each with a species, a trunk measurement, and an address. This guide reads the ledger, one dot per tree."
+description: "All 688,335 street trees Toronto tends, one dot each, by species and by street."
 published: 2026-07-12
 updated: 2026-07-12
-status: live
 theme: fg02
 subjectTag: "The urban forest"
-tagline: "688,335 trees, one dot each"
 order: 2
 ---
 
