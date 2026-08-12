@@ -126,6 +126,22 @@ const ALLOWED_TEMPERATURE_SENTENCES = [
   // The map's own "how to read this" panel, once per surface.
   'This map shows where the sun was blocked.',
   'It says nothing about temperature.',
+  // The reader's motivation, once, in the lede.
+  //
+  // The rule here is "no thermal CLAIM about the ground", and it was written
+  // as "the word may not appear", which is wider. Two different sentences were
+  // being caught by one ban:
+  //
+  //   "this shade is three degrees cooler"  -> a measurement the data cannot
+  //                                            support. Still banned.
+  //   "it is a hot afternoon"               -> why a person is reading at all.
+  //
+  // Banning the second deleted the guide's only reason to exist, and the proof
+  // was on the site: the "Shade and Cooling" forthcoming card promised "where
+  // to find cover on a hot day" and read better than the finished guide.
+  // Nothing about the rigour moves. This sentence describes the reader, never
+  // the ground, and every figure on the page stays a shade figure.
+  'It is a hot afternoon and you want to be out of the sun.',
 ];
 
 /**
