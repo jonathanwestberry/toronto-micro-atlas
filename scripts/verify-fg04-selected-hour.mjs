@@ -867,6 +867,17 @@ async function runBrowser(
       await cdp.call('Runtime.enable');
       await cdp.call('Page.enable');
       if (prepare) await prepare(cdp);
+      // The recovery proofs reload the page on purpose, and an evaluate that
+      // lands while a reload is in flight runs against an opaque origin, where
+      // touching sessionStorage throws SecurityError even though nothing is
+      // wrong. Treating the first exception as fatal therefore failed the whole
+      // deploy on timing alone: twice in a row on 2026-08-12, in two different
+      // sub-proofs, then passing on a re-run with no code change. Poll through
+      // exceptions the same way this loop already polls through a not-ready
+      // result, and keep the last one so an exception that outlasts the window
+      // still reports what it was. A genuine break cannot hide here, because a
+      // broken page never returns ready, so it exhausts the loop and fails.
+      let lastEvaluateError = null;
       for (let attempt = 0; attempt < 300; attempt += 1) {
         const result = await cdp.call('Runtime.evaluate', {
           expression,
@@ -874,9 +885,12 @@ async function runBrowser(
           awaitPromise: true,
         });
         if (result.exceptionDetails) {
-          throw new Error(result.exceptionDetails.exception?.description
-            ?? result.exceptionDetails.text);
+          lastEvaluateError = result.exceptionDetails.exception?.description
+            ?? result.exceptionDetails.text;
+          await delay(100);
+          continue;
         }
+        lastEvaluateError = null;
         const value = result.result?.value;
         if (value?.ready) {
           if (!value.passed) {
@@ -899,7 +913,8 @@ async function runBrowser(
       });
       throw new Error(
         `${label} browser proof did not finish in 30 seconds: `
-        + JSON.stringify(diagnostic.result?.value),
+        + JSON.stringify(diagnostic.result?.value)
+        + (lastEvaluateError ? `; last evaluate error: ${lastEvaluateError}` : ''),
       );
     } finally {
       cdp.close();
