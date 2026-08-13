@@ -104,7 +104,7 @@ const newestTime = Math.max(...guides.map((g) => g.data.published.getTime()));
     align-items: center;
   }
   @media (min-width: 900px) {
-    .hero-inner { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: var(--space-16); }
+    .hero-inner { grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); gap: var(--space-16); }
   }
 
   .hero-text { display: flex; flex-direction: column; align-items: flex-start; }
@@ -185,8 +185,17 @@ const newestTime = Math.max(...guides.map((g) => g.data.published.getTime()));
     width: 100%;
     height: auto;
     display: block;
-    /* let the cream of the map blend into the cream page */
-    filter: drop-shadow(0 12px 30px rgba(39, 36, 29, 0.08));
+    filter: drop-shadow(0 12px 30px rgba(39, 36, 29, 0.18));
+  }
+  /* Run the plate past the container and off the viewport edge. A map that
+     stops politely inside the grid reads as an illustration of a map; one that
+     is cut by the edge reads as a fragment of a bigger sheet, which is what an
+     atlas is. `.hero` already clips with overflow: hidden, so the bleed costs
+     no horizontal scroll. Scaling from the left edge keeps the shoreline and
+     the downtown detail in view and pushes the empty northwest corner out. */
+  @media (min-width: 900px) {
+    .hero-map { margin-right: calc(var(--gutter) * -1); }
+    .hero-map img { transform: scale(1.18); transform-origin: left center; }
   }
   @media (max-width: 899px) {
     .hero-map { margin-top: var(--space-4); max-width: 560px; }
