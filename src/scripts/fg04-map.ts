@@ -25,6 +25,7 @@ import {
   searchStreets,
   streetById,
 } from './fg04-streets.mjs';
+import { filterStops, stopCountLabel } from './fg04-stops.mjs';
 
 /**
  * The shade map: two surfaces, side by side, always both.
@@ -684,6 +685,15 @@ export async function initShadeMap(): Promise<void> {
   const selectPoint = (
     coordinate: [number, number],
     historyMode: 'none' | 'push' = 'push',
+    // Where the camera will be, for callers that are moving it themselves.
+    // Reading the live centre is right when the reader clicked the map, since
+    // the camera is already where they left it. It is wrong when the caller
+    // has just started an animated move: easeTo takes 650ms and getCenter()
+    // during it still returns the old centre, so the shared URL would carry
+    // the view the reader had before they picked anything. syncCameras()
+    // cannot cover this either, because its moveend only reports moves that
+    // carry an originalEvent, which a programmatic move never does.
+    cameraOverride: [number, number, number] | null = null,
   ): void => {
     const rounded: [number, number] = [
       Number(coordinate[0].toFixed(5)),
@@ -691,9 +701,9 @@ export async function initShadeMap(): Promise<void> {
     ];
     clearStreetSelection();
     const centre = maps[0]?.map.getCenter();
-    const camera: [number, number, number] | null = centre
+    const camera: [number, number, number] | null = cameraOverride ?? (centre
       ? [centre.lng, centre.lat, maps[0].map.getZoom()]
-      : state.map;
+      : state.map);
     state = { ...state, map: camera, point: rounded, street: null };
     activePoint = null;
     renderPointLoading(root, rounded);
@@ -977,6 +987,79 @@ export async function initShadeMap(): Promise<void> {
       shareButton.textContent = 'Copy this view';
     }, 2500);
   });
+
+  /*
+   * The rail of stops with no usable shade, on the map route only.
+   *
+   * Selecting one hands off to selectPoint(), which already marks both maps,
+   * clears any street selection and loads the hour-by-hour profile for that
+   * ground. Reusing it means a stop behaves exactly like any other point a
+   * reader clicks, and the reader gets the evidence for the claim rather than
+   * a marker and a promise. A second, parallel selection path would have to
+   * repeat all of that and could drift from it.
+   *
+   * The list is already in the DOM, server-rendered and validated at build
+   * time, so filtering hides rows rather than rebuilding them: 533 buttons
+   * survive a keystroke far better than 533 replaceChildren() calls.
+   */
+  const stopsRail = root.querySelector<HTMLElement>('[data-fg04-stops]');
+  if (stopsRail) {
+    const stopSearch = stopsRail.querySelector<HTMLInputElement>(
+      '[data-fg04-stops-search]',
+    );
+    const stopCount = stopsRail.querySelector<HTMLElement>(
+      '[data-fg04-stops-count]',
+    );
+    const stopEmpty = stopsRail.querySelector<HTMLElement>(
+      '[data-fg04-stops-empty]',
+    );
+    const stopItems = Array.from(
+      stopsRail.querySelectorAll<HTMLLIElement>('[data-fg04-stop-item]'),
+    );
+    const stopRecords = stopItems.map((element) => ({
+      id: element.querySelector('[data-fg04-stop-id]')?.getAttribute('data-fg04-stop-id') ?? '',
+      normalizedName: element.dataset.fg04StopSearch ?? '',
+      element,
+    }));
+
+    const renderStopFilter = (query: string): void => {
+      const matched = new Set(
+        filterStops(stopRecords, query).map((record) => record.id),
+      );
+      stopRecords.forEach((record) => {
+        record.element.hidden = !matched.has(record.id);
+      });
+      if (stopCount) {
+        stopCount.textContent = stopCountLabel(matched.size, stopRecords.length);
+      }
+      if (stopEmpty) stopEmpty.hidden = matched.size !== 0;
+    };
+
+    stopsRail.querySelector('[data-fg04-stops-form]')
+      ?.addEventListener('submit', (event) => event.preventDefault());
+    stopSearch?.addEventListener('input', () => {
+      renderStopFilter(stopSearch.value);
+    });
+
+    stopsRail.addEventListener('click', (event) => {
+      const button = (event.target as HTMLElement | null)
+        ?.closest<HTMLButtonElement>('[data-fg04-stop-id]');
+      if (!button) return;
+      const lon = Number(button.getAttribute('data-fg04-stop-lon'));
+      const lat = Number(button.getAttribute('data-fg04-stop-lat'));
+      if (!Number.isFinite(lon) || !Number.isFinite(lat)) return;
+      // Zoom in far enough that the reader can see the ground around the
+      // stop, but never zoom back out if they are already closer than that.
+      const zoom = Math.max(16, maps[0]?.map.getZoom() ?? 16);
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      maps[0]?.map.easeTo({
+        center: [lon, lat],
+        zoom,
+        duration: reducedMotion ? 0 : 650,
+      });
+      selectPoint([lon, lat], 'push', [lon, lat, zoom]);
+    });
+  }
 
   if (localTileOptIn()) {
     const diagnosticWindow = window as typeof window & {

@@ -169,3 +169,47 @@ def shortage_share(medians: np.ndarray,
     poor_km = lengths_m[sampled & (medians < n)].sum() / 1000.0
     share = (100.0 * poor_km / total_km) if total_km else 0.0
     return share, poor_km, total_km
+
+
+def bare_on_every_surface(hours_by_surface: dict[str, np.ndarray]) -> np.ndarray:
+    """Mask of stops with no usable shade on every surface given.
+
+    One shaded frame means the 06:00 frame alone, the one that counts the
+    whole city as shaded before the sun is up far enough to measure. So a
+    stop at exactly one frame has no shade in any hour worth waiting in.
+
+    The intersection is the honest set rather than the union. A stop that is
+    bare only on the measured surface may simply be standing under a tree the
+    spring flight could not see, and publishing that as bare would turn the
+    flight calendar into a finding.
+    """
+    if not hours_by_surface:
+        raise ValueError("no surfaces given")
+    mask = None
+    for hours in hours_by_surface.values():
+        bare = np.asarray(hours) == 1
+        mask = bare if mask is None else (mask & bare)
+    return mask
+
+
+def no_shade_stop_records(mask: np.ndarray, names, ids, lons, lats) -> list[dict]:
+    """Shape the selected stops into records, sorted by name.
+
+    Sorted alphabetically and by nothing else, on purpose. Every stop in this
+    set sits at the same single frame, so there is no worst one and no order
+    that means anything. Sorting by any measured column would invent a
+    ranking out of a tie and invite a reader to treat the top of the list as
+    the worst place in the city to wait.
+    """
+    picked = [int(i) for i in np.flatnonzero(np.asarray(mask))]
+    records = [
+        {
+            "id": str(ids[i]),
+            "name": str(names[i]),
+            "lon": round(float(lons[i]), 6),
+            "lat": round(float(lats[i]), 6),
+        }
+        for i in picked
+    ]
+    records.sort(key=lambda record: (record["name"], record["id"]))
+    return records

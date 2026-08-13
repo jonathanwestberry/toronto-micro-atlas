@@ -207,31 +207,33 @@
         ]
       },
       "transit_stops": {
-        "count": 8432,
-        "mean_shaded_hours": 6.0,
+        "count": 6079,
+        "excluded_not_sampled_ground": 2353,
+        "of_published_stops": 8432,
+        "mean_shaded_hours": 6.71,
+        "no_usable_shade": 61,
         "sunniest": [
           {
-            "name": "Senlac Rd at York Cemetery",
+            "name": "Bloor St West at The East Mall",
             "shaded_hours": 1
           },
           {
-            "name": "Runnymede Rd at Dundas St West North Side",
+            "name": "Leslie St at York Mills Rd",
             "shaded_hours": 1
           },
           {
-            "name": "400 The West Mall",
+            "name": "Lawrence Ave East at Elinor Ave",
             "shaded_hours": 1
           },
           {
-            "name": "Steeles Ave East at Brimley Rd",
+            "name": "Cherry St at Commissioners St",
             "shaded_hours": 1
           },
           {
-            "name": "The Queensway at Royal York Rd",
+            "name": "Commissioners St at Don Roadway East Side",
             "shaded_hours": 1
           }
-        ],
-        "no_usable_shade": 635
+        ]
       }
     },
     "corrected": {
@@ -425,37 +427,41 @@
         ]
       },
       "transit_stops": {
-        "count": 8432,
-        "mean_shaded_hours": 7.0,
+        "count": 6079,
+        "excluded_not_sampled_ground": 2353,
+        "of_published_stops": 8432,
+        "mean_shaded_hours": 7.14,
+        "no_usable_shade": 64,
         "sunniest": [
           {
-            "name": "Weston Rd at Fenmar Dr North Side",
+            "name": "Kodiak Cres at Whitehorse Rd",
             "shaded_hours": 1
           },
           {
-            "name": "Jane St at Wilson Ave North Side",
+            "name": "Royal York Rd at Norseman St",
             "shaded_hours": 1
           },
           {
-            "name": "Triton Rd at Brimley Rd",
+            "name": "Lawrence Ave East at Elinor Ave",
             "shaded_hours": 1
           },
           {
-            "name": "Jones Ave at Shudell Ave",
+            "name": "95 Commander Blvd",
             "shaded_hours": 1
           },
           {
-            "name": "Kingston Rd at St Clair Ave East",
+            "name": "Colonel Samuel Smith Park Dr",
             "shaded_hours": 1
           }
-        ],
-        "no_usable_shade": 553
+        ]
       }
     }
   },
   "transit_stops_no_usable_shade_both_surfaces": {
-    "count": 533,
-    "of_total": 8432,
-    "share_percent": 6.32
+    "count": 46,
+    "of_total": 6079,
+    "share_percent": 0.76,
+    "published_stops": 8432,
+    "excluded_not_sampled_ground": 2353
   }
 }

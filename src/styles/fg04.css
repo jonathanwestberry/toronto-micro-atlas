@@ -1319,3 +1319,170 @@
 .fg04-chapter--method .fg04-ranking__value {
   font-size: var(--text-lg);
 }
+
+/* ============================================================
+   The rail: stops with no usable shade
+
+   On the map route only. The guide page keeps the explorer inside a reading
+   column, where a 533-row rail beside two maps would leave three columns
+   fighting over 66ch.
+
+   The rail matches the map stage's height and scrolls inside itself, so the
+   maps never move while the reader walks the list. Below the breakpoint it
+   stops being a rail and becomes what it already is in the markup: a section
+   under the maps, capped in height so it cannot bury the rest of the page.
+   ============================================================ */
+
+.fg04-maps__stage-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-6);
+}
+
+.fg04-stops {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--atlas-line);
+  border-radius: 6px;
+  background: var(--atlas-ground);
+  padding: var(--space-4);
+  max-height: 32rem;
+}
+
+@media (min-width: 75rem) {
+  .fg04-maps__stage-row--railed {
+    grid-template-columns: minmax(0, 1fr) minmax(17rem, 21rem);
+    align-items: start;
+  }
+
+  /* Match the stage, not the section: the pane titles and notes sit outside
+     the frame, so borrowing the frame's height keeps the rail's own scroll
+     aligned with the maps rather than overshooting them. */
+  .fg04-maps__stage-row--railed .fg04-stops {
+    max-height: min(72vh, 46rem);
+    position: sticky;
+    top: var(--space-4);
+  }
+}
+
+.fg04-stops__title {
+  font-family: var(--font-heading);
+  font-weight: 400;
+  font-size: var(--text-xl);
+  color: var(--atlas-ink);
+  margin-bottom: var(--space-2);
+}
+
+.fg04-stops__grain {
+  font-size: var(--text-sm);
+  color: var(--atlas-ink-muted);
+  margin-bottom: var(--space-3);
+}
+
+.fg04-stops__label {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--atlas-ink);
+  margin-bottom: var(--space-1);
+}
+
+.fg04-stops__search {
+  width: 100%;
+  font: inherit;
+  color: var(--atlas-ink);
+  background: var(--atlas-card, #FFFDF8);
+  border: 1px solid var(--atlas-line);
+  border-radius: 4px;
+  /* SC 2.5.8: a primary control on this rail, so it carries a real target. */
+  min-height: 2.75rem;
+  padding: 0 var(--space-3);
+}
+
+.fg04-stops__search:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.fg04-stops__count {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--atlas-ink-muted);
+  margin-block: var(--space-2);
+}
+
+.fg04-stops__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-top: 1px solid var(--atlas-line);
+}
+
+.fg04-stops__item {
+  border-bottom: 1px solid var(--atlas-line);
+}
+
+.fg04-stops__item[hidden] {
+  display: none;
+}
+
+.fg04-stops__button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--atlas-ink);
+  background: none;
+  border: 0;
+  /* SC 2.5.8 again: 533 rows in a scrolling list are the easiest thing on the
+     page to mis-tap, so the row is the target rather than the text. */
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-2);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .fg04-stops__button:hover {
+    background: var(--atlas-hover-surface, rgba(39, 36, 29, 0.06));
+  }
+}
+
+.fg04-stops__button:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: calc(var(--focus-ring-offset) * -1);
+}
+
+.fg04-stops__empty {
+  font-size: var(--text-sm);
+  color: var(--atlas-ink-muted);
+  padding-block: var(--space-3);
+}
+
+.fg04-stops__empty[hidden] {
+  display: none;
+}
+
+/* The correction note. Set apart from the prose it corrects, and quieter than
+   it, because a reader arriving fresh needs the current number first and the
+   history second. Not hidden behind a disclosure: the figure was wrong on a
+   live page for five weeks and burying the reason would be a second, smaller
+   version of the same fault. */
+.fg04-correction {
+  max-width: var(--measure);
+  margin-top: var(--space-8);
+  padding: var(--space-4);
+  border-left: 3px solid var(--atlas-accent);
+  background: var(--atlas-card, #FFFDF8);
+  font-size: var(--text-sm);
+  color: var(--atlas-ink-muted);
+}
+
+.fg04-correction strong {
+  color: var(--atlas-ink);
+}

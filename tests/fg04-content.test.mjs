@@ -172,7 +172,10 @@ const RAW_AND_CORRECTED = [
   ['6.027', '7.034', 'NIA mean shaded hours'],
   ['6.246', '7.240', 'non-NIA mean shaded hours'],
   ['0.219', '0.206', 'NIA gap'],
-  ['6.00', '7.00', 'transit stop mean shaded hours'],
+  // Over the 6,079 stops on sampled ground, not all 8,432. The old pair was
+  // 6.00 and 7.00 across every published stop, which included 2,353 whose
+  // coordinate landed on a roof.
+  ['6.71', '7.14', 'transit stop mean shaded hours'],
   ['1.85', '1.86', 'sunniest arterial'],
   ['9.99', '10.65', 'shadiest arterial outside downtown'],
   ['10.90', '11.30', 'shadiest neighbourhood'],
@@ -549,11 +552,19 @@ test('the internal id and the retired series naming stay out of the copy', () =>
  * Nothing in this file opened the proof file until now, and that is precisely
  * how three wrong numbers shipped together: a 20:00 frame the data never
  * produced, a top-five span that contradicted the ranking table printed six
- * lines above it, and a bare-transit-stop count written as "three" when it was
- * 533. Every one of them was checkable against statistics.json. The pairs in
- * RAW_AND_CORRECTED above only ever caught figures the stats script already
- * printed, so anything derived, or anything the script summarised away, was
- * unguarded. So the proof file is opened here.
+ * lines above it, and a bare-transit-stop count written as "three" when the
+ * proof file said 533. Every one of them was checkable against
+ * statistics.json. The pairs in RAW_AND_CORRECTED above only ever caught
+ * figures the stats script already printed, so anything derived, or anything
+ * the script summarised away, was unguarded. So the proof file is opened here.
+ *
+ * A test that reads the count from the proof file catches copy that disagrees
+ * with the data and cannot catch data that disagrees with itself. It passed
+ * for five weeks on 533, a figure sampled without asking whether the pixel
+ * under each stop was ground, when 487 of those 533 stood on roofs. The count
+ * is 46 now. What guards the new number is not this test but the ground
+ * restriction in stops_on_sampled_ground(), tested in
+ * data/scripts/tests/test_fg04_no_shade_stops.py.
  */
 const statsPath = new URL('../data/proof/fg04/statistics.json', import.meta.url);
 const readStats = () => JSON.parse(readFileSync(statsPath, 'utf8'));
@@ -662,4 +673,108 @@ test('the map explorer states a task before it shows a map', () => {
       + 'a map, so without a stated task the explorer is furniture.',
     );
   }
+});
+
+/**
+ * The rail of stops with no usable shade, on the map route.
+ *
+ * The count and the set are two publications of one fact, and the failure
+ * mode is that they drift: a regenerated statistics.json with a stale
+ * no-shade-stops.json beside it would put a number in the prose and a
+ * different number of rows on the map route, both looking authoritative.
+ */
+const stopSetPath = new URL(
+  '../public/data/fg04/no-shade-stops.json', import.meta.url,
+);
+const readStopSet = () => JSON.parse(readFileSync(stopSetPath, 'utf8'));
+
+// The rail is on the map route, which readMapRoute() above already reads. The
+// guide keeps its explorer inside a reading column, where a rail beside two
+// maps would leave three columns fighting over one measure.
+
+test('the published stop set agrees with the proof file', () => {
+  const bare = readStats().transit_stops_no_usable_shade_both_surfaces;
+  const set = readStopSet();
+
+  assert.equal(set.count, bare.count);
+  assert.equal(set.stops.length, bare.count);
+  assert.equal(set.ofTotal, bare.of_total);
+  assert.equal(set.sharePercent, bare.share_percent);
+});
+
+test('the stop set counts only stops measured on ground', () => {
+  const bare = readStats().transit_stops_no_usable_shade_both_surfaces;
+
+  // The denominator is stops on sampled ground, never the published stop
+  // count. Sampling every stop regardless of what its pixel was put 487 roofs
+  // into a 533-stop set and published it as one stop in sixteen.
+  assert.ok(
+    bare.of_total < bare.published_stops,
+    'of_total must exclude the stops this guide could not measure',
+  );
+  assert.equal(
+    bare.of_total + bare.excluded_not_sampled_ground,
+    bare.published_stops,
+    'every published stop is either measured on ground or excluded',
+  );
+});
+
+test('the map route lists every stop in the set, and only those', () => {
+  const route = readMapRoute();
+  if (!route) return;
+  const set = readStopSet();
+
+  const rows = route.match(/data-fg04-stop-id="/g) ?? [];
+  assert.equal(
+    rows.length,
+    set.count,
+    `The rail must render all ${set.count} stops. The guide's standing promise `
+    + 'is that nothing is map-only, so the set is server-rendered rather than '
+    + 'fetched.',
+  );
+
+  for (const stop of set.stops) {
+    assert.ok(
+      route.includes(stop.id),
+      `${stop.name} is in the set and missing from the rail`,
+    );
+  }
+});
+
+test('the rail never implies a ranking', () => {
+  const route = readMapRoute();
+  if (!route) return;
+  const set = readStopSet();
+
+  assert.equal(
+    set.order, 'name',
+    'Every stop in this set sits at the same single frame, so there is no '
+    + 'worst one. Any order but name invents a ranking out of a tie.',
+  );
+
+  const names = set.stops.map((stop) => stop.name);
+  assert.deepEqual(names, [...names].sort(), 'the set must ship in name order');
+
+  const text = visibleText(mainMarkup(route));
+  assert.ok(
+    /listed by name|by name and by nothing else/.test(text),
+    'The rail must say the order carries no ranking. A reader handed a list '
+    + 'about missing shade reads the top of it as the worst place in the city.',
+  );
+});
+
+test('the retired 533 is not still printed as a stop count', () => {
+  const copy = readCopy();
+  if (!copy) return;
+
+  // 533 may appear as history in the correction note. It may not appear as
+  // the finding.
+  assert.ok(
+    !/533 of Toronto's 8,432 transit stops/.test(copy),
+    'the pre-correction claim must not survive anywhere in the copy',
+  );
+  assert.ok(
+    !/\b533 bare transit stops\b/.test(copy),
+    'the pre-correction claim must not survive in the closing paragraph',
+  );
 });

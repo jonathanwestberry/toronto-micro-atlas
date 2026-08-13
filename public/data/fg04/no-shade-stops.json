@@ -1,0 +1,286 @@
+{
+  "count": 46,
+  "ofTotal": 6079,
+  "sharePercent": 0.76,
+  "excludedNotSampledGround": 2353,
+  "publishedStops": 8432,
+  "order": "name",
+  "stops": [
+    {
+      "id": "stop:2829",
+      "name": "35 Carl Hall Rd",
+      "lon": -79.479816,
+      "lat": 43.746823
+    },
+    {
+      "id": "stop:42919",
+      "name": "40 Nugget Ave",
+      "lon": -79.258346,
+      "lat": 43.792422
+    },
+    {
+      "id": "stop:8208",
+      "name": "422 Consumers Rd",
+      "lon": -79.326921,
+      "lat": 43.7708
+    },
+    {
+      "id": "stop:8468",
+      "name": "70 Milner Ave",
+      "lon": -79.251406,
+      "lat": 43.784147
+    },
+    {
+      "id": "stop:1299",
+      "name": "95 Commander Blvd",
+      "lon": -79.266658,
+      "lat": 43.793527
+    },
+    {
+      "id": "stop:7291",
+      "name": "Bridgeland Ave at Dufferin St",
+      "lon": -79.457991,
+      "lat": 43.727037
+    },
+    {
+      "id": "stop:10182",
+      "name": "Carlingview Dr at Meteor Dr South Side",
+      "lon": -79.592833,
+      "lat": 43.680524
+    },
+    {
+      "id": "stop:18829",
+      "name": "Centennial College Bus Terminal",
+      "lon": -79.229692,
+      "lat": 43.786406
+    },
+    {
+      "id": "stop:7358",
+      "name": "Colonel Samuel Smith Park Dr",
+      "lon": -79.51684,
+      "lat": 43.594276
+    },
+    {
+      "id": "stop:7397",
+      "name": "Commander Blvd at McCowan Rd West Side",
+      "lon": -79.262448,
+      "lat": 43.796002
+    },
+    {
+      "id": "stop:42339",
+      "name": "Commissioners St at New Cherry St East Side",
+      "lon": -79.353119,
+      "lat": 43.644957
+    },
+    {
+      "id": "stop:36110",
+      "name": "Downsview Park Blvd at Stanley Greene Blvd",
+      "lon": -79.479303,
+      "lat": 43.73611
+    },
+    {
+      "id": "stop:4379",
+      "name": "Dufferin St at Jane Osler Blvd - Yorkdale Shopping Centre",
+      "lon": -79.456993,
+      "lat": 43.725083
+    },
+    {
+      "id": "stop:16305",
+      "name": "Duncanwoods Station - Eastbound Platform",
+      "lon": -79.557338,
+      "lat": 43.748853
+    },
+    {
+      "id": "stop:6755",
+      "name": "Dundas St West at Highway 427",
+      "lon": -79.555162,
+      "lat": 43.628813
+    },
+    {
+      "id": "stop:10103",
+      "name": "Eglinton Ave East at Warden Ave",
+      "lon": -79.28733,
+      "lat": 43.72804
+    },
+    {
+      "id": "stop:4424",
+      "name": "Ellesmere Rd at West Service Rd East Side",
+      "lon": -79.278977,
+      "lat": 43.766111
+    },
+    {
+      "id": "stop:408",
+      "name": "Finch Ave West at Halesia Dr",
+      "lon": -79.606898,
+      "lat": 43.733658
+    },
+    {
+      "id": "stop:346",
+      "name": "Finch Ave West at Highway 27",
+      "lon": -79.603867,
+      "lat": 43.73388
+    },
+    {
+      "id": "stop:42574",
+      "name": "Finch Ave West at Westmore Dr",
+      "lon": -79.601514,
+      "lat": 43.734705
+    },
+    {
+      "id": "stop:1202",
+      "name": "Grangeway Ave at Progress Ave South Side",
+      "lon": -79.250532,
+      "lat": 43.775976
+    },
+    {
+      "id": "stop:9295",
+      "name": "International Blvd at Carlingview Dr East Side",
+      "lon": -79.5905,
+      "lat": 43.676924
+    },
+    {
+      "id": "stop:41048",
+      "name": "Kennedy Station at Bus Bay 13 (Platform B)",
+      "lon": -79.263424,
+      "lat": 43.732014
+    },
+    {
+      "id": "stop:42320",
+      "name": "Kennedy Station at Bus Bay 16 (Platform B)",
+      "lon": -79.262789,
+      "lat": 43.731861
+    },
+    {
+      "id": "stop:9314",
+      "name": "Kodiak Cres at Whitehorse Rd",
+      "lon": -79.468832,
+      "lat": 43.754826
+    },
+    {
+      "id": "stop:9828",
+      "name": "Lake Shore Blvd West at Twenty Ninth St",
+      "lon": -79.528185,
+      "lat": 43.595798
+    },
+    {
+      "id": "stop:42377",
+      "name": "Lawrence Ave East at Elinor Ave",
+      "lon": -79.300378,
+      "lat": 43.744212
+    },
+    {
+      "id": "stop:1642",
+      "name": "Lawrence Ave East at Fortune Gate",
+      "lon": -79.219676,
+      "lat": 43.76116
+    },
+    {
+      "id": "stop:1588",
+      "name": "Leslie St at York Mills Rd",
+      "lon": -79.359741,
+      "lat": 43.75271
+    },
+    {
+      "id": "stop:6095",
+      "name": "McCowan Rd at Highway 401",
+      "lon": -79.255208,
+      "lat": 43.782557
+    },
+    {
+      "id": "stop:41043",
+      "name": "Midland Ave at Lawrence Ave East South Side",
+      "lon": -79.265001,
+      "lat": 43.750766
+    },
+    {
+      "id": "stop:11077",
+      "name": "Morningside Ave at Sewells Rd North Side",
+      "lon": -79.21143,
+      "lat": 43.816633
+    },
+    {
+      "id": "stop:42343",
+      "name": "New Cherry St at Commissioners St North Side",
+      "lon": -79.353854,
+      "lat": 43.645244
+    },
+    {
+      "id": "stop:42341",
+      "name": "New Cherry St at Lake Shore Blvd East",
+      "lon": -79.35633,
+      "lat": 43.648354
+    },
+    {
+      "id": "stop:42342",
+      "name": "New Cherry St at Lake Shore Blvd East South Side",
+      "lon": -79.356591,
+      "lat": 43.648372
+    },
+    {
+      "id": "stop:4852",
+      "name": "Opposite 675 Wilson Ave",
+      "lon": -79.455114,
+      "lat": 43.733006
+    },
+    {
+      "id": "stop:201",
+      "name": "Opposite 700 Arrow Rd",
+      "lon": -79.529314,
+      "lat": 43.745407
+    },
+    {
+      "id": "stop:5556",
+      "name": "Park Rd (Zoo) at Kirkhams Rd East Side",
+      "lon": -79.175121,
+      "lat": 43.81813
+    },
+    {
+      "id": "stop:1568",
+      "name": "Pharmacy Ave at Steeles Ave East South Side",
+      "lon": -79.336392,
+      "lat": 43.81629
+    },
+    {
+      "id": "stop:6076",
+      "name": "Progress Ave at Estate Dr East Side",
+      "lon": -79.23551,
+      "lat": 43.781324
+    },
+    {
+      "id": "stop:9956",
+      "name": "Rathburn Rd at The East Mall West Side",
+      "lon": -79.564856,
+      "lat": 43.654977
+    },
+    {
+      "id": "stop:6121",
+      "name": "Tapscott Rd at Washburn Way",
+      "lon": -79.2244,
+      "lat": 43.804389
+    },
+    {
+      "id": "stop:7774",
+      "name": "The East Mall at Bloor St West",
+      "lon": -79.556997,
+      "lat": 43.637189
+    },
+    {
+      "id": "stop:416",
+      "name": "Triton Rd at Brimley Rd",
+      "lon": -79.261533,
+      "lat": 43.773658
+    },
+    {
+      "id": "stop:10452",
+      "name": "Warden Ave at Lupin Dr North Side",
+      "lon": -79.302059,
+      "lat": 43.765746
+    },
+    {
+      "id": "stop:18727",
+      "name": "West Toronto St at Keele St",
+      "lon": -79.467001,
+      "lat": 43.66986
+    }
+  ]
+}

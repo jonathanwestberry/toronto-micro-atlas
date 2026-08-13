@@ -277,8 +277,43 @@ def accumulate(block, crs, transform, width, height, hoods, nia, segments,
         ground_src.close()
 
 
+def stops_on_sampled_ground(stops):
+    """Which stops stand on a pixel this pipeline actually measured.
+
+    Every other statistic in this file is gated on `ground.tif == 1`:
+    accumulate() drops non-ground pixels before it touches a histogram, so the
+    citywide mean, the neighbourhood means and the band medians are all
+    ground-only by construction. sample_stops() was the one place that read a
+    shade value without asking, and that is not a rounding difference.
+
+    A stop's published coordinate frequently lands on a shelter roof, a
+    station canopy or an adjacent building at 2 m, and a roof is high, so it
+    is lit from first light to last. It therefore records exactly one shaded
+    frame, the 06:00 one that counts the whole city as shaded before anything
+    is measured, and drops straight into the "no usable shade" bucket by
+    construction rather than by observation. The result was a set that
+    selected for roofs: 27.9 per cent of all stops sit on non-ground pixels
+    against 91.4 per cent of the stops the old test picked out.
+
+    An unmeasured stop is unmeasured, not sunlit, so these leave both sides of
+    the ratio rather than counting as shade-poor. That is the same rule this
+    module already applies to an unsampled street, for the same reason:
+    letting unmeasured collapse into zero invents a finding.
+    """
+    path = os.path.join(PROCESSED, "ground.tif")
+    coords = [(point.x, point.y) for point in stops.geometry]
+    with rasterio.open(path) as src:
+        values = np.array([v[0] for v in src.sample(coords)])
+    return values == 1
+
+
 def sample_stops(stops, surface, trees=None):
     """Shaded hours at each transit stop.
+
+    Sampled at every stop, including the ones standing on a roof. Callers
+    restrict to stops_on_sampled_ground() rather than having this function do
+    it, so the mask is applied once and visibly at the point the statistic is
+    formed instead of hiding inside the sampler.
 
     The corrected surface gets the same under-canopy rule as every other
     corrected statistic. Without it a stop standing under a street tree is
@@ -358,6 +393,7 @@ def summarise(surface, data, frames, hoods, nia, segments, stops,
                                  hood_mean[1:]))
     named = [i for i in ranked if not np.isnan(hood_mean[i + 1])]
     stop_hours = sample_stops(stops, surface, trees)
+    sampled_ground = stops_on_sampled_ground(stops)
 
     return {
         "surface": surface,
@@ -400,8 +436,14 @@ def summarise(surface, data, frames, hoods, nia, segments, stops,
              "downtown_neighbourhoods": sorted(DOWNTOWN)}
             if beyond is not None else None),
         "transit_stops": {
-            "count": int(len(stops)),
-            "mean_shaded_hours": round(float(stop_hours.mean()), 2),
+            # Every number in this block is over stops standing on sampled
+            # ground. The rest are not shade-poor, they are unmeasured: their
+            # coordinate landed on a roof or a canopy at 2 m, and the shade
+            # value there describes the roof.
+            "count": int(sampled_ground.sum()),
+            "excluded_not_sampled_ground": int((~sampled_ground).sum()),
+            "of_published_stops": int(len(stops)),
+            "mean_shaded_hours": round(float(stop_hours[sampled_ground].mean()), 2),
             # A stop at exactly one shaded frame has only the 06:00 frame, the
             # one that counts the whole city as shaded before anything is
             # measured. So one frame means no shade in any hour worth waiting
@@ -409,11 +451,11 @@ def summarise(surface, data, frames, hoods, nia, segments, stops,
             # argsort slice of a large tied set: it can name five stops and
             # can never say how many there are. The guide printed three names
             # and called it a list of addresses. It is not.
-            "no_usable_shade": int((stop_hours == 1).sum()),
+            "no_usable_shade": int(((stop_hours == 1) & sampled_ground).sum()),
             "sunniest": [
                 {"name": str(stops.iloc[int(i)].get("name")),
                  "shaded_hours": int(stop_hours[int(i)])}
-                for i in np.argsort(stop_hours)[:5]],
+                for i in np.argsort(np.where(sampled_ground, stop_hours, FRAMES + 1))[:5]],
         },
     }
 
@@ -479,10 +521,21 @@ def main(block: int) -> None:
     for surface in SURFACES:
         bare = sample_stops(stops, surface, trees) == 1
         both = bare if both is None else (both & bare)
+
+    # Ground only, on both sides of the ratio. See stops_on_sampled_ground():
+    # a stop whose coordinate lands on a roof is not a stop without shade, it
+    # is a stop this pipeline never measured at ground level, and a roof is
+    # sunlit all day by construction. Counting them published 533 of 8,432
+    # when 487 of that 533 were roofs.
+    sampled_ground = stops_on_sampled_ground(stops)
+    both = both & sampled_ground
+    measured = int(sampled_ground.sum())
     report["transit_stops_no_usable_shade_both_surfaces"] = {
         "count": int(both.sum()),
-        "of_total": int(len(stops)),
-        "share_percent": round(float(both.sum()) / len(stops) * 100, 2),
+        "of_total": measured,
+        "share_percent": round(float(both.sum()) / measured * 100, 2),
+        "published_stops": int(len(stops)),
+        "excluded_not_sampled_ground": int((~sampled_ground).sum()),
     }
 
     os.makedirs(PROOF, exist_ok=True)
