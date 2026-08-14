@@ -16,6 +16,11 @@ const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
 const total = (meta.total as number).toLocaleString('en-CA');
 const kinds = meta.distinctSpecies as number;
 const categories = meta.categories as { key: string; label: string; color: string; count: number }[];
+const norwayMaples = meta.stats.norwayMaple as number;
+const sugarMaples = meta.stats.sugarMaple as number;
+const norwayMaplesLabel = norwayMaples.toLocaleString('en-CA');
+const sugarMaplesLabel = sugarMaples.toLocaleString('en-CA');
+const mapleRatio = (norwayMaples / sugarMaples).toFixed(2);
 
 // Chapter-one mini legend: the four hues the eye asks about first
 const chipKeys = ['maple', 'locust', 'ginkgo', 'conifer'];
@@ -142,14 +147,13 @@ const chips = categories.filter((c) => chipKeys.includes(c.key));
         <section class="fg2-step" data-chapter="import-flag">
           <div class="fg2-step-card">
             <span class="fg2-step-kicker">Chapter 3</span>
-            <h2 class="fg2-step-heading">The Import and the Flag</h2>
+            <h2 class="fg2-step-heading">The Import</h2>
             <p class="fg2-step-text">
-              The single most common street tree in Toronto is the
-              <strong>Norway maple</strong>: 69,474 of them, a European import so
-              at home here that Ontario's invasive plant council publishes a
-              management guide for it. The sugar maple, the tree on the flag,
-              musters 11,325. On its own streets, the national tree is outnumbered
-              six to one by its European cousin.
+              The most common street tree in Toronto's inventory is the
+              <strong>Norway maple</strong>, a European species listed as invasive
+              in Ontario. Counting named cultivars with their species, the ledger
+              holds {norwayMaplesLabel} Norway maple records and
+              {sugarMaplesLabel} sugar maple records. That is {mapleRatio} to one.
             </p>
             <button type="button" class="fg2-card-btn" id="fg2-maple-toggle">Show the sugar maples</button>
             <!--
@@ -157,8 +161,14 @@ const chips = categories.filter((c) => chipKeys.includes(c.key));
               should do, and left nothing at all naming the current one. The
               caption is the present tense the map was missing.
             -->
-            <p class="fg2-toggle-state" id="fg2-maple-state" aria-live="polite">
-              On the map: Norway maples, 69,474
+            <p
+              class="fg2-toggle-state"
+              id="fg2-maple-state"
+              aria-live="polite"
+              data-norway-count={norwayMaples}
+              data-sugar-count={sugarMaples}
+            >
+              On the map: Norway maples, {norwayMaplesLabel}
             </p>
           </div>
         </section>
@@ -319,10 +329,12 @@ const chips = categories.filter((c) => chipKeys.includes(c.key));
           The interactive map needs JavaScript. The short version: Toronto's
           street tree inventory holds {total} trees of {kinds} kinds. One in four
           is a maple, and the most common of all is the Norway maple, a European
-          import that outnumbers the sugar maple six to one. Honey locust rules
-          downtown. There are 17,464 ginkgos, 9,948 ashes left after emerald ash
-          borer, and seven trees that are the only one of their species, including
-          a single pawpaw in Parkdale.
+          species whose {norwayMaplesLabel} records outnumber the sugar maple's
+          {sugarMaplesLabel} records by {mapleRatio} to one when named cultivars
+          are grouped with their species. Honey locust rules downtown. There are
+          17,464 ginkgos, 9,948 ashes left after emerald ash borer, and seven trees
+          that are the only one of their species, including a single pawpaw in
+          Parkdale.
         </p>
       </div>
     </noscript>

@@ -129,8 +129,16 @@ def main() -> None:
     cats = meta["categories"]
     cat_colors = np.array([hex_to_linear(c["color"]) for c in cats])
     species = meta["species"]
-    s_norway = next(i for i, s in enumerate(species) if s[0] == "Acer platanoides")
-    s_sugar = next(i for i, s in enumerate(species) if s[0] == "Acer saccharum")
+    # The story compares parent species, not exact botanical-name strings.
+    # Include named cultivars while excluding hybrids and other Acer species.
+    s_norway = [
+        i for i, s in enumerate(species)
+        if s[0] == "Acer platanoides" or s[0].startswith("Acer platanoides ")
+    ]
+    s_sugar = [
+        i for i, s in enumerate(species)
+        if s[0] == "Acer saccharum" or s[0].startswith("Acer saccharum ")
+    ]
 
     print("loading points…")
     lngs, lats, gs, ss = [], [], [], []
@@ -173,8 +181,8 @@ def main() -> None:
         ("maples-norway", s_norway, "#EB6F5C"),
         ("maples-sugar", s_sugar, "#FFE9B8"),
     ):
-        sel_hot = maple & (ss == target)
-        sel_dim = maple & (ss != target)
+        sel_hot = maple & np.isin(ss, target)
+        sel_dim = maple & ~np.isin(ss, target)
         lng_all = np.concatenate([lngs[sel_dim], lngs[sel_hot]])
         lat_all = np.concatenate([lats[sel_dim], lats[sel_hot]])
         col_all = np.concatenate([

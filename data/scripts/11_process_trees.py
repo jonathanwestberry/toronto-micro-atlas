@@ -272,8 +272,11 @@ def main() -> None:
         ],
         "species": species_arr,
         "stats": {
-            "norwayMaple": species_counts.get("Acer platanoides", 0),
-            "sugarMaple": species_counts.get("Acer saccharum", 0),
+            # Public species claims use the true species grain. Named
+            # cultivars belong with their parent species, just as they do in
+            # the singleton analysis above.
+            "norwayMaple": species_key_counts.get("Acer platanoides", 0),
+            "sugarMaple": species_key_counts.get("Acer saccharum", 0),
             "acerTotal": sum(c for s, c in species_counts.items() if s.startswith("Acer")),
             "honeyLocust": sum(c for s, c in species_counts.items() if s.startswith("Gleditsia")),
             "ginkgo": sum(c for s, c in species_counts.items() if s.startswith("Ginkgo")),

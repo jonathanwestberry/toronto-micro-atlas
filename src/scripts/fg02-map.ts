@@ -1313,12 +1313,15 @@ export function initSidewalkForest(options: InitSidewalkForestOptions = {}): voi
   // mid-chapter read "Show the sugar maples" over a field of dots and had no
   // way to know those dots were the Norway ones. The caption states the
   // present tense; the button keeps the future.
-  const MAPLE_COPY = {
-    norway: { button: 'Show the sugar maples', state: 'On the map: Norway maples, 69,474' },
-    sugar: { button: 'Show the Norway maples', state: 'On the map: sugar maples, 11,325' },
-  } as const;
   const mapleBtn = document.getElementById('fg2-maple-toggle');
   const mapleState = document.getElementById('fg2-maple-state');
+  const formatCount = new Intl.NumberFormat('en-CA').format;
+  const norwayCount = Number(mapleState?.dataset.norwayCount);
+  const sugarCount = Number(mapleState?.dataset.sugarCount);
+  const MAPLE_COPY = {
+    norway: { button: 'Show the sugar maples', state: `On the map: Norway maples, ${formatCount(norwayCount)}` },
+    sugar: { button: 'Show the Norway maples', state: `On the map: sugar maples, ${formatCount(sugarCount)}` },
+  } as const;
   let mapleShowing: 'norway' | 'sugar' = 'norway';
   const paintMaple = (): void => {
     if (mapleBtn) mapleBtn.textContent = MAPLE_COPY[mapleShowing].button;

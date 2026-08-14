@@ -3,7 +3,7 @@ title: "Sidewalk Forest"
 slug: "sidewalk-forest"
 description: "All 688,335 street trees Toronto tends, one dot each, by species and by street."
 published: 2026-07-12
-updated: 2026-07-12
+updated: 2026-08-14
 theme: fg02
 subjectTag: "The urban forest"
 order: 2
