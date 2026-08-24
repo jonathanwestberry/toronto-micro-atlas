@@ -1,7 +1,14 @@
 ---
 import Base from '../../../layouts/Base.astro';
 import Fg04ShadeMap from '../../../components/Fg04ShadeMap.astro';
+import { getEntry } from 'astro:content';
 import '../../../styles/fg04.css';
+
+const guide = await getEntry('guides', 'out-of-the-sun');
+if (!guide) throw new Error('Missing content entry for Out of the Sun');
+
+const articlePublished = guide.data.published.toISOString().slice(0, 10);
+const articleUpdated = guide.data.updated.toISOString().slice(0, 10);
 
 /*
  * Out of the Sun.
@@ -20,17 +27,17 @@ import '../../../styles/fg04.css';
 ---
 
 <Base
-  title="Out of the Sun"
+  title={guide.data.title}
   description="Where to find cover on a hot day in Toronto, mapped hour by hour at 2 m. The citywide shade shortage this guide went looking for is not there."
-  ogImage="/social/og-throwing-shade.jpg"
+  ogImage="/social/og-out-of-the-sun-v2.jpg"
   ogImageAlt="The same Toronto streets at 13:00 and 18:00 on 21 July 2026, with shaded ground shown in dark charcoal."
   ogImageWidth={1200}
   ogImageHeight={630}
   ogImageType="image/jpeg"
   guideTheme="fg04"
-  articlePublished="2026-08-06"
+  articlePublished={articlePublished}
   breadcrumbs={[{ name: 'Toronto Micro-Atlas', path: '/' }, { name: 'Field guides', path: '/guides/' }]}
-  articleUpdated="2026-08-13"
+  articleUpdated={articleUpdated}
 >
   <div class="fg04">
     <article class="fg04-container">
@@ -246,9 +253,9 @@ import '../../../styles/fg04.css';
         <p>
           This is the finding that held. The citywide shortage did not, and the
           improvement-area gap came to twelve minutes. Nearly sixty kilometres
-          of shade-poor sidewalk and 46 bare transit stops is smaller than the
-          story this guide set out to tell, and it is bigger than a list of
-          addresses.
+          of shade-poor sidewalk remain, alongside 46 measured stop coordinates
+          bare on both modelled surfaces. That is smaller than the story this
+          guide set out to tell, and it is bigger than a list of addresses.
         </p>
 
         <p>
