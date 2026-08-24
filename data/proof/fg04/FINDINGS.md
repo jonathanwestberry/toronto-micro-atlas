@@ -1,5 +1,15 @@
 # Throwing Shade | Phase 0 findings
 
+> [!WARNING]
+> **Superseded evidence record.** This file preserves the 6 August 2026
+> interpretation and must not be cited as the guide's current title or
+> transit-stop result. The current guide is **Out of the Sun**. The corrected
+> source of record is `statistics.json`: 46 of 6,079 stop coordinates sampled
+> on ground record no usable modelled shade on either surface, with mean
+> shaded-frame counts of 6.71 measured and 7.14 corrected. The other 2,353
+> published stop coordinates are unmeasured and excluded from both sides.
+> See the public correction in `/guides/out-of-the-sun/` for the full account.
+
 Computed 2026-08-06 from Ontario GTA 2023 lidar and Toronto's 2018 land
 cover. Pre-registration in `PREREGISTRATION.md`, sources in
 `data/provenance.md`, machine-readable output in `statistics.json`.

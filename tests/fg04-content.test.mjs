@@ -39,9 +39,14 @@ const routePath = new URL(
   import.meta.url,
 );
 const homePath = new URL('../dist/index.html', import.meta.url);
+const guideIndexPath = new URL('../dist/guides/index.html', import.meta.url);
 const aboutPath = new URL('../dist/about/index.html', import.meta.url);
+const guideContentPath = new URL(
+  '../src/content/guides/out-of-the-sun.md',
+  import.meta.url,
+);
 const socialPath = new URL(
-  '../public/social/og-throwing-shade.jpg',
+  '../public/social/og-out-of-the-sun-v2.jpg',
   import.meta.url,
 );
 const stylePath = new URL('../src/styles/fg04.css', import.meta.url);
@@ -60,6 +65,9 @@ const explorerVerifierPath = new URL(
 
 const readRoute = () => (existsSync(routePath) ? readFileSync(routePath, 'utf8') : '');
 const readHome = () => (existsSync(homePath) ? readFileSync(homePath, 'utf8') : '');
+const readGuideIndex = () => (
+  existsSync(guideIndexPath) ? readFileSync(guideIndexPath, 'utf8') : ''
+);
 const readAbout = () => (existsSync(aboutPath) ? readFileSync(aboutPath, 'utf8') : '');
 
 const jpegDimensions = (path) => {
@@ -258,7 +266,7 @@ test('the guide publishes an accessible 1200 by 630 social comparison', () => {
   assert.deepEqual(jpegDimensions(socialPath), { height: 630, width: 1200 });
   assert.match(
     html,
-    /property="og:image" content="https:\/\/torontomicroatlas\.com\/social\/og-throwing-shade\.jpg"/,
+    /property="og:image" content="https:\/\/torontomicroatlas\.com\/social\/og-out-of-the-sun-v2\.jpg"/,
   );
   assert.match(html, new RegExp(`property="og:image:alt" content="${alt}"`));
   assert.match(html, /property="og:image:width" content="1200"/);
@@ -266,20 +274,43 @@ test('the guide publishes an accessible 1200 by 630 social comparison', () => {
   assert.match(html, /property="og:image:type" content="image\/jpeg"/);
   assert.match(
     html,
-    /name="twitter:image" content="https:\/\/torontomicroatlas\.com\/social\/og-throwing-shade\.jpg"/,
+    /name="twitter:image" content="https:\/\/torontomicroatlas\.com\/social\/og-out-of-the-sun-v2\.jpg"/,
   );
   assert.match(html, new RegExp(`name="twitter:image:alt" content="${alt}"`));
 });
 
-test('the article metadata carries the date of the published correction', () => {
+test('the article metadata carries the date of the current guide revision', () => {
   const html = readRoute();
-  assert.match(html, /property="article:modified_time" content="2026-08-13"/);
+  const updated = readFileSync(guideContentPath, 'utf8')
+    .match(/^updated:\s*(\d{4}-\d{2}-\d{2})$/m)?.[1];
+  assert.ok(updated, 'the guide frontmatter must carry an ISO updated date');
+  assert.match(
+    html,
+    new RegExp(`property="article:modified_time" content="${updated}"`),
+  );
 
   const graph = JSON.parse(
     html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1],
   )['@graph'];
   const article = graph.find((node) => node['@type'] === 'Article');
-  assert.equal(article.dateModified, '2026-08-13');
+  assert.equal(article.dateModified, updated);
+});
+
+test('the guide index qualifies the corrected transit-stop finding', () => {
+  const copy = visibleText(mainMarkup(readGuideIndex()));
+  assert.match(
+    copy,
+    /46 measured stops have no usable modelled shade/,
+  );
+});
+
+test('the guide summary keeps the transit-stop finding inside its measured universe', () => {
+  const copy = readCopy();
+  assert.match(
+    copy,
+    /46 measured stop coordinates bare on both modelled surfaces/,
+  );
+  assert.doesNotMatch(copy, /46 bare transit stops/);
 });
 
 test('the guide never claims temperature, heat, or coolness', () => {

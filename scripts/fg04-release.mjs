@@ -8,7 +8,7 @@ const REQUIRED_PATHS = [
   'guides/out-of-the-sun/index.html',
   'data/fg04/manifest.json',
   'data/fg04/street-profiles.json',
-  'social/og-throwing-shade.jpg',
+  'social/og-out-of-the-sun-v2.jpg',
   '_headers',
 ];
 

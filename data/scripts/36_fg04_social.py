@@ -229,7 +229,7 @@ def main(dry_run):
 
     image = render(best, early, late, SURFACE)
     os.makedirs(SOCIAL, exist_ok=True)
-    out = os.path.join(SOCIAL, "og-throwing-shade.jpg")
+    out = os.path.join(SOCIAL, "og-out-of-the-sun-v2.jpg")
     if dry_run:
         print(f"dry run, not writing {out}")
         return

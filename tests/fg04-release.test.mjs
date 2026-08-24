@@ -62,10 +62,10 @@ function validHeaders() {
 function candidateFixture({ headers = validHeaders(), manifest = validManifest() } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'fg04-release-test-'));
   roots.push(root);
-  write(root, 'guides/out-of-the-sun/index.html', '<main>Throwing Shade</main>');
+  write(root, 'guides/out-of-the-sun/index.html', '<main>Out of the Sun</main>');
   write(root, 'data/fg04/manifest.json', JSON.stringify(manifest));
   write(root, 'data/fg04/street-profiles.json', '{"records":[]}');
-  write(root, 'social/og-throwing-shade.jpg', Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
+  write(root, 'social/og-out-of-the-sun-v2.jpg', Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
   write(root, '_headers', headers);
   return root;
 }
