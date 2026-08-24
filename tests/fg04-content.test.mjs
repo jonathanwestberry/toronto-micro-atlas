@@ -271,6 +271,17 @@ test('the guide publishes an accessible 1200 by 630 social comparison', () => {
   assert.match(html, new RegExp(`name="twitter:image:alt" content="${alt}"`));
 });
 
+test('the article metadata carries the date of the published correction', () => {
+  const html = readRoute();
+  assert.match(html, /property="article:modified_time" content="2026-08-13"/);
+
+  const graph = JSON.parse(
+    html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1],
+  )['@graph'];
+  const article = graph.find((node) => node['@type'] === 'Article');
+  assert.equal(article.dateModified, '2026-08-13');
+});
+
 test('the guide never claims temperature, heat, or coolness', () => {
   const copy = readCopy();
   const html = readRoute();

@@ -1,7 +1,7 @@
 /*
  * The transit stops with no usable shade, as a browsable set.
  *
- * The guide publishes 533 as a count. This module carries the set behind it.
+ * The guide publishes 46 as a count. This module carries the set behind it.
  * The distinction matters: the proof file also records a "sunniest five",
  * which is an argsort slice of a large tied set and can never say how many
  * there are. The whole set can, and every stop in it sits at the same single
