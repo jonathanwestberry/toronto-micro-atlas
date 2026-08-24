@@ -1,5 +1,5 @@
 /* ============================================================
-   Throwing Shade -- guide-scoped styles.
+   Out of the Sun -- guide-scoped styles.
 
    The --atlas-* contract for this guide is declared in tokens.css under
    [data-guide-theme='fg04'], on <body>, so the shared header and footer sit
@@ -1324,7 +1324,7 @@
    The rail: stops with no usable shade
 
    On the map route only. The guide page keeps the explorer inside a reading
-   column, where a 533-row rail beside two maps would leave three columns
+   column, where a 46-row rail beside two maps would leave three columns
    fighting over 66ch.
 
    The rail matches the map stage's height and scrolls inside itself, so the
@@ -1440,7 +1440,7 @@
   color: var(--atlas-ink);
   background: none;
   border: 0;
-  /* SC 2.5.8 again: 533 rows in a scrolling list are the easiest thing on the
+  /* SC 2.5.8 again: 46 rows in a scrolling list are the easiest thing on the
      page to mis-tap, so the row is the target rather than the text. */
   min-height: 2.75rem;
   padding: var(--space-2) var(--space-2);

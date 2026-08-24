@@ -999,8 +999,8 @@ export async function initShadeMap(): Promise<void> {
    * repeat all of that and could drift from it.
    *
    * The list is already in the DOM, server-rendered and validated at build
-   * time, so filtering hides rows rather than rebuilding them: 533 buttons
-   * survive a keystroke far better than 533 replaceChildren() calls.
+   * time, so filtering hides rows rather than rebuilding them: 46 buttons
+   * survive a keystroke far better than 46 replaceChildren() calls.
    */
   const stopsRail = root.querySelector<HTMLElement>('[data-fg04-stops]');
   if (stopsRail) {
