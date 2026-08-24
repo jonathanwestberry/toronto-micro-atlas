@@ -578,10 +578,10 @@ test('production headers preserve indexing, caching, and browser security', () =
 test('CI tests data and web output before the final Cloudflare deployment step', () => {
   const workflow = readText(workflowPath);
   const expectedInOrder = [
-    'actions/checkout@v7',
-    'actions/setup-node@v7',
+    'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7',
+    'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7',
     'node-version: 22.12.0',
-    'actions/setup-python@v7',
+    'actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7',
     'requirements-fg03.txt',
     'unittest discover',
     'npm run test:web',
@@ -589,7 +589,8 @@ test('CI tests data and web output before the final Cloudflare deployment step',
     'npm run build',
     'npm run test:web:contract',
     'run: npm audit --omit=dev\n',
-    'cloudflare/wrangler-action@v4',
+    "if: github.event_name == 'push' && github.ref == 'refs/heads/main'",
+    'cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4',
   ];
 
   let cursor = -1;
@@ -599,9 +600,10 @@ test('CI tests data and web output before the final Cloudflare deployment step',
     cursor = next;
   }
   assert.match(workflow, /contents: read/);
+  assert.match(workflow, /pull_request:\s+branches: \[main\]/);
   assert.match(
     workflow,
-    /jobs:\s+deploy:\s+if: github\.ref == 'refs\/heads\/main' && github\.ref_type == 'branch'\s+concurrency:\s+group: production-cloudflare-pages\s+cancel-in-progress: true/,
+    /jobs:\s+deploy:\s+concurrency:\s+group: \$\{\{ github\.workflow \}\}-\$\{\{ github\.ref \}\}\s+cancel-in-progress: true/,
   );
 });
 

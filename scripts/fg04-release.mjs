@@ -218,10 +218,10 @@ export async function verifyFg04Transport(
 
 export function assertFg04Workflow(workflow) {
   const expectedInOrder = [
-    'actions/checkout@v7',
-    'actions/setup-node@v7',
+    'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7',
+    'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7',
     'node-version: 22.12.0',
-    'actions/setup-python@v7',
+    'actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7',
     "python-version: '3.14'",
     "-p 'test_fg0*.py'",
     'npm run test:web',
@@ -231,7 +231,8 @@ export function assertFg04Workflow(workflow) {
     'npm run verify:fg04-explorer',
     'npm run verify:fg04-release',
     'npm audit --omit=dev',
-    'cloudflare/wrangler-action@v4',
+    "if: github.event_name == 'push' && github.ref == 'refs/heads/main'",
+    'cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4',
   ];
   let cursor = -1;
   for (const fragment of expectedInOrder) {
