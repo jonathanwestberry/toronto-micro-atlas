@@ -44,11 +44,10 @@ const SIMPLIFY_TOLERANCE_PX = 0.6;
 // out of it gives the map the same weight as the headline, and it is the
 // language the atlas already speaks on the Sidewalk Forest card.
 const P = {
-  ink: '#27241D',
-  // Kelly lifted for legibility on the ink ground. The paper-side #45A26A goes
-  // muddy against the ink and loses the ravine threads, which are the whole
-  // reason the green layer is on the hero at all.
-  green: '#5FBF83',
+  ink: '#000000',   // Black
+  // Green on Black is 9.23:1, so the ravine threads, the whole reason the
+  // green layer is on the hero at all, hold without any lift.
+  green: '#03C739',
 };
 
 // ── Load data ─────────────────────────────────────────────────────────────────

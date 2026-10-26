@@ -41,22 +41,23 @@ FLOWERING = {
 
 # Category colors are the single source of truth for the whole guide:
 # the PNG renders (13_render_trees.py), the MapLibre circle layers, and
-# the legend all read them from meta.json. Validated against the ground
-# #0D1721 (all >= 3:1). Ash is deliberately ashen and "everything else"
-# deliberately recedes; identity is never color-alone (legend isolation,
-# chapter isolation, and tap-to-identify are the secondary encodings).
+# the legend all read them from meta.json. ONE PALETTE V2.0 on the Black
+# ground, all >= 3:1 (lowest: "everything else" at 3.45, Red at 6.40). Ash
+# is deliberately ashen (Sand) and "everything else" deliberately recedes;
+# identity is never color-alone (legend isolation, chapter isolation, and
+# tap-to-identify are the secondary encodings).
 CATEGORIES = [
-    ("maple", "Maple", "#EB6F5C"),
-    ("locust", "Honey locust", "#CDE052"),
-    ("oak", "Oak", "#E68333"),
-    ("linden", "Linden", "#73CAA1"),
-    ("conifer", "Conifers", "#4ABBBF"),
-    ("elm", "Elm", "#DB98E1"),
-    ("coffeetree", "Kentucky coffeetree", "#61B3E5"),
-    ("flowering", "Flowering trees", "#F292B8"),
-    ("ginkgo", "Ginkgo", "#F8DC4F"),
-    ("ash", "Ash", "#C7CCD1"),
-    ("other", "Everything else", "#637388"),
+    ("maple", "Maple", "#FC5237"),  # Red
+    ("locust", "Honey locust", "#D2E90F"),  # Light Green
+    ("oak", "Oak", "#FF9D03"),  # Orange
+    ("linden", "Linden", "#03C739"),  # Green
+    ("conifer", "Conifers", "#99ECFF"),  # Light Blue
+    ("elm", "Elm", "#CFB6FF"),  # Purple
+    ("coffeetree", "Kentucky coffeetree", "#0E98FF"),  # Blue
+    ("flowering", "Flowering trees", "#FFB6F4"),  # Pink
+    ("ginkgo", "Ginkgo", "#FFCB03"),  # Yellow
+    ("ash", "Ash", "#CFC5A2"),  # Sand
+    ("other", "Everything else", "#686251"),  # Sand 50 / Black 50
 ]
 CAT_INDEX = {key: i for i, (key, _, _) in enumerate(CATEGORIES)}
 
