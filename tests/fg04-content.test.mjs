@@ -222,7 +222,7 @@ test('the shared footer includes Out of the Sun', () => {
   assert.match(footer, /href="\/guides\/out-of-the-sun\/"[^>]*>Out of the Sun<\/a>/);
 });
 
-test('About names all four published field guides', () => {
+test('About names all four published guides', () => {
   const html = readAbout();
   assert.match(html, />Four ways to read the city<\/h2>/);
   const item = mainMarkup(html).match(

@@ -92,3 +92,19 @@ test('every page has exactly one canonical link and one title', () => {
     );
   }
 });
+
+test('no page calls a guide a "field guide"', () => {
+  // The series name was retired from public copy. Everything a reader, a
+  // screen reader or a search result can reach is checked: text, attributes,
+  // meta tags and structured data. Scripts, styles and comments are not copy.
+  const offenders = [];
+  for (const file of [...pages, '404.html']) {
+    const html = readFileSync(join(DIST, file), 'utf8')
+      .replace(/<script(?![^>]*ld\+json)[\s\S]*?<\/script>/g, '')
+      .replace(/<style[\s\S]*?<\/style>/g, '')
+      .replace(/<!--[\s\S]*?-->/g, '');
+    const hit = html.match(/.{0,40}field guides?\b.{0,20}/i);
+    if (hit) offenders.push(`${file}: ${hit[0].trim()}`);
+  }
+  assert.deepEqual(offenders, [], '"field guide" in public copy');
+});
