@@ -73,6 +73,27 @@ const guideHref = `${base}/guides/hidden-landscapes/`;
           <p class="guide-panel-welcome">
             Eight thresholds. Select a symbol to preview it.
           </p>
+          <!--
+            SC 2.5.8. At phone width five midtown markers overlap (Nordheimer
+            Ravine and Baldwin Steps sit 6px apart at 320), and they cannot be
+            spread without the map lying about where they are. The guide page
+            has its location cards as the same-page equivalent; this route had
+            only a link to another page. The names are that equivalent here,
+            and they select through the same path as a marker press. Collapsed by
+            default so the panel's key stays in view.
+          -->
+          <details class="guide-panel-places-wrap">
+            <summary class="guide-panel-places-summary">Or choose one by name</summary>
+          <ul class="guide-panel-places" aria-label="The eight thresholds">
+            {locations.map((loc) => (
+              <li>
+                <button type="button" class="guide-panel-place" data-select-place={loc.data.slug}>
+                  {loc.data.title}
+                </button>
+              </li>
+            ))}
+          </ul>
+          </details>
         </Fragment>
       </GuidePanel>
 
@@ -107,6 +128,71 @@ const guideHref = `${base}/guides/hidden-landscapes/`;
 </Base>
 
 <style>
+  .guide-panel-places-wrap {
+    margin-top: var(--space-3);
+  }
+
+  .guide-panel-places-summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    cursor: pointer;
+    color: var(--ink-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    letter-spacing: 0.04em;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .guide-panel-places-summary:hover {
+    color: var(--ink);
+  }
+
+  .guide-panel-places-summary:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  .guide-panel-places {
+    margin: var(--space-2) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* One name per row, 28px tall against the 24px minimum. */
+  .guide-panel-place {
+    display: block;
+    width: 100%;
+    min-height: 28px;
+    padding: var(--space-1) 0;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--street-minor);
+    cursor: pointer;
+    color: var(--ink-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    letter-spacing: 0.04em;
+    text-align: left;
+    transition: color 0.1s ease;
+  }
+
+  .guide-panel-place:hover {
+    color: var(--ink);
+  }
+
+  .guide-panel-place:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .guide-panel-place {
+      transition: none;
+    }
+  }
+
   .map-route {
     display: flex;
     flex-direction: column;

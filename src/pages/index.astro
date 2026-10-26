@@ -247,7 +247,9 @@ const newestTime = Math.max(...guides.map((g) => g.data.published.getTime()));
   .gallery-all:hover { text-decoration: underline; }
   .gallery-all:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-ring-offset); }
 
+  /* role="list" keeps the list semantics Safari drops with the bullets. */
   .gallery-grid {
+    list-style: none;
     display: grid;
     grid-template-columns: 1fr;
     gap: var(--space-6);

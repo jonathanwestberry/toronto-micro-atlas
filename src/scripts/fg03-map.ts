@@ -1205,9 +1205,9 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
   };
 
   const updateFitControl = (count: number): void => {
-    const label = `Zoom out to show all ${count.toLocaleString('en-CA')}`;
-    fitControlButton.title = label;
-    fitControlButton.setAttribute('aria-label', label);
+    // The visible text is the accessible name (SC 2.5.3: a voice user says
+    // what they see). The count rides along as the tooltip and description.
+    fitControlButton.title = `Zoom out to show all ${count.toLocaleString('en-CA')}`;
     fitControlButton.disabled = count === 0;
   };
 
