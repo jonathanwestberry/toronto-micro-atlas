@@ -188,7 +188,7 @@ const STALE_AFTER_DAYS = 45;
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 
 type MlMap = import('maplibre-gl').Map;
-type MlModule = typeof import('maplibre-gl');
+type MlModule = typeof import('./maplibre');
 /** A camera this guide can hand back to the map whole, centre and zoom together. */
 type Camera = {
   center: import('maplibre-gl').LngLatLike;
@@ -2231,7 +2231,8 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
 
   const buildMap = async (): Promise<void> => {
     const [module] = await Promise.all([
-      import('maplibre-gl'),
+      // Through ./maplibre, which sets the worker URL MapLibre 6 needs.
+      import('./maplibre'),
       import('maplibre-gl/dist/maplibre-gl.css'),
     ]);
     if (disposed || gateWithheld) {
