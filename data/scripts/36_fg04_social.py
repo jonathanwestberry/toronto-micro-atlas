@@ -8,10 +8,10 @@ the city is scored by how much more of its ground is shaded at 18:00 than at
 be legible and enough named street to be somewhere a reader places. Picking
 by eye would mean picking the block that flatters the argument.
 
-**The frame carries only the context needed to travel.** Social cards are
-frequently cropped, screenshotted or detached from the page, so the title,
-hours, date, measured surface and two-colour key are part of the image. The
-page repeats that context in alt text for readers who cannot see it.
+**The frame is the picture and nothing else.** No title, hours, date or key
+is set over it: the page's title and description travel with every link
+preview, and the page's og:image:alt says which panel is which hour and what
+the two colours mean. 13:00 is on the left, 18:00 on the right.
 
 **This shows shadow, not temperature.** Dark is where the sun was blocked at
 that hour and nothing else. The palette is the guide's own shade ramp read
@@ -29,7 +29,7 @@ import warnings
 import geopandas as gpd
 import numpy as np
 import rasterio
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 from rasterio.windows import Window
 
 import fg04_solar as solar
@@ -55,10 +55,6 @@ PANEL_W, PANEL_H = 600, 630
 EARLY_HOUR, LATE_HOUR = 13, 18
 SURFACE = "raw"
 
-# The share card is the one surface where the guide's title is a raster, so a
-# rename that misses this file ships a card contradicting the page. Declared
-# once and used by both the drawing and the proof record.
-TITLE = "Out of the Sun"
 MIN_GROUND = 0.30           # a block that is mostly lake shows nothing
 MIN_ARTERIAL_M = 200.0      # and one nobody can place shows nothing either
 
@@ -70,58 +66,11 @@ SUNLIT = (0xFF, 0xCB, 0x03)      # Yellow
 SHADED = (0x34, 0x2E, 0x40)      # Purple 25 / Black 75
 BUILT = (0xFF, 0xFF, 0xFF)       # White, anything not ground
 
-DISPLAY_FONTS = (
-    "/System/Library/Fonts/Supplemental/DIN Condensed Bold.ttf",
-    "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf",
-)
-UI_FONTS = (
-    "/System/Library/Fonts/Menlo.ttc",
-    "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
-)
-
-
-def load_font(paths, size):
-    """Load the atlas-like local font, with a portable system fallback."""
-    for path in paths:
-        if os.path.exists(path):
-            return ImageFont.truetype(path, size=size)
-    return ImageFont.load_default(size=size)
-
-
-def add_editorial_context(image):
-    """Make the data frame readable when it travels without the guide."""
+def add_divider(image):
+    """Split the two panels, so the shared geography reads as two moments
+    even where both carry the same colour at their touching edges."""
     frame = image.copy()
-    draw = ImageDraw.Draw(frame)
-    display_46 = load_font(DISPLAY_FONTS, 46)
-    display_66 = load_font(DISPLAY_FONTS, 66)
-    ui_14 = load_font(UI_FONTS, 14)
-    ui_16 = load_font(UI_FONTS, 16)
-
-    # The divider makes the shared geography explicit even where both panels
-    # happen to carry the same colour at their touching edges.
-    draw.rectangle((598, 0, 602, 528), fill=SHADED)
-
-    for left, eyebrow, hour in (
-        (28, "TORONTO", "13:00"),
-        (628, "SAME GROUND", "18:00"),
-    ):
-        draw.rectangle((left, 28, left + 232, 104), fill=SHADED)
-        draw.text((left + 18, 38), eyebrow, font=ui_14, fill=SUNLIT)
-        draw.text((left + 16, 49), hour, font=display_46, fill=SUNLIT)
-
-    # One compact footer gives the title a dependable reading surface without
-    # shrinking or resampling the selected raster block.
-    draw.rectangle((0, 528, 1200, 630), fill=SHADED)
-    draw.text((38, 530), TITLE.upper(), font=display_66, fill=SUNLIT)
-
-    draw.text((680, 544), "MEASURED, LEAF-OFF  |  21 JULY 2026",
-              font=ui_16, fill=SUNLIT)
-    legend_y = 582
-    draw.rectangle((680, legend_y, 706, legend_y + 20),
-                   fill=SHADED, outline=BUILT, width=2)
-    draw.text((718, legend_y + 1), "SHADED GROUND", font=ui_14, fill=SUNLIT)
-    draw.rectangle((912, legend_y, 938, legend_y + 20), fill=SUNLIT)
-    draw.text((950, legend_y + 1), "SUNLIT GROUND", font=ui_14, fill=SUNLIT)
+    ImageDraw.Draw(frame).rectangle((598, 0, 602, PANEL_H), fill=SHADED)
     return frame
 
 
@@ -219,7 +168,7 @@ def render(best, early, late, surface):
         tile[ground & ~shaded] = SUNLIT
         tile[ground & shaded] = SHADED
         canvas[:, panel * PANEL_W:(panel + 1) * PANEL_W] = tile
-    return add_editorial_context(Image.fromarray(canvas, mode="RGB"))
+    return add_divider(Image.fromarray(canvas, mode="RGB"))
 
 
 def main(dry_run):
@@ -233,7 +182,7 @@ def main(dry_run):
     # Versioned because share platforms cache by URL: a recoloured card at the
     # old path would keep showing the old one. Earlier versions stay in
     # public/social so posts that already carry them do not break.
-    out = os.path.join(SOCIAL, "og-out-of-the-sun-v3.jpg")
+    out = os.path.join(SOCIAL, "og-out-of-the-sun-v4.jpg")
     if dry_run:
         print(f"dry run, not writing {out}")
         return
@@ -243,13 +192,7 @@ def main(dry_run):
     record = dict(best)
     record["surface"] = SURFACE
     record["hours"] = [EARLY_HOUR, LATE_HOUR]
-    record["image_text"] = {
-        "title": TITLE,
-        "panels": ["Toronto, 13:00", "Same ground, 18:00"],
-        "surface": "Measured, leaf-off",
-        "date": "21 July 2026",
-        "legend": ["Shaded ground", "Sunlit ground"],
-    }
+    record["panels"] = ["13:00, left", "18:00, right"]
     record["dimensions"] = [image.size[0], image.size[1]]
     record["bounds"] = [round(v, 2) for v in best["bounds"]]
     record["crs"] = str(crs)

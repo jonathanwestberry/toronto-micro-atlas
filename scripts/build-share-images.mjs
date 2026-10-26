@@ -1,6 +1,7 @@
-// Builds the share images that are pictures of the site itself.
+// Builds the share images that are pictures of the site itself. Every card
+// is the picture alone: whatever text the page sets over its map is hidden.
 //
-// og-default.jpg (every page without its own card) and og-sidewalk-forest.jpg
+// og-default.jpg (every page without its own card) and og-sidewalk-forest-v2.jpg
 // were hand-made screenshots, so when the atlas changed colour they could not
 // be remade, and the Sidewalk Forest one still carried a retired "FIELD GUIDE
 // 02" and a browser scrollbar. This takes them from the built site instead, so
@@ -50,10 +51,12 @@ const SHOTS = [
     viewportWidth: 1260,
   },
   {
-    // The guide's opening screen: title card over every street tree.
-    file: 'og-sidewalk-forest.jpg',
+    // The guide's opening screen with its title card hidden: every street
+    // tree and nothing set over it. Versioned because platforms cache by URL;
+    // the old file stays for posts that already carry it.
+    file: 'og-sidewalk-forest-v2.jpg',
     route: '/guides/sidewalk-forest/',
-    css: '.fg2-hero-cue { display: none !important; }',
+    css: '.fg2-hero-card { display: none !important; }',
   },
 ];
 

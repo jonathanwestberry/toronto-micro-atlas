@@ -93,6 +93,8 @@ test('route has one editorial title, guide position, breadcrumb, and social meta
     html,
     /name="twitter:image" content="https:\/\/torontomicroatlas\.com\/social\/og-when-toronto-has-to-go\.jpg"/,
   );
+  // The card is the map alone, so its alt text is the only description.
+  assert.match(html, /property="og:image:alt" content="A map of Toronto at 10 p\.m\./);
   assert.doesNotMatch(
     normalize(html),
     /\b(?:TODO|TBD|lorem ipsum|coming soon|unfinished placeholder)\b/i,
