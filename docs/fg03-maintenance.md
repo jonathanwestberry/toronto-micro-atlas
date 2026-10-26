@@ -158,7 +158,7 @@ npm run test:web:contract
 npm audit --omit=dev
 ```
 
-Astro is pinned to `7.1.3` and the minimum Node version is `22.12.0`. As of the FG03 release, `npm audit --omit=dev` reports zero advisories.
+Astro is pinned to `7.3.8` and the minimum Node version is `22.12.0`. MapLibre is on `^6.16.0`, which is ESM-only: import it as a namespace (`import * as maplibregl from 'maplibre-gl'`), never as a default. On 2026-10-25, after moving Astro off `7.1.3` and MapLibre off `5.24.0` (both had critical advisories), `npm audit --omit=dev` reports zero advisories. CI runs that audit before the Cloudflare step, so a new advisory blocks every deploy until it is fixed. Astro 7.4 needs Node 22.22 or newer; stay on 7.3.x until CI's Node pin is raised on purpose.
 
 ## Cloudflare deployment
 

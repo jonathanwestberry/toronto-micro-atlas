@@ -1,4 +1,5 @@
-import maplibregl from 'maplibre-gl';
+// MapLibre 6 is ESM-only and has no default export.
+import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import '../styles/guide-map.css';
 import { createMapStage } from './map-stage';

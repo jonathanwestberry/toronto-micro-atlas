@@ -2237,7 +2237,9 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
     if (disposed || gateWithheld) {
       return;
     }
-    maplibre = module.default;
+    // MapLibre 6 is ESM-only: the module namespace is the API, with no
+    // default export to unwrap.
+    maplibre = module;
     if (!hasWebGlSupport()) {
       throw Object.assign(new Error('WebGL is unavailable'), {
         fg03Kind: 'webgl',
