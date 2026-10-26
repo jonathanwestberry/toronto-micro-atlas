@@ -18,6 +18,17 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, '..', 'public', 'data');
 const OUT_DIR = join(__dirname, '..', 'public', 'maps');
 
+// The plates load through <img>, which cannot reach the page's web fonts, so
+// their two labels carry Space Mono (the atlas's interface voice) inside the
+// file. Subset to the only glyphs a label can use: the scale bar's 100, 200,
+// 250 or 500 m at 400, and the north arrow's N at 700. Made with
+//   python -m fontTools.subset space-mono-latin-<w>-normal.woff --text=<glyphs>
+//     --flavor=woff --layout-features='' --no-hinting --desubroutinize
+// from @fontsource/space-mono; remake them if a label gains a character.
+const FONT_DIR = join(__dirname, 'fonts');
+const fontFace = (weight) => `@font-face { font-family: "Space Mono"; font-weight: ${weight}; src: url(data:font/woff;base64,${readFileSync(join(FONT_DIR, `space-mono-context-${weight}.woff`)).toString('base64')}) format("woff"); }`;
+const LABEL_STYLE = `<style>${fontFace(400)} ${fontFace(700)} text { font-family: "Space Mono", ui-monospace, monospace; }</style>`;
+
 const W = 800;
 const H = 600;
 const HALF_M_DEFAULT = 700;
@@ -426,7 +437,7 @@ function buildSVG(loc, indexed, halfM = HALF_M_DEFAULT) {
     <filter id="mshad" x="-40%" y="-40%" width="180%" height="180%">
       <feDropShadow dx="1.5" dy="2" stdDeviation="2.5" flood-color="#00000033"/>
     </filter>
-    <style>text { font-family: Archivo, sans-serif; }</style>
+    ${LABEL_STYLE}
   </defs>
 
   <!-- background -->
