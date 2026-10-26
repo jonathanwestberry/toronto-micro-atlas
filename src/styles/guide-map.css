@@ -1,15 +1,15 @@
 /* ============================================================
    Guide theme "Hidden Landscapes" (fg01)
-   Cream ground, Blue threshold accent (the grid's edge, water and depth
+   White ground, Blue threshold accent (the grid's edge, water and depth
    below), Green for the revealed ravine landscapes. Overrides the shell's
    Red threshold within this guide only, and maps the guide onto the shared
    --atlas-* contract.
    ============================================================ */
 .fg01 {
   --threshold: var(--c-blue);              /* threshold markers + accents */
-  --threshold-active: var(--c-blue-text);  /* active / hover: 5.13 Cream, White on it 6.27 */
+  --threshold-active: var(--c-blue-text);  /* active / hover: 4.82 White, White on it 4.82 */
   --landscape: var(--c-green);             /* revealed ravine + valley fills */
-  --landscape-edge: var(--c-green-text);   /* ravine edges and valley labels: 5.35 Cream */
+  --landscape-edge: var(--c-green-text);   /* ravine edges and valley labels: 4.91 White */
 
   --atlas-ground: var(--paper);
   --atlas-surface: var(--card);
@@ -32,7 +32,7 @@
    ------------------------------------------------------------ */
 
 .maplibregl-cooperative-gesture-screen {
-  background-color: rgba(239, 233, 201, 0.92); /* Cream, near-opaque */
+  background-color: rgba(255, 255, 255, 0.92); /* White, near-opaque */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -105,7 +105,7 @@
 
 .gm-marker--selected {
   background-color: var(--threshold-active);
-  color: var(--card);  /* White on Blue text 6.27 */
+  color: var(--card);  /* White on Blue text 4.82 */
   border-color: var(--card);
   box-shadow:
     2px 2px 0 var(--ink),
@@ -425,7 +425,7 @@
    ------------------------------------------------------------ */
 
 .maplibregl-ctrl.maplibregl-ctrl-attrib {
-  background-color: rgba(239, 233, 201, 0.85);
+  background-color: rgba(255, 255, 255, 0.85);
   font-family: var(--font-ui);
   font-size: 11px;
   color: var(--ink-2);

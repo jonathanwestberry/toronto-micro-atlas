@@ -20,12 +20,12 @@ WIDTH = 1200
 HEIGHT = 630
 # ONE PALETTE V2.0. The map panel is the proof render and keeps the colours
 # it was recorded in; only the card around it is restyled here.
-PAPER = "#EFE9C9"    # Cream
+PAPER = "#FFFFFF"    # White
 INK = "#000000"      # Black
-MUTED = "#646254"    # Black 58 / Cream 42: 5.02 on Cream
+MUTED = "#6B6B6B"    # Black 58 / White 42: 5.33 on White
 ACCENT = "#FF9D03"   # Orange, the guide's alarm colour: rules and fills only
-ACCENT_TEXT = "#8C5602"  # Orange 55 / Black 45: 4.98 on Cream
-RULE = "#B3AF97"     # Black 25 / Cream 75
+ACCENT_TEXT = "#A16302"  # Orange 63 / Black 37: 4.88 on White
+RULE = "#BFBFBF"     # Black 25 / White 75
 
 ARCHIVO = (
     ROOT

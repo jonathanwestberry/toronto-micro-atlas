@@ -512,7 +512,7 @@ function addContextLayers(
     type: 'line',
     source: 'fg03-context-rail',
     paint: {
-      'line-color': '#646254',
+      'line-color': '#6B6B6B',
       'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.5, 16, 1.5],
       'line-opacity': 0.55,
       'line-dasharray': [3, 2],
@@ -677,13 +677,13 @@ function addOrientationLabels(
     const label = document.createElement('span');
     label.textContent = name;
     label.setAttribute('aria-hidden', 'true');
-    label.style.color = '#646254';
+    label.style.color = '#6B6B6B';
     label.style.fontFamily = 'var(--fg03-ui)';
     label.style.fontSize = '11px';
     label.style.fontWeight = '650';
     label.style.letterSpacing = '0.04em';
     label.style.pointerEvents = 'none';
-    label.style.textShadow = '0 1px 0 #EFE9C9, 1px 0 0 #EFE9C9';
+    label.style.textShadow = '0 1px 0 #FFFFFF, 1px 0 0 #FFFFFF';
     markers.push(
       new maplibre.Marker({ element: label, anchor: 'center' })
         .setLngLat([coordinates[0], coordinates[1]])
@@ -720,8 +720,8 @@ function addResultLabels(
       && properties.name.trim() !== ''
       ? properties.name.trim()
       : 'Name unavailable';
-    label.style.background = 'rgba(239, 233, 201, 0.94)';
-    label.style.border = '1px solid #83806F';
+    label.style.background = 'rgba(255, 255, 255, 0.94)';
+    label.style.border = '1px solid #8C8C8C';
     label.style.borderRadius = '2px';
     label.style.color = '#000000';
     label.style.fontFamily = 'var(--fg03-ui)';
@@ -2256,7 +2256,7 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
           {
             id: 'fg03-paper',
             type: 'background',
-            paint: { 'background-color': '#EFE9C9' },
+            paint: { 'background-color': '#FFFFFF' },
           },
         ],
       },

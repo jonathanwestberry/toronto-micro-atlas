@@ -313,7 +313,7 @@ export class GuideMap {
           {
             id: 'background',
             type: 'background',
-            paint: { 'background-color': '#EFE9C9' },
+            paint: { 'background-color': '#FFFFFF' },
           },
         ],
       },
@@ -537,7 +537,7 @@ export class GuideMap {
       type: 'fill',
       source: 'outside',
       paint: {
-        'fill-color': '#EFE9C9', // --paper (Cream)
+        'fill-color': '#FFFFFF', // --paper (White)
         'fill-opacity': 0.72,
       },
     });
@@ -550,15 +550,15 @@ export class GuideMap {
       type: 'line',
       source: 'boundary',
       paint: {
-        'line-color': '#48463C', // Black 70 / Cream 30: darker than every street tone
+        'line-color': '#4D4D4D', // Black 70 / White 30: darker than every street tone
         'line-width': 2,
         'line-opacity': 0.95,
       },
     });
 
-    // The lake rides above the wash. Cream at 72% over Light Blue composites
-    // to a mint that is in no palette, so the lake keeps its own colour and
-    // the wash mutes only the GTA land. The boundary stays on top.
+    // The lake rides above the wash. White at 72% over Light Blue fades it to
+    // a tint that is in no palette, so the lake keeps its own colour and the
+    // wash mutes only the GTA land. The boundary stays on top.
     this.map.moveLayer('lake', 'toronto-boundary');
     this.map.moveLayer('lake-shore', 'toronto-boundary');
   }

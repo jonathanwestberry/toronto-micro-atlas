@@ -46,16 +46,14 @@ DPI = 150
 # the frame with air around it rather than bleeding off the corners.
 PAD = 0.02
 
-# ONE PALETTE V2.0. Each card's thumbnail sits on a field of one palette
-# colour, and GuideCard.astro's --plate-bg names the same colour so a slow
-# image never flashes a different one. Mixes carry their ratio in the name.
+# ONE PALETTE V2.0. Every thumbnail sits on White, the site's ground, except
+# Sidewalk Forest's dark plate; GuideCard.astro's --plate-bg names the same
+# colour so a slow image never flashes a different one.
 INK = "#000000"            # Black
-PAPER = "#EFE9C9"          # Cream
-LIGHT_BLUE = "#99ECFF"
+PAPER = "#FFFFFF"          # White
 BLUE = "#0E98FF"
 GREEN = "#03C739"
 LIGHT_GREEN = "#D2E90F"
-ORANGE = "#FF9D03"
 YELLOW = "#FFCB03"
 NIGHT_EDGE = "#3E3B31"     # Sand 30 / Black 70
 
@@ -150,7 +148,7 @@ def city_clip(axes, boundary):
 
 def build_hidden_landscapes(boundary, extent):
     """Ravines and buried water, with the eight thresholds marked."""
-    figure, axes = new_figure(extent, LIGHT_BLUE)
+    figure, axes = new_figure(extent, PAPER)
     draw_land(axes, boundary, PAPER, INK)
     green = gpd.read_file(
         os.path.join(DATA, "processed", "green-spaces.geojson")).to_crs(boundary.crs)
@@ -195,7 +193,7 @@ def build_sidewalk_forest(boundary, extent):
 
 def build_when_toronto_has_to_go(boundary, extent):
     """Documented public washrooms."""
-    figure, axes = new_figure(extent, ORANGE)
+    figure, axes = new_figure(extent, PAPER)
     draw_land(axes, boundary, PAPER, INK)
     facilities = gpd.read_file(os.path.join(
         PUBLIC, "data", "fg03", "2026-07-21", "facilities.geojson")).to_crs(boundary.crs)
