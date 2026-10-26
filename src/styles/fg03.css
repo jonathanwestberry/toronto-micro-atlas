@@ -1,14 +1,14 @@
 .fg03 {
-  /* Guide theme "When Toronto Has to Go": Cream ground, Black as the
-     readable structural accent (transit and infrastructure that persists),
+  /* Guide theme "When Toronto Has to Go": White ground, Black as the
+     readable structural colour (transit and infrastructure that persists),
      Orange as the alarm accent (access that collapses on the clock). Orange
-     never carries text on Cream (1.70); Black does the reading (17.17).
+     never carries text on White (2.08); Black does the reading (21.00).
      Mirrors [data-guide-theme='fg03'] in tokens.css, so the guide root and
      the body agree; the --fg03-* names stay as thin aliases. */
-  --atlas-ground:      var(--c-cream);
+  --atlas-ground:      var(--c-white);
   --atlas-surface:     var(--c-white);
   --atlas-ink:         var(--c-black);
-  --atlas-ink-muted:   var(--c-ink-70);           /* 7.74 Cream */
+  --atlas-ink-muted:   var(--c-ink-70);           /* 8.45 White */
   --atlas-line:        var(--c-ink-25);
   --atlas-line-strong: var(--c-ink-70);
   --atlas-accent:      var(--c-orange);           /* fills only: rules, primary control */
@@ -26,9 +26,9 @@
   --fg03-line: var(--atlas-line);
   --fg03-line-strong: var(--atlas-line-strong);
   --fg03-water: var(--c-light-blue);
-  --fg03-warning: var(--c-orange-text);   /* 4.98 Cream, 6.09 White */
-  --fg03-error: var(--c-red-text);        /* 4.96 Cream, 6.07 White */
-  --fg03-success: var(--c-green-text);   /* 5.35 Cream, 6.54 White */
+  --fg03-warning: var(--c-orange-text);   /* 4.88 White */
+  --fg03-error: var(--c-red-text);        /* 4.85 White */
+  --fg03-success: var(--c-green-text);   /* 4.91 White */
   /* The three voices, taken from the shared tokens rather than restated.
      These stayed on Archivo through the redesign so nothing re-rendered
      mid-migration, and were never moved back, which left FG03 the only route
@@ -757,7 +757,7 @@
 }
 
 .fg03-map-loading-label {
-  background: rgba(239, 233, 201, 0.94);
+  background: rgba(255, 255, 255, 0.94);
   border: 1px solid var(--fg03-line-strong);
   bottom: 1rem;
   font-family: var(--fg03-ui);
@@ -910,7 +910,7 @@
   looking at rather than to a page they may have scrolled past.
 */
 .fg03-map-title {
-  background: rgba(239, 233, 201, 0.94);
+  background: rgba(255, 255, 255, 0.94);
   border: 1px solid var(--fg03-line-strong);
   font-family: var(--fg03-ui);
   left: 0.75rem;
@@ -942,7 +942,7 @@
 }
 
 .fg03-map-veil {
-  background: rgba(239, 233, 201, 0.96);
+  background: rgba(255, 255, 255, 0.96);
   border: 2px solid var(--fg03-ink);
   display: grid;
   font-family: var(--fg03-ui);

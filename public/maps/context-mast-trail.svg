@@ -7,7 +7,7 @@
   </defs>
 
   <!-- background -->
-  <rect width="800" height="600" fill="#EFE9C9"/>
+  <rect width="800" height="600" fill="#FFFFFF"/>
 
   <!-- lake ontario -->
   <!-- lake: none in view -->
@@ -75,7 +75,7 @@
   <!-- outside mask: none in view -->
 
   <!-- toronto municipal boundary (solid hairline, consistent with island map) -->
-  <path fill="none" stroke="#48463C" stroke-width="1.25" stroke-linejoin="round" stroke-linecap="round" stroke-opacity="0.9" d="M875.6,690.55L837.96,694.37L798.93,692.46L778.74,686.74L742.93,664.48L711.25,636.49L662.13,602.14L625.4,591.33L590.52,594.51L523.95,624.4L476.67,649.21L431.22,661.93L422.95,651.75L424.33,635.85L433.05,621.22L458.76,593.87L480.8,563.34L499.62,531.54L502.83,496.55L480.8,455.21L471.16,422.77L474.83,372.52L491.36,326.08L492.27,297.46L487.22,272.65L416.07,200.76L385.31,191.22L349.04,214.12L323.33,204.58L310.48,227.48L297.63,228.12L286.61,198.22L261.82,196.31L253.1,179.77L232.44,167.69L209.03,174.05L184.24,167.05L181.48,146.06L156.23,137.79L129.15,104.07L122.72,91.35L100.23,104.07L80.03,101.53L69.01,91.98L70.84,75.45L81.4,63.36L69.47,22.64L56.15,29.01L54.78,52.54L46.51,64.63L-28.77,69.08L-66.42,63.99"/>
+  <path fill="none" stroke="#4D4D4D" stroke-width="1.25" stroke-linejoin="round" stroke-linecap="round" stroke-opacity="0.9" d="M875.6,690.55L837.96,694.37L798.93,692.46L778.74,686.74L742.93,664.48L711.25,636.49L662.13,602.14L625.4,591.33L590.52,594.51L523.95,624.4L476.67,649.21L431.22,661.93L422.95,651.75L424.33,635.85L433.05,621.22L458.76,593.87L480.8,563.34L499.62,531.54L502.83,496.55L480.8,455.21L471.16,422.77L474.83,372.52L491.36,326.08L492.27,297.46L487.22,272.65L416.07,200.76L385.31,191.22L349.04,214.12L323.33,204.58L310.48,227.48L297.63,228.12L286.61,198.22L261.82,196.31L253.1,179.77L232.44,167.69L209.03,174.05L184.24,167.05L181.48,146.06L156.23,137.79L129.15,104.07L122.72,91.35L100.23,104.07L80.03,101.53L69.01,91.98L70.84,75.45L81.4,63.36L69.47,22.64L56.15,29.01L54.78,52.54L46.51,64.63L-28.77,69.08L-66.42,63.99"/>
 
   <!-- threshold marker -->
   <circle cx="401.5" cy="302" r="16" fill="#00000026" filter="url(#mshad)"/>
@@ -83,18 +83,18 @@
   <circle cx="400" cy="300" r="5" fill="#FFFFFF"/>
 
   <!-- scale bar: 200m -->
-  <g fill="none" stroke="#646254" stroke-width="1.25" stroke-linecap="round">
+  <g fill="none" stroke="#6B6B6B" stroke-width="1.25" stroke-linecap="round">
     <line x1="20" y1="578" x2="134.29" y2="578"/>
     <line x1="20" y1="572" x2="20" y2="578"/>
     <line x1="134.29" y1="572" x2="134.29" y2="578"/>
   </g>
-  <text x="77.14" y="569" fill="#646254" font-size="10" text-anchor="middle">200m</text>
+  <text x="77.14" y="569" fill="#6B6B6B" font-size="10" text-anchor="middle">200m</text>
 
   <!-- north indicator (halo keeps it visible over street linework) -->
-  <circle cx="768" cy="36" r="22" fill="#EFE9C9" fill-opacity="0.9" stroke="#646254" stroke-opacity="0.3" stroke-width="1"/>
-  <g fill="#646254" stroke="#646254" stroke-width="2">
+  <circle cx="768" cy="36" r="22" fill="#FFFFFF" fill-opacity="0.9" stroke="#6B6B6B" stroke-opacity="0.3" stroke-width="1"/>
+  <g fill="#6B6B6B" stroke="#6B6B6B" stroke-width="2">
     <line x1="768" y1="42" x2="768" y2="24" stroke-linecap="round"/>
     <polygon points="768,16 762.5,27 773.5,27" stroke-width="1" stroke-linejoin="round"/>
   </g>
-  <text x="768" y="55" fill="#646254" font-size="13" text-anchor="middle" font-weight="700">N</text>
+  <text x="768" y="55" fill="#6B6B6B" font-size="13" text-anchor="middle" font-weight="700">N</text>
 </svg>

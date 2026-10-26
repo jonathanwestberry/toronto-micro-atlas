@@ -89,18 +89,18 @@ const FG03_CONTEXT_FILES = Object.freeze({
   labels: "/data/orientation-labels.geojson"
 });
 const FG03_SYMBOL_RECIPES = Object.freeze([
-  Object.freeze(["fg03-fare-paid", "diamond", "#000000", "#EFE9C9"]),
+  Object.freeze(["fg03-fare-paid", "diamond", "#000000", "#FFFFFF"]),
   Object.freeze(["fg03-extend", "square", "#0E98FF", "#000000"]),
   Object.freeze(["fg03-new", "triangle", "#000000", "#000000"]),
-  Object.freeze(["fg03-verify", "diamond", "#EFE9C9", "#000000"]),
-  Object.freeze(["fg03-retrofit", "plus", "#EFE9C9", "#000000"]),
-  /* #8C5602 is Orange 55 / Black 45, a ONE PALETTE V2.0 mix. The marker's
-     fill is Cream, so the stroke is the only thing separating it from a Cream
-     map: bare Orange would be 1.70:1, under the 3:1 that SC 1.4.11 asks of a
-     graphical object; the mix is 4.98. Fg03MapFigure.astro paints the legend swatch with the same
+  Object.freeze(["fg03-verify", "diamond", "#FFFFFF", "#000000"]),
+  Object.freeze(["fg03-retrofit", "plus", "#FFFFFF", "#000000"]),
+  /* #A16302 is Orange 63 / Black 37, a ONE PALETTE V2.0 mix. The marker's
+     fill is White, so the stroke is the only thing separating it from a White
+     map: bare Orange would be 2.08:1, under the 3:1 that SC 1.4.11 asks of a
+     graphical object; the mix is 4.88. Fg03MapFigure.astro paints the legend swatch with the same
      literal, and the two must stay identical or the legend stops describing
      the map. */
-  Object.freeze(["fg03-unknown", "cross", "#EFE9C9", "#8C5602"])
+  Object.freeze(["fg03-unknown", "cross", "#FFFFFF", "#A16302"])
 ]);
 function asRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value : null;
@@ -324,7 +324,7 @@ function createFg03OperationalLayers() {
       type: "circle",
       source: "fg03-stops",
       paint: {
-        "circle-color": "#646254",
+        "circle-color": "#6B6B6B",
         "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 1.3, 16, 3.2],
         "circle-opacity": 0.34
       }
@@ -337,9 +337,9 @@ function createFg03OperationalLayers() {
         "fg03-condition": "unknown-or-missing"
       },
       paint: {
-        "circle-color": "#EFE9C9",
+        "circle-color": "#FFFFFF",
         "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 1.8, 16, 4],
-        "circle-stroke-color": "#8C5602",
+        "circle-stroke-color": "#A16302",
         "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 9, 1, 16, 2],
         "circle-opacity": 0.92
       }
@@ -349,7 +349,7 @@ function createFg03OperationalLayers() {
       type: "circle",
       source: "fg03-stops",
       paint: {
-        "circle-color": "#EFE9C9",
+        "circle-color": "#FFFFFF",
         "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 1.8, 16, 4.4],
         "circle-stroke-color": "#000000",
         "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 9, 0.8, 16, 1.8],
@@ -362,7 +362,7 @@ function createFg03OperationalLayers() {
       source: "fg03-facilities",
       filter: ["==", ["get", "accessCondition"], "unrestricted"],
       paint: {
-        "circle-color": "#EFE9C9",
+        "circle-color": "#FFFFFF",
         "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 3.5, 16, 7],
         "circle-stroke-color": "#000000",
         "circle-stroke-width": 2

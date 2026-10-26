@@ -13,13 +13,14 @@
 :root {
   /* Colour palette. The shell's working names, each now a ONE PALETTE V2.0
      colour or a named mix of two (see the palette block below). Checked by
-     ratio, not by eye: ink 17.17 on --paper and 21.00 on --card. */
-  --paper: var(--c-cream);
+     ratio, not by eye: ink 21.00 on --paper and --card, which are both White.
+     A raised card on a White page is told apart by its border, not a tint. */
+  --paper: var(--c-white);
   --ink: var(--c-black);
-  --ink-2: var(--c-ink-70);          /* 7.74 on --paper, 9.47 on --card */
-  /* Tertiary text still has to clear AA at small sizes: 5.02 on --paper,
-     6.15 on --card. It is the site's own Muted ratio (Black 58% into the
-     ground), so the two properties mute the same way. */
+  --ink-2: var(--c-ink-70);          /* 8.45 on White */
+  /* Tertiary text still has to clear AA at small sizes: 5.33 on White. It is
+     the site's own Muted ratio (Black 58% into the ground), so the two
+     properties mute the same way. */
   --ink-3: var(--c-ink-58);
   --street-minor: var(--c-sand);
   --street-major: var(--c-sand-75);
@@ -94,7 +95,7 @@
   --z-overlay: 1000;
 
   /* Cartographic outside-survey wash */
-  --wash-outside: rgba(239, 233, 201, 0.78);   /* Cream at 78% */
+  --wash-outside: rgba(255, 255, 255, 0.78);   /* White at 78% */
 
   /* Full-bleed guide-map hero (desktop fills viewport below the header) */
   --header-h: 67px;    /* measured height of .site-header (normal flow, not sticky) */
@@ -125,48 +126,37 @@
      The hex is written out so the value can be read and searched, and the
      name carries the ratio so it can be re-derived.
 
-     Why mixes exist at all: no V2.0 hue clears 3:1 on Cream or White (the
-     strongest, Red, is 2.68 on Cream). A hue can be a fill, a rule or a map
-     mark, never small type. Where text has to carry a guide's colour, the hue
-     is mixed with Black at the lightest share that clears 4.8 on Cream, 4.8
+     Why mixes exist at all: no V2.0 hue clears 4.5:1 on White (the
+     strongest, Red, is 3.28). A hue can be a fill, a rule or a map mark,
+     never small type. Where text has to carry a guide's colour, the hue is
+     mixed with Black at the lightest share that clears 4.8 on White, 4.8
      rather than 4.5 so a hover or a slightly different surface cannot tip it
      back under. Body text is pure Black.
      ========================================================================== */
 
-  /* Black into Cream: the light-theme neutrals. */
-  --c-ink-70:      #48463C;   /* Black 70 / Cream 30. 7.74 Cream, 9.47 White */
-  --c-ink-58:      #646254;   /* Black 58 / Cream 42. 5.02 Cream, 6.15 White */
-  --c-ink-45:      #83806F;   /* Black 45 / Cream 55. 3.25 Cream, 3.98 White: control boundary */
-  --c-ink-40:      #8F8C79;   /* Black 40 / Cream 60. stronger rule */
-  --c-ink-25:      #B3AF97;   /* Black 25 / Cream 75. hairline (the site's Line) */
+  /* Black into White: the light-theme neutrals, mixed into the ground the
+     way the personal site mixes its own. */
+  --c-ink-70:      #4D4D4D;   /* Black 70 / White 30. 8.45 White */
+  --c-ink-58:      #6B6B6B;   /* Black 58 / White 42. 5.33 White */
+  --c-ink-45:      #8C8C8C;   /* Black 45 / White 55. 3.36 White: control boundary */
+  --c-ink-40:      #999999;   /* Black 40 / White 60. stronger rule */
+  --c-ink-25:      #BFBFBF;   /* Black 25 / White 75. hairline (the site's Line) */
   --c-sand-75:     #9B947A;   /* Sand 75 / Black 25. major street, 1.76 against Sand minor */
 
-  /* Hue into Black: text siblings. Each clears 4.8 on Cream and 6.0 on White,
-     and White type set ON each clears 6.0, so they also serve as the filled
-     hover and active states that carry White labels. */
-  --c-red-text:    #B03926;   /* Red 70 / Black 30.    4.96 Cream, 6.07 White */
-  --c-blue-text:   #0963A6;   /* Blue 65 / Black 35.   5.13 Cream, 6.27 White */
-  --c-green-text:  #026D1F;   /* Green 55 / Black 45.  5.35 Cream, 6.54 White */
-  --c-orange-text: #8C5602;   /* Orange 55 / Black 45. 4.98 Cream, 6.09 White */
+  /* Hue into Black: text siblings. Each clears 4.8 on White, and White type
+     set ON each clears the same ratio, so they also serve as the filled hover
+     and active states that carry White labels. */
+  --c-red-text:    #CA422C;   /* Red 80 / Black 20.    4.85 White */
+  --c-blue-text:   #0B75C4;   /* Blue 77 / Black 23.   4.82 White */
+  --c-green-text:  #028326;   /* Green 66 / Black 34.  4.91 White */
+  --c-orange-text: #A16302;   /* Orange 63 / Black 37. 4.88 White */
+  --c-yellow-text: #8A6E02;   /* Yellow 54 / Black 46. 4.87 White */
 
   /* Purple into Black: the shade ramp's depths (Out of the Sun). */
-  --c-purple-70:   #917FB2;   /* Purple 70 / Black 30. 2.92 Cream: fill only */
-  --c-purple-50:   #685B80;   /* Purple 50 / Black 50. 5.05 Cream, 6.18 White */
-  --c-purple-25:   #342E40;   /* Purple 25 / Black 75. 10.66 Cream */
+  --c-purple-70:   #917FB2;   /* Purple 70 / Black 30. 3.57 White: fill only */
+  --c-purple-50:   #685B80;   /* Purple 50 / Black 50. 6.18 White */
+  --c-purple-25:   #342E40;   /* Purple 25 / Black 75. 13.04 White */
 
-  /* Night (Sidewalk Forest). Dark plates sit on Black; surfaces and lines are
-     Sand mixed into Black, so the night stays warm-neutral and the Light
-     Green dots are the only colour on it. */
-  --c-night-ground:      var(--c-black);
-  --c-night-surface:     #1F1E18;   /* Sand 15 / Black 85 */
-  --c-night-ink:         var(--c-cream);   /* 17.17 ground, 13.66 surface */
-  --c-night-ink-muted:   var(--c-sand);    /* 12.16 ground, 9.67 surface */
-  --c-night-ink-faint:   #918A71;   /* Sand 70 / Black 30. 6.08 ground, 4.83 surface */
-  --c-night-line:        #3E3B31;   /* Sand 30 / Black 70 */
-  --c-night-line-strong: #534F41;   /* Sand 40 / Black 60 */
-  /* Solved against the lightest surface a control lands on, not the page
-     ground: 4.00 on Black, 3.19 on the raised surface. */
-  --c-night-control:     #726C59;   /* Sand 55 / Black 45 */
 
   /* ==========================================================================
      Radius scale (THE GRID / DEPTH). Additive; unused until Phase 2+.
@@ -189,10 +179,9 @@
 
   /* ==========================================================================
      Theme contract  (semantic tokens every surface reads).
-     Default = the atlas shell theme: Cream ground, Black ink, Red accent,
-     Green landscape. Deliberately not the personal site's White ground and
-     Purple accent; the atlas draws from the same palette and stays its own
-     publication. Per-guide themes override this set via [data-guide-theme].
+     Default = the atlas shell theme: White ground, Black ink, Red accent,
+     Green landscape. The ground matches the personal site; the Red accent
+     and the guides' own colours keep the atlas its own publication. Per-guide themes override this set via [data-guide-theme].
      ========================================================================== */
   --atlas-ground:      var(--paper);          /* page background */
   --atlas-surface:     var(--card);           /* raised card / panel */
@@ -209,12 +198,12 @@
   --atlas-accent-2-text: var(--c-green-text);
   /* Type set ON an accent fill (a filled button, a marker glyph). Black reads
      on every V2.0 hue, 6.40 on Red at the lowest, where White fails on all of
-     them. */
+     them (3.28 on Red at best). */
   --atlas-on-accent:   var(--c-black);
   /* Boundary of an interactive control (SC 1.4.11, 3:1). Distinct from
      --atlas-line, which is a content hairline and is allowed to be faint.
-     A White control on a Cream page is only 1.22:1 against the ground, so the
-     border is the only thing that says where the control is. */
+     A White control on a White page is 1:1 against the ground, so the border
+     is the only thing that says where the control is: 3.36. */
   --atlas-control-line: var(--c-ink-45);
   --atlas-link:        var(--ink);            /* link colour */
   --atlas-focus:       var(--ink);            /* focus ring colour */
@@ -222,7 +211,7 @@
   --atlas-marker-alt:  var(--landscape);      /* second marker category */
   --atlas-layer:       var(--landscape);      /* map layer wash */
   /* Hover and active fill controls that carry White labels, so they take the
-     text-weight sibling (White on it 6.07), never the bare accent. */
+     text-weight sibling (White on it 4.85), never the bare accent. */
   --atlas-hover:       var(--threshold-active);
   --atlas-active:      var(--threshold-active);
   /* The masthead rule: the strongest line on the page. Defaults to the ink so
@@ -241,12 +230,12 @@
    below were measured, not assumed.
    ========================================================================== */
 
-/* Hidden Landscapes: Cream ground, Blue threshold, Green landscapes.
+/* Hidden Landscapes: White ground, Blue threshold, Green landscapes.
  *
- * Blue and Green are fills. As fills on Cream they sit at 2.47 and 1.86,
+ * Blue and Green are fills. On White they sit at 3.02 and 2.27, and Green is
  * under 3:1 for graphics, which is why every map category also carries a
  * shape and the tests enforce it: colour is never the only signal. Type in
- * the guide's colours uses the mixes: Blue text 5.13, Green text 5.35. A
+ * the guide's colours uses the mixes: Blue text 4.82, Green text 4.91. A
  * threshold glyph is Black on Blue (6.95). */
 [data-guide-theme='fg01'] {
   --atlas-accent:        var(--c-blue);
@@ -254,36 +243,26 @@
   --atlas-accent-text:   var(--c-blue-text);
   --atlas-accent-2-text: var(--c-green-text);
   --atlas-focus:         var(--c-blue-text);
-  --atlas-hover:         var(--c-blue-text);   /* White on it 6.27 */
+  --atlas-hover:         var(--c-blue-text);   /* White on it 4.82 */
   --atlas-active:        var(--c-blue-text);
 }
 
-/* Sidewalk Forest: a dark plate. Black ground, Cream ink, Light Green glow.
-   On Black every V2.0 hue holds as type (Light Green 15.40, Yellow 13.80),
-   so here the accents carry text directly. Yellow is the brighter sibling for
-   hover and active, the right direction on a dark theme. */
+/* Sidewalk Forest: White page like every guide, Green accent. Only the tree
+   map stays Black (see fg02.css), because seven of its eleven tree colours
+   fall to 1.3-1.8:1 on White. Green is a fill (2.27 on White); its type is
+   Green 60 / Black 40 at 5.73. A filled Green control carries Black (9.23). */
 [data-guide-theme='fg02'] {
-  --atlas-ground:        var(--c-night-ground);
-  --atlas-surface:       var(--c-night-surface);
-  --atlas-ink:           var(--c-night-ink);
-  --atlas-ink-muted:     var(--c-night-ink-muted);
-  --atlas-ink-faint:     var(--c-night-ink-faint);
-  --atlas-line:          var(--c-night-line);
-  --atlas-line-strong:   var(--c-night-line-strong);
-  --atlas-accent:        var(--c-light-green);
-  --atlas-accent-2:      var(--c-yellow);
-  --atlas-accent-text:   var(--c-light-green);   /* 15.40 ground, 12.25 surface */
-  --atlas-accent-2-text: var(--c-yellow);        /* 13.80 ground, 10.97 surface */
-  --atlas-on-accent:     var(--c-black);
-  --atlas-control-line:  var(--c-night-control); /* 4.00 ground, 3.19 surface */
-  --atlas-focus:         var(--c-light-green);
-  --atlas-hover:         var(--c-yellow);
-  --atlas-active:        var(--c-yellow);
-  --atlas-rule-header:   var(--c-night-line);    /* muted, not a Cream glare */
+  --atlas-accent:        var(--c-green);
+  --atlas-accent-2:      var(--c-green);
+  --atlas-accent-text:   #027722;                /* Green 60 / Black 40. 5.73 White */
+  --atlas-accent-2-text: #027722;
+  --atlas-focus:         #027722;
+  --atlas-hover:         #027722;                /* White on it 5.73 */
+  --atlas-active:        #02641C;                /* Green 50 / Black 50. White on it 7.39 */
 }
 
-/* When Toronto Has to Go: Cream ground, Orange alarm, Black for reading.
-   Orange is the guide's colour and only ever a fill (1.70 on Cream): rules,
+/* When Toronto Has to Go: White ground, Orange alarm, Black for reading.
+   Orange is the guide's colour and only ever a fill (2.08 on White): rules,
    the primary control, rings on the map. Black carries the type and the
    structure Deep Navy used to, routes included. A filled Orange control
    carries Black type (10.08). */
@@ -296,12 +275,12 @@
   --atlas-accent-2-text: var(--c-orange-text);
   --atlas-on-accent:     var(--c-black);
   --atlas-focus:         var(--c-black);
-  --atlas-hover:         var(--c-orange-text);   /* White on it 6.09 */
+  --atlas-hover:         var(--c-orange-text);   /* White on it 4.88 */
   --atlas-active:        var(--c-orange-text);
   --atlas-rule-header:   var(--c-black);
 }
 
-/* Out of the Sun: Cream ground, Purple shadow, Yellow sun.
+/* Out of the Sun: White ground, Purple shadow, Yellow sun.
  *
  * WHY THE RAMP HAS NO HUE AXIS. A blue-to-orange ramp reads as a thermometer
  * whatever the caption says, and this guide measures where the sun is
@@ -310,7 +289,7 @@
  *
  * THE TWO READINGS. The measured leaf-off surface and the leaf-on correction
  * are one measurement read twice, so they are one hue at two depths: Purple
- * 50 (5.05 on Cream) and Purple 25 (10.66), 2.11 apart. Two hues would say
+ * 50 (6.18 on White) and Purple 25 (13.04), 2.11 apart. Two hues would say
  * "two kinds of thing". Both clear text contrast, so the figures can be set
  * in the colour of the surface they belong to.
  */
@@ -319,8 +298,8 @@
   --atlas-line-strong:   var(--c-ink-70);
   --atlas-accent:        var(--c-purple-50);     /* the shadow */
   --atlas-accent-2:      var(--c-yellow);        /* ground the sun reaches */
-  --atlas-accent-text:   var(--c-purple-50);     /* 5.05 Cream, 6.18 White */
-  --atlas-accent-2-text: #735B01;                /* Yellow 45 / Black 55. 5.32 Cream */
+  --atlas-accent-text:   var(--c-purple-50);     /* 6.18 White */
+  --atlas-accent-2-text: var(--c-yellow-text);
   --atlas-on-accent:     var(--c-white);         /* 6.18 on Purple 50 */
   --atlas-focus:         var(--c-purple-50);
   --atlas-hover:         var(--c-purple-25);     /* White on it 13.04 */

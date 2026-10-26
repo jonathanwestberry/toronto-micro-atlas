@@ -26,7 +26,7 @@ const HALF_M_DEFAULT = 700;
 // ONE PALETTE V2.0, matching the Hidden Landscapes island map (guide-map.ts).
 // Mixes are named with their ratio; see src/styles/tokens.css.
 const P = {
-  bg:              '#EFE9C9',  // Cream
+  bg:              '#FFFFFF',  // White
   minorStreet:     '#CFC5A2',  // Sand
   majorStreet:     '#9B947A',  // Sand 75 / Black 25
   // rail removed: buried watercourses are the only dashed device
@@ -38,10 +38,10 @@ const P = {
   marker:          '#0E98FF',  // Blue, the guide's threshold colour
   markerRing:      '#000000',  // Black
   markerInner:     '#FFFFFF',  // White
-  ui:              '#646254',  // Black 58 / Cream 42: 5.02 on Cream
+  ui:              '#6B6B6B',  // Black 58 / White 42: 5.33 on White
   // Boundary and outside-wash: consistent with the island map
-  boundary:        '#48463C',  // same as toronto-boundary layer color
-  washOutside:     'rgba(239,233,201,0.78)', // --wash-outside token
+  boundary:        '#4D4D4D',  // same as toronto-boundary layer color
+  washOutside:     'rgba(255,255,255,0.78)', // --wash-outside token
 };
 
 // ── Locations ─────────────────────────────────────────────────────────────────

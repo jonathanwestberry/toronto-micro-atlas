@@ -29,7 +29,7 @@
   --fg04-selected-sunlit: var(--c-yellow);
   --fg04-selected-no-data: transparent;
 
-  /* The first two stops sit at 1.24 and 1.46 against the Cream ground, under
+  /* The first two stops sit at 1.52 and 1.78 against the White ground, under
      the 3:1 a legend swatch needs to be found at all. They are never drawn
      bare: .fg04-swatch gives every stop the same hairline so the light end is
      locatable and the ramp stays one visual object. */
@@ -928,7 +928,7 @@
   color: var(--atlas-ink);
 }
 
-/* The light end of the ramp sits at 1.08 against Cream, well under the 3:1 a
+/* The light end of the ramp sits at 1.52 against White, well under the 3:1 a
    swatch needs to be found at all, so every stop carries the same hairline.
    Same rule as .fg04-swatch in the ramp exhibit above. */
 .fg04-legend__swatch {
@@ -1394,7 +1394,7 @@
   font: inherit;
   color: var(--atlas-ink);
   background: var(--atlas-surface);
-  border: 1px solid var(--atlas-control-line);   /* 3.25 on Cream: a field boundary */
+  border: 1px solid var(--atlas-control-line);   /* 3.36 on White: a field boundary */
   border-radius: 4px;
   /* SC 2.5.8: a primary control on this rail, so it carries a real target. */
   min-height: 2.75rem;
