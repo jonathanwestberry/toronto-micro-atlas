@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the reproducible 1200 by 630 social card for Field Guide 03."""
+"""Build the reproducible 1200 by 630 social card for When Toronto Has to Go."""
 
 from __future__ import annotations
 
@@ -18,11 +18,14 @@ OUTPUT = ROOT / "public" / "social" / "og-when-toronto-has-to-go.jpg"
 
 WIDTH = 1200
 HEIGHT = 630
-PAPER = "#F3EDDD"
-INK = "#1A1F2A"
-MUTED = "#625E58"
-MAUVE = "#8A4A70"
-RULE = "#CFC5B0"
+# ONE PALETTE V2.0. The map panel is the proof render and keeps the colours
+# it was recorded in; only the card around it is restyled here.
+PAPER = "#EFE9C9"    # Cream
+INK = "#000000"      # Black
+MUTED = "#646254"    # Black 58 / Cream 42: 5.02 on Cream
+ACCENT = "#FF9D03"   # Orange, the guide's alarm colour: rules and fills only
+ACCENT_TEXT = "#8C5602"  # Orange 55 / Black 45: 4.98 on Cream
+RULE = "#B3AF97"     # Black 25 / Cream 75
 
 ARCHIVO = (
     ROOT
@@ -115,13 +118,13 @@ def build() -> bytes:
 
     draw.rectangle((0, 0, 540, HEIGHT), fill=PAPER)
     draw.line((539, 0, 539, HEIGHT), fill=INK, width=2)
-    draw.rectangle((60, 48, 64, 582), fill=MAUVE)
+    draw.rectangle((60, 48, 64, 582), fill=ACCENT)
 
     label_font = _font(ARCHIVO, 18, 760)
     draw.text(
         (92, 52),
-        "TORONTO MICRO-ATLAS  /  FIELD GUIDE 03",
-        fill=MAUVE,
+        "TORONTO MICRO-ATLAS",
+        fill=ACCENT_TEXT,
         font=label_font,
         spacing=0,
     )
@@ -146,7 +149,7 @@ def build() -> bytes:
 
     time_font = _font(ARCHIVO, 20, 760)
     number_font = _font(ARCHIVO, 44, 820)
-    draw.text((92, 318), "AT 10 P.M.", fill=MAUVE, font=time_font)
+    draw.text((92, 318), "AT 10 P.M.", fill=ACCENT_TEXT, font=time_font)
     draw.text((92, 352), f"{unrestricted:,}", fill=INK, font=number_font)
     draw.text(
         (162, 360),
