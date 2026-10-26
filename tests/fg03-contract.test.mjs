@@ -610,7 +610,7 @@ test('CI tests data and web output before the final Cloudflare deployment step',
 test('the supported runtime and Astro release are exact and migration-safe', () => {
   const packageJson = JSON.parse(readText(packagePath));
   const contentConfig = readText(contentConfigPath);
-  assert.equal(packageJson.dependencies.astro, '7.1.3');
+  assert.equal(packageJson.dependencies.astro, '7.3.8');
   assert.equal(packageJson.engines.node, '>=22.12.0');
   assert.equal(readText(nvmrcPath).trim(), '22.12.0');
   assert.match(contentConfig, /from 'astro:zod'|from 'astro\/zod'/);

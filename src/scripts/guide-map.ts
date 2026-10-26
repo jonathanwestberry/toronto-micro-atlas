@@ -1,4 +1,5 @@
-import maplibregl from 'maplibre-gl';
+// Through ./maplibre, which sets the worker URL MapLibre 6 needs.
+import * as maplibregl from './maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import '../styles/guide-map.css';
 import { createMapStage } from './map-stage';
