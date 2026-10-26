@@ -13,7 +13,7 @@ const newestTime = Math.max(...guides.map((g) => g.data.published.getTime()));
 
 <Base
   title={undefined}
-  description="An independent atlas of interactive field guides, each one turning a single Toronto system into a map you can read."
+  description="An independent atlas of interactive guides, each one turning a single Toronto system into a map you can read."
 >
   <div class="home">
 
@@ -22,14 +22,14 @@ const newestTime = Math.max(...guides.map((g) => g.data.published.getTime()));
       <div class="hero-inner">
         <div class="hero-text">
           <p class="hero-eyebrow"><span class="hero-mark" aria-hidden="true"></span>Toronto Micro-Atlas</p>
-          <h1 class="hero-title" id="hero-title">Field guides to a city you think you know</h1>
+          <h1 class="hero-title" id="hero-title">Guides to a city you think you know</h1>
           <p class="hero-lede">
-            An independent atlas of interactive field guides. Each one takes a single system the
+            An independent atlas of interactive guides. Each one takes a single system the
             city runs, its street trees, its buried ravines, its late-night washrooms, and turns
             the public record into a map you can actually read.
           </p>
           <div class="hero-actions">
-            <a class="hero-cta" href={`${base}/guides/`}>Browse the field guides &rarr;</a>
+            <a class="hero-cta" href={`${base}/guides/`}>Browse the guides &rarr;</a>
             <span class="hero-count">{guides.length} guides live</span>
           </div>
         </div>
@@ -43,7 +43,7 @@ const newestTime = Math.max(...guides.map((g) => g.data.published.getTime()));
     <section class="gallery" aria-labelledby="gallery-heading">
       <div class="gallery-inner">
         <div class="gallery-head">
-          <h2 class="gallery-heading" id="gallery-heading">The field guides</h2>
+          <h2 class="gallery-heading" id="gallery-heading">The guides</h2>
           <a class="gallery-all" href={`${base}/guides/`}>All guides and what's under research &rarr;</a>
         </div>
         <ul class="gallery-grid" role="list">
@@ -70,7 +70,7 @@ const newestTime = Math.max(...guides.map((g) => g.data.published.getTime()));
     <!-- What this is -->
     <section class="about-band" aria-labelledby="about-heading">
       <div class="about-inner">
-        <p class="about-kicker" id="about-heading">What a field guide is</p>
+        <p class="about-kicker" id="about-heading">What a guide is</p>
         <p class="about-lede">
           Not a listicle and not a review. Each one starts from a record the city already keeps,
           checks it, and draws it. Read straight through for the argument, or open the map and go

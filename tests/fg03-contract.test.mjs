@@ -390,7 +390,7 @@ test('method, definitions, limitations, sources, downloads, credits, and series 
   assert.match(html, /Download snapshot summary \(CSV\)/);
   assert.match(html, /Hidden Landscapes/);
   assert.match(html, /Sidewalk Forest/);
-  assert.match(html, /All field guides/);
+  assert.match(html, /All guides/);
 });
 
 test('shared discovery surfaces publish all three guides with FG03 newest', () => {
@@ -419,7 +419,7 @@ test('shared discovery surfaces publish all three guides with FG03 newest', () =
   // The homepage h1 is the hero tagline (single h1, fixes heading order); each
   // guide is a peer card in one gallery, the newest wearing the New status.
   assert.equal((homeMain.match(/<h1\b/g) ?? []).length, 1);
-  assert.match(homeMain, /<h1[^>]*>\s*Field guides to a city you think you know\s*<\/h1>/);
+  assert.match(homeMain, /<h1[^>]*>\s*Guides to a city you think you know\s*<\/h1>/);
   assert.equal(
     (homeMain.match(/guide-card-status--new/g) ?? []).length,
     1,
@@ -466,7 +466,7 @@ test('FG03 publishes article metadata and the verified social card', () => {
   const crumbs = byType('BreadcrumbList').itemListElement;
   assert.deepEqual(
     crumbs.map((c) => c.name),
-    ['Toronto Micro-Atlas', 'Field guides', 'When Toronto Has to Go'],
+    ['Toronto Micro-Atlas', 'Guides', 'When Toronto Has to Go'],
   );
   assert.equal(crumbs.at(-1).item, 'https://torontomicroatlas.com/guides/when-toronto-has-to-go/');
 });
