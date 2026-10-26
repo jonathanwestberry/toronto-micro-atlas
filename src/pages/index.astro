@@ -166,7 +166,7 @@ const newestTime = Math.max(...guides.map((g) => g.data.published.getTime()));
     transition: background-color var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out);
   }
   @media (hover: hover) {
-    .hero-cta:hover { background-color: var(--threshold); border-color: var(--threshold); color: var(--paper); }
+    .hero-cta:hover { background-color: var(--threshold); border-color: var(--threshold); color: var(--atlas-on-accent); }
   }
   .hero-cta:focus-visible { outline: 2px solid var(--threshold); outline-offset: 3px; }
   .hero-count {
@@ -185,7 +185,7 @@ const newestTime = Math.max(...guides.map((g) => g.data.published.getTime()));
     width: 100%;
     height: auto;
     display: block;
-    filter: drop-shadow(0 12px 30px rgba(39, 36, 29, 0.18));
+    filter: drop-shadow(0 12px 30px rgba(0, 0, 0, 0.18));
   }
   /* Run the plate past the container and off the viewport edge. A map that
      stops politely inside the grid reads as an illustration of a map; one that

@@ -19,12 +19,13 @@ import { parseCameraFromSearch } from './map-url.mjs';
 // ---------------------------------------------------------------------------
 
 // Nocturne map paints
-const GROUND = 'hsl(150, 44%, 7%)';
-const LAKE = 'hsl(188, 42%, 6%)';
-const LAKE_SHORE = 'hsl(180, 24%, 17%)';
-const STREET_MINOR = 'hsl(150, 20%, 14%)';
-const STREET_MAJOR = 'hsl(150, 20%, 19%)';
-const BOUNDARY = 'hsl(150, 16%, 32%)';
+// (ONE PALETTE V2.0: Black, and Sand or Blue mixed into Black.)
+const GROUND = '#000000';
+const LAKE = '#021726';       // Blue 15 / Black 85
+const LAKE_SHORE = '#063D66'; // Blue 40 / Black 60
+const STREET_MINOR = '#1F1E18'; // Sand 15 / Black 85
+const STREET_MAJOR = '#2E2B24'; // Sand 22 / Black 78
+const BOUNDARY = '#534F41';   // Sand 40 / Black 60
 
 const CITY_BOUNDS: maplibregl.LngLatBoundsLike = [
   [-79.6393, 43.581],
@@ -336,7 +337,7 @@ class SidewalkForest {
       id: 'ward-lines-casing', type: 'line', source: 'wards',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': 'hsl(150, 45%, 4%)',
+        'line-color': '#000000',
         'line-width': 4,
         'line-opacity': 0,
       },
@@ -344,7 +345,7 @@ class SidewalkForest {
     this.map.addLayer({
       id: 'ward-lines', type: 'line', source: 'wards',
       paint: {
-        'line-color': 'hsl(150, 12%, 78%)',
+        'line-color': '#CFC5A2',
         'line-width': 1.5,
         'line-dasharray': [3, 2.5],
         'line-opacity': 0,
@@ -387,7 +388,7 @@ class SidewalkForest {
     // Colour by genus: the small-int 'g' maps to a category hue, else slate.
     const colorMatch: unknown[] = ['match', ['get', 'g']];
     this.meta.categories.forEach((c, i) => { colorMatch.push(i, c.color); });
-    colorMatch.push('#637388');
+    colorMatch.push('#686251'); // Sand 50 / Black 50, the 'everything else' grey
     const colorExpr = colorMatch as maplibregl.ExpressionSpecification;
 
     // Trunk-driven size. The ledger's DBH (cm) scales every dot so a veteran
@@ -447,7 +448,7 @@ class SidewalkForest {
       type: 'circle',
       source: 'sel',
       paint: {
-        'circle-color': 'hsl(72, 62%, 62%)',
+        'circle-color': '#D2E90F',
         'circle-radius': 0,
         'circle-opacity': 0,
         'circle-blur': 0.6,
@@ -460,7 +461,7 @@ class SidewalkForest {
       paint: {
         'circle-color': 'transparent',
         'circle-radius': radius(1, 5),
-        'circle-stroke-color': 'hsl(72, 62%, 62%)',
+        'circle-stroke-color': '#D2E90F',
         'circle-stroke-width': 2,
       },
     });

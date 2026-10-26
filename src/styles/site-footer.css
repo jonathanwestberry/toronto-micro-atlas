@@ -113,10 +113,10 @@
 /* Dark footer: flip text tokens to read on ink */
 .site-footer-mark { color: var(--paper); }
 .site-footer-tagline,
-.site-footer-signature { color: rgba(250, 246, 236, 0.7); }
-.site-footer-meta { color: rgba(250, 246, 236, 0.55); }
-.site-footer-heading { color: rgba(250, 246, 236, 0.55); }
+.site-footer-signature { color: rgba(239, 233, 201, 0.7); }
+.site-footer-meta { color: rgba(239, 233, 201, 0.55); }
+.site-footer-heading { color: rgba(239, 233, 201, 0.55); }
 .site-footer-signature a { color: var(--paper); }
-.site-footer-links a { color: rgba(250, 246, 236, 0.82); }
+.site-footer-links a { color: rgba(239, 233, 201, 0.82); }
 .site-footer-links a:hover,
-.site-footer-signature a:hover { color: #F7A25E; }
+.site-footer-signature a:hover { color: var(--c-orange); }

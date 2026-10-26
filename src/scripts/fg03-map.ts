@@ -463,8 +463,8 @@ function addContextLayers(
     type: 'fill',
     source: 'fg03-context-outside',
     paint: {
-      'fill-color': '#e6deca',
-      'fill-opacity': 0.9,
+      'fill-color': '#CFC5A2',
+      'fill-opacity': 0.5,
     },
   });
   add('lake', 'fg03-context-lake', {
@@ -472,7 +472,7 @@ function addContextLayers(
     type: 'fill',
     source: 'fg03-context-lake',
     paint: {
-      'fill-color': '#d7e3e1',
+      'fill-color': '#99ECFF',
       'fill-opacity': 0.92,
     },
   });
@@ -482,7 +482,7 @@ function addContextLayers(
     source: 'fg03-context-minor',
     minzoom: 10.5,
     paint: {
-      'line-color': '#d3c9b6',
+      'line-color': '#CFC5A2',
       'line-width': ['interpolate', ['linear'], ['zoom'], 10.5, 0.35, 16, 1.15],
       'line-opacity': ['interpolate', ['linear'], ['zoom'], 10.5, 0.28, 15, 0.7],
     },
@@ -492,9 +492,9 @@ function addContextLayers(
     type: 'line',
     source: 'fg03-context-water',
     paint: {
-      'line-color': '#9bb5b5',
+      'line-color': '#0E98FF',
       'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.4, 16, 1.8],
-      'line-opacity': 0.68,
+      'line-opacity': 0.4,
     },
   });
   add('majorStreets', 'fg03-context-major', {
@@ -502,7 +502,7 @@ function addContextLayers(
     type: 'line',
     source: 'fg03-context-major',
     paint: {
-      'line-color': '#b9ad99',
+      'line-color': '#9B947A',
       'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.45, 16, 2.4],
       'line-opacity': 0.78,
     },
@@ -512,7 +512,7 @@ function addContextLayers(
     type: 'line',
     source: 'fg03-context-rail',
     paint: {
-      'line-color': '#746d65',
+      'line-color': '#646254',
       'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.5, 16, 1.5],
       'line-opacity': 0.55,
       'line-dasharray': [3, 2],
@@ -523,7 +523,7 @@ function addContextLayers(
     type: 'line',
     source: 'fg03-context-boundary',
     paint: {
-      'line-color': '#1a1f2a',
+      'line-color': '#000000',
       'line-width': ['interpolate', ['linear'], ['zoom'], 8, 1.1, 15, 2],
       'line-opacity': 0.82,
     },
@@ -677,13 +677,13 @@ function addOrientationLabels(
     const label = document.createElement('span');
     label.textContent = name;
     label.setAttribute('aria-hidden', 'true');
-    label.style.color = '#5f5b54';
+    label.style.color = '#646254';
     label.style.fontFamily = 'var(--fg03-ui)';
     label.style.fontSize = '11px';
     label.style.fontWeight = '650';
     label.style.letterSpacing = '0.04em';
     label.style.pointerEvents = 'none';
-    label.style.textShadow = '0 1px 0 #f3eddd, 1px 0 0 #f3eddd';
+    label.style.textShadow = '0 1px 0 #EFE9C9, 1px 0 0 #EFE9C9';
     markers.push(
       new maplibre.Marker({ element: label, anchor: 'center' })
         .setLngLat([coordinates[0], coordinates[1]])
@@ -720,10 +720,10 @@ function addResultLabels(
       && properties.name.trim() !== ''
       ? properties.name.trim()
       : 'Name unavailable';
-    label.style.background = 'rgba(243, 237, 221, 0.94)';
-    label.style.border = '1px solid #8f8678';
+    label.style.background = 'rgba(239, 233, 201, 0.94)';
+    label.style.border = '1px solid #83806F';
     label.style.borderRadius = '2px';
-    label.style.color = '#1a1f2a';
+    label.style.color = '#000000';
     label.style.fontFamily = 'var(--fg03-ui)';
     label.style.fontSize = '10px';
     label.style.fontWeight = '650';
@@ -2256,7 +2256,7 @@ export async function initWhenTorontoHasToGo(): Promise<() => void> {
           {
             id: 'fg03-paper',
             type: 'background',
-            paint: { 'background-color': '#f3eddd' },
+            paint: { 'background-color': '#EFE9C9' },
           },
         ],
       },

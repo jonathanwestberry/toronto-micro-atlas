@@ -313,7 +313,7 @@ export class GuideMap {
           {
             id: 'background',
             type: 'background',
-            paint: { 'background-color': '#FAF6EC' },
+            paint: { 'background-color': '#EFE9C9' },
           },
         ],
       },
@@ -405,11 +405,12 @@ export class GuideMap {
       this.map.addSource(id, src(filename));
     }
 
-    // Layer order, bottom to top:
-    // background (in base style), lake, lake-shore, streets-minor,
-    // streets-major, hidden-landscape, hidden-landscape-esa,
-    // hidden-landscape-esa-edge, hidden-landscape-edge, waterways-buried,
-    // waterways, outside-mask, toronto-boundary
+    // Layer order, bottom to top (lake and lake-shore are added first, then
+    // moved above the wash at the end of this method):
+    // background (in base style), streets-minor, streets-major,
+    // hidden-landscape, hidden-landscape-esa, hidden-landscape-esa-edge,
+    // hidden-landscape-edge, waterways-buried, waterways, outside-mask,
+    // lake, lake-shore, toronto-boundary
     // (rail removed: buried watercourses are the only dashed device;
     //  feather removed: GTA context data + maxBounds put the wash's outer edge
     //  out of reach, so it needs no soft fade)
@@ -419,7 +420,7 @@ export class GuideMap {
       type: 'fill',
       source: 'lake',
       paint: {
-        'fill-color': 'hsl(200, 55%, 88%)',
+        'fill-color': '#99ECFF', // Light Blue
         'fill-opacity': 1,
       },
     });
@@ -429,7 +430,7 @@ export class GuideMap {
       type: 'line',
       source: 'lake',
       paint: {
-        'line-color': '#B8B2A7',
+        'line-color': '#9B947A',
         'line-opacity': 0.4,
         'line-width': 0.75,
       },
@@ -440,7 +441,7 @@ export class GuideMap {
       type: 'line',
       source: 'streets-minor',
       paint: {
-        'line-color': '#D3CEC4',
+        'line-color': '#CFC5A2',
         'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.8, 16, 1.6],
       },
     });
@@ -450,7 +451,7 @@ export class GuideMap {
       type: 'line',
       source: 'streets-major',
       paint: {
-        'line-color': '#B8B2A7',
+        'line-color': '#9B947A',
         'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.4, 16, 3],
       },
     });
@@ -462,7 +463,7 @@ export class GuideMap {
       type: 'fill',
       source: 'rnfp',
       paint: {
-        'fill-color': '#45A26A',
+        'fill-color': '#03C739',
         'fill-opacity': 0.95,
       },
     });
@@ -473,7 +474,7 @@ export class GuideMap {
       type: 'fill',
       source: 'esa',
       paint: {
-        'fill-color': '#45A26A',
+        'fill-color': '#03C739',
         'fill-opacity': 0.95,
       },
     });
@@ -485,7 +486,7 @@ export class GuideMap {
       type: 'line',
       source: 'esa',
       paint: {
-        'line-color': '#1F4F30',
+        'line-color': '#026D1F',
         'line-width': 1.25,
       },
     });
@@ -495,7 +496,7 @@ export class GuideMap {
       type: 'line',
       source: 'rnfp',
       paint: {
-        'line-color': '#1F4F30',
+        'line-color': '#026D1F',
         'line-width': 1.25,
       },
     });
@@ -509,7 +510,7 @@ export class GuideMap {
       source: 'waterways',
       filter: ['==', ['get', 'buried'], true],
       paint: {
-        'line-color': '#3994C1',
+        'line-color': '#0E98FF',
         'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.8, 16, 1.6],
         'line-dasharray': [2.5, 2],
       },
@@ -521,7 +522,7 @@ export class GuideMap {
       source: 'waterways',
       filter: ['==', ['get', 'buried'], false],
       paint: {
-        'line-color': '#3994C1',
+        'line-color': '#0E98FF',
         'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1, 16, 2],
       },
     });
@@ -536,7 +537,7 @@ export class GuideMap {
       type: 'fill',
       source: 'outside',
       paint: {
-        'fill-color': '#FAF6EC', // --paper
+        'fill-color': '#EFE9C9', // --paper (Cream)
         'fill-opacity': 0.72,
       },
     });
@@ -549,11 +550,17 @@ export class GuideMap {
       type: 'line',
       source: 'boundary',
       paint: {
-        'line-color': '#57513F', // darker than every street tone
+        'line-color': '#48463C', // Black 70 / Cream 30: darker than every street tone
         'line-width': 2,
         'line-opacity': 0.95,
       },
     });
+
+    // The lake rides above the wash. Cream at 72% over Light Blue composites
+    // to a mint that is in no palette, so the lake keeps its own colour and
+    // the wash mutes only the GTA land. The boundary stays on top.
+    this.map.moveLayer('lake', 'toronto-boundary');
+    this.map.moveLayer('lake-shore', 'toronto-boundary');
   }
 
   // -------------------------------------------------------------------------

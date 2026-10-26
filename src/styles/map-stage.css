@@ -157,7 +157,7 @@
 .map-stage__btn--expand {
   background: var(--atlas-accent);
   border-color: var(--atlas-accent);
-  color: var(--atlas-surface);
+  color: var(--atlas-on-accent);
   font-weight: 700;
 }
 

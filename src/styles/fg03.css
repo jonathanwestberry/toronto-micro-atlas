@@ -1,34 +1,34 @@
 .fg03 {
-  /* Guide theme "When Toronto Has to Go": cream ground, Deep Navy as the
-     readable structural accent (transit/infrastructure that persists), Hot
-     Orange as the energy/alarm accent (access that collapses on the clock).
-     Orange never carries text on cream (~2:1); navy does the reading (~11:1).
-     Sets the shared --atlas-* contract for this guide; the --fg03-* names stay
-     as thin aliases so existing rules keep working. */
-  --atlas-ground:      #F3EDDD;                  /* Cream */
-  --atlas-surface:     #FFFAF0;
-  --atlas-ink:         #1A1F2A;                  /* Contour */
-  --atlas-ink-muted:   #565A63;
-  --atlas-line:        rgba(26, 31, 42, 0.3);
-  --atlas-line-strong: rgba(26, 31, 42, 0.72);
-  --atlas-accent:      #1A2F66;                  /* Deep Navy: text/links/markers */
-  --atlas-accent-2:    #F37E2A;                  /* Hot Orange: active/alarm fills */
-  --atlas-focus:       #1A2F66;
+  /* Guide theme "When Toronto Has to Go": Cream ground, Black as the
+     readable structural accent (transit and infrastructure that persists),
+     Orange as the alarm accent (access that collapses on the clock). Orange
+     never carries text on Cream (1.70); Black does the reading (17.17).
+     Mirrors [data-guide-theme='fg03'] in tokens.css, so the guide root and
+     the body agree; the --fg03-* names stay as thin aliases. */
+  --atlas-ground:      var(--c-cream);
+  --atlas-surface:     var(--c-white);
+  --atlas-ink:         var(--c-black);
+  --atlas-ink-muted:   var(--c-ink-70);           /* 7.74 Cream */
+  --atlas-line:        var(--c-ink-25);
+  --atlas-line-strong: var(--c-ink-70);
+  --atlas-accent:      var(--c-orange);           /* fills only: rules, primary control */
+  --atlas-accent-2:    var(--c-orange);           /* active and alarm fills */
+  --atlas-focus:       var(--c-black);
 
   /* Compat aliases mapping the old private names onto the contract */
   --fg03-paper: var(--atlas-ground);
   --fg03-paper-raised: var(--atlas-surface);
   --fg03-ink: var(--atlas-ink);
   --fg03-ink-muted: var(--atlas-ink-muted);
-  --fg03-mauve: var(--atlas-accent);             /* was #8a4a70 mauve */
-  --fg03-mauve-soft: #CCDFF2;                    /* Pale Ice (was #dec6d3) */
-  --fg03-active: var(--atlas-accent-2);          /* Hot Orange */
+  --fg03-mauve: var(--c-black);                  /* text, routes, markers; the name is historical */
+  --fg03-mauve-soft: var(--c-sand);              /* soft structural fill */
+  --fg03-active: var(--atlas-accent-2);          /* Orange */
   --fg03-line: var(--atlas-line);
   --fg03-line-strong: var(--atlas-line-strong);
-  --fg03-water: #c8dbe0;
-  --fg03-warning: #7b5221;
-  --fg03-error: #87291f;
-  --fg03-success: #315f4c;
+  --fg03-water: var(--c-light-blue);
+  --fg03-warning: var(--c-orange-text);   /* 4.98 Cream, 6.09 White */
+  --fg03-error: var(--c-red-text);        /* 4.96 Cream, 6.07 White */
+  --fg03-success: var(--c-green-text);   /* 5.35 Cream, 6.54 White */
   /* The three voices, taken from the shared tokens rather than restated.
      These stayed on Archivo through the redesign so nothing re-rendered
      mid-migration, and were never moved back, which left FG03 the only route
@@ -687,8 +687,8 @@
 
 .fg03-map {
   background:
-    linear-gradient(rgba(26, 47, 102, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(26, 47, 102, 0.05) 1px, transparent 1px),
+    linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
     var(--fg03-paper);
   background-size: 2rem 2rem;
   min-height: max(52svh, 25rem);
@@ -714,7 +714,7 @@
 }
 
 .fg03-map-shore {
-  fill: rgba(255, 250, 240, 0.72);
+  fill: rgba(255, 255, 255, 0.72);
   stroke: var(--fg03-ink);
   stroke-width: 1.25;
 }
@@ -757,7 +757,7 @@
 }
 
 .fg03-map-loading-label {
-  background: rgba(243, 237, 221, 0.94);
+  background: rgba(239, 233, 201, 0.94);
   border: 1px solid var(--fg03-line-strong);
   bottom: 1rem;
   font-family: var(--fg03-ui);
@@ -910,7 +910,7 @@
   looking at rather than to a page they may have scrolled past.
 */
 .fg03-map-title {
-  background: rgba(243, 237, 221, 0.94);
+  background: rgba(239, 233, 201, 0.94);
   border: 1px solid var(--fg03-line-strong);
   font-family: var(--fg03-ui);
   left: 0.75rem;
@@ -942,7 +942,7 @@
 }
 
 .fg03-map-veil {
-  background: rgba(243, 237, 221, 0.96);
+  background: rgba(239, 233, 201, 0.96);
   border: 2px solid var(--fg03-ink);
   display: grid;
   font-family: var(--fg03-ui);
@@ -1043,8 +1043,8 @@
 
 /* Follows the cursor, so it must never sit under it and swallow the click. */
 .fg03-map-hover-label {
-  background: rgba(26, 31, 42, 0.94);
-  color: #f3eddd;
+  background: rgba(0, 0, 0, 0.94);
+  color: var(--c-cream);
   font-family: var(--fg03-ui);
   font-size: 0.6875rem;
   font-weight: 700;
@@ -1140,7 +1140,7 @@
 
 .fg03-result-list > li[data-selected="true"],
 .fg03-result-list > li.is-selected {
-  background: rgba(26, 47, 102, 0.09);
+  background: rgba(0, 0, 0, 0.06);
   box-shadow: inset 0.25rem 0 0 var(--fg03-mauve);
   padding-inline: 1rem;
 }

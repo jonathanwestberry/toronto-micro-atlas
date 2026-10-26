@@ -46,9 +46,10 @@ const statusLabel = status === 'new' ? 'New' : status === 'forthcoming' ? 'Forth
 <style>
   /* Two accent slots, not one. --card-accent is the FILL: the 3px plate rule
      and the status chip, which only have to clear 3:1. --card-accent-text is
-     the same hue darkened until it clears 4.8:1 on the card surface, and it is
-     the only one allowed on the 11px tag and 13px CTA. Sharing one value made
-     Kelly 3.12:1 and Tomato 4.38:1 as type. */
+     the same hue mixed with Black until it clears 4.8:1 on the card surface,
+     and it is the only one allowed on the 11px tag and 13px CTA: no V2.0 hue
+     reaches even 3.3:1 as type on White. --plate-bg matches each guide's
+     baked thumbnail ground, so a slow image never flashes a wrong colour. */
   .guide-card {
     --card-accent: var(--threshold);
     --card-accent-text: var(--atlas-accent-text);
@@ -63,9 +64,10 @@ const statusLabel = status === 'new' ? 'New' : status === 'forthcoming' ? 'Forth
     color: inherit;
     height: 100%;
   }
-  .guide-card--fg01 { --card-accent: #2A5BD0; --card-accent-text: #2A5BD0; --plate-bg: #dbe6f2; }
-  .guide-card--fg02 { --card-accent: #45A26A; --card-accent-text: #347A50; --plate-bg: #12331f; }
-  .guide-card--fg03 { --card-accent: #1A2F66; --card-accent-text: #1A2F66; --plate-bg: #ece4d0; }
+  .guide-card--fg01 { --card-accent: var(--c-blue);        --card-accent-text: var(--c-blue-text);   --plate-bg: var(--c-light-blue); }
+  .guide-card--fg02 { --card-accent: var(--c-light-green); --card-accent-text: var(--c-green-text);  --plate-bg: var(--c-black); }
+  .guide-card--fg03 { --card-accent: var(--c-orange);      --card-accent-text: var(--c-black);       --plate-bg: var(--c-orange); }
+  .guide-card--fg04 { --card-accent: var(--c-purple-50);   --card-accent-text: var(--c-purple-50);   --plate-bg: var(--c-cream); }
 
   .guide-card-media {
     position: relative;
@@ -178,7 +180,7 @@ const statusLabel = status === 'new' ? 'New' : status === 'forthcoming' ? 'Forth
 
   a.guide-card { transition: border-color var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out); }
   @media (hover: hover) {
-    a.guide-card:hover { border-color: var(--card-accent); box-shadow: 0 6px 20px -10px rgba(39, 36, 29, 0.35); }
+    a.guide-card:hover { border-color: var(--card-accent); box-shadow: 0 6px 20px -10px rgba(0, 0, 0, 0.35); }
     a.guide-card:hover .guide-card-media img { transform: scale(1.04); }
   }
   a.guide-card:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-ring-offset); }

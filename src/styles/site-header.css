@@ -61,7 +61,7 @@ body[data-full-height] .site-header {
 }
 
 .site-masthead:hover {
-  color: var(--atlas-accent);
+  color: var(--atlas-accent-text);
 }
 
 .site-masthead:focus-visible {
@@ -95,7 +95,7 @@ body[data-full-height] .site-header {
 }
 
 .site-nav a:hover {
-  color: var(--atlas-accent);
+  color: var(--atlas-accent-text);
 }
 
 .site-nav a:focus-visible {
@@ -170,7 +170,7 @@ body[data-full-height] .site-header {
 }
 
 .nav-dd-summary:hover {
-  color: var(--atlas-accent);
+  color: var(--atlas-accent-text);
 }
 
 .nav-dd-summary:focus-visible {
@@ -234,7 +234,7 @@ body[data-full-height] .site-header {
 .nav-dd-menu a:hover,
 .nav-dd-menu a:focus-visible {
   background: var(--atlas-surface);
-  color: var(--atlas-accent);
+  color: var(--atlas-accent-text);
   outline: none;
 }
 
