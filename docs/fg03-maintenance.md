@@ -78,7 +78,7 @@ Facilities and interventions use browser-safe public IDs. Internal source IDs an
 
 ## Styling and copy
 
-The guide uses the shared 4 px rhythm, a 1200 px content grid, warm paper `#F3EDDD`, contour ink `#1A1F2A`, and mauve `#8A4A70`. Archivo Variable is used for headings and interface text. Source Serif 4 Variable is used for editorial prose.
+The guide uses the shared 4 px rhythm, a 1200 px content grid, warm paper `#F3EDDD`, contour ink `#1A1F2A`, and mauve `#8A4A70`. Type follows the atlas's three voices: Bebas Neue for display, Space Mono for interface text, and Source Serif 4 Variable for editorial prose and the finding numbers.
 
 The central statement must always name its counting grain: Phase 1 grouped transit points. Phase 2 results must say GTFS stops and platforms. Do not combine these denominators, describe scheduled service as ridership, or describe an investigation zone as a construction-ready site.
 

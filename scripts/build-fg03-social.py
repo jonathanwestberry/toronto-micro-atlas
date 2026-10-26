@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Build the reproducible 1200 by 630 social card for When Toronto Has to Go."""
+"""Build the reproducible 1200 by 630 social card for When Toronto Has to Go.
+
+The card is the map and nothing else: no title, figures or labels set over
+it. The page's title and description travel with every link preview, and the
+page's og:image:alt describes the picture.
+"""
 
 from __future__ import annotations
 
@@ -8,7 +13,7 @@ import json
 import re
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageEnhance, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageOps
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,31 +23,14 @@ OUTPUT = ROOT / "public" / "social" / "og-when-toronto-has-to-go.jpg"
 
 WIDTH = 1200
 HEIGHT = 630
-# ONE PALETTE V2.0. The map panel is the proof render and keeps the colours
-# it was recorded in; only the card around it is restyled here.
-PAPER = "#FFFFFF"    # White
-INK = "#000000"      # Black
-MUTED = "#6B6B6B"    # Black 58 / White 42: 5.33 on White
-ACCENT = "#FF9D03"   # Orange, the guide's alarm colour: rules and fills only
-ACCENT_TEXT = "#A16302"  # Orange 63 / Black 37: 4.88 on White
-RULE = "#BFBFBF"     # Black 25 / White 75
-
-ARCHIVO = (
-    ROOT
-    / "node_modules"
-    / "@fontsource-variable"
-    / "archivo"
-    / "files"
-    / "archivo-latin-wght-normal.woff2"
-)
-SOURCE_SERIF = (
-    ROOT
-    / "node_modules"
-    / "@fontsource-variable"
-    / "source-serif-4"
-    / "files"
-    / "source-serif-4-latin-wght-normal.woff2"
-)
+# The proof render keeps the colours it was recorded in, and carries its own
+# title (top left, on bare ground above the city), legend (bottom left) and
+# footnote (bottom). The title is painted out in the render's ground colour,
+# and the crop stops above the legend: the whole width of the city at the
+# card's 1.9:1, with the lakeshore's southern tips bleeding off the bottom.
+# Fractions of the render, measured on coverage-2200.png.
+TITLE_BAND = (0.0, 0.0, 0.82, 0.10)
+CROP = (0.035, 0.08, 0.957, 0.84)
 
 
 def _latest_snapshot() -> tuple[Path, dict]:
@@ -57,177 +45,36 @@ def _latest_snapshot() -> tuple[Path, dict]:
     return snapshot, json.loads((snapshot / "manifest.json").read_text())
 
 
-def _font(path: Path, size: int, weight: int) -> ImageFont.FreeTypeFont:
-    font = ImageFont.truetype(path, size)
-    font.set_variation_by_axes([weight])
-    return font
-
-
-def _fit_size(
-    draw: ImageDraw.ImageDraw,
-    text: str,
-    path: Path,
-    weight: int,
-    maximum: int,
-    minimum: int,
-    width: int,
-) -> ImageFont.FreeTypeFont:
-    for size in range(maximum, minimum - 1, -1):
-        font = _font(path, size, weight)
-        left, _top, right, _bottom = draw.textbbox((0, 0), text, font=font)
-        if right - left <= width:
-            return font
-    raise RuntimeError(f"Could not fit social-card text: {text}")
-
-
-def _map_panel(snapshot_name: str) -> Image.Image:
+def _map(snapshot_name: str) -> Image.Image:
     source_path = PROOF_ROOT / snapshot_name / "coverage-2200.png"
     with Image.open(source_path) as source:
         source = source.convert("RGB")
+        ground = source.getpixel((source.width - 5, 5))
+        left, top, right, bottom = TITLE_BAND
+        ImageDraw.Draw(source).rectangle(
+            (
+                round(source.width * left),
+                round(source.height * top),
+                round(source.width * right),
+                round(source.height * bottom),
+            ),
+            fill=ground,
+        )
+        left, top, right, bottom = CROP
         crop = source.crop(
             (
-                round(source.width * 0.27),
-                round(source.height * 0.13),
-                round(source.width * 0.94),
-                round(source.height * 0.90),
+                round(source.width * left),
+                round(source.height * top),
+                round(source.width * right),
+                round(source.height * bottom),
             )
         )
-        panel = ImageOps.fit(
-            crop,
-            (660, HEIGHT),
-            method=Image.Resampling.LANCZOS,
-            centering=(0.56, 0.50),
-        )
-    panel = ImageEnhance.Color(panel).enhance(0.72)
-    panel = ImageEnhance.Contrast(panel).enhance(1.08)
-    tint = Image.new("RGB", panel.size, PAPER)
-    return Image.blend(panel, tint, 0.10)
+        return ImageOps.fit(crop, (WIDTH, HEIGHT), method=Image.Resampling.LANCZOS)
 
 
 def build() -> bytes:
-    snapshot, manifest = _latest_snapshot()
-    finding = manifest["headlines"]["bySnapshot"]["2200"]["phase1Grouped"]
-    unrestricted = int(finding["unrestrictedOpenAccessPointCount"])
-    active = int(finding["activeTransitPointCount"])
-    if finding["unit"] != "grouped transit points":
-        raise RuntimeError("FG03 social art received an unexpected Phase 1 unit")
-
-    canvas = Image.new("RGB", (WIDTH, HEIGHT), PAPER)
-    canvas.paste(_map_panel(snapshot.name), (540, 0))
-    draw = ImageDraw.Draw(canvas)
-
-    draw.rectangle((0, 0, 540, HEIGHT), fill=PAPER)
-    draw.line((539, 0, 539, HEIGHT), fill=INK, width=2)
-    draw.rectangle((60, 48, 64, 582), fill=ACCENT)
-
-    label_font = _font(ARCHIVO, 18, 760)
-    draw.text(
-        (92, 52),
-        "TORONTO MICRO-ATLAS",
-        fill=ACCENT_TEXT,
-        font=label_font,
-        spacing=0,
-    )
-
-    title_lines = (
-        ("WHEN", 72),
-        ("TORONTO", 72),
-        ("HAS TO GO", 68),
-    )
-    for index, (line, maximum) in enumerate(title_lines):
-        title_font = _fit_size(
-            draw,
-            line,
-            ARCHIVO,
-            850,
-            maximum,
-            48,
-            400,
-        )
-        draw.text((92, 104 + index * 60), line, fill=INK, font=title_font)
-    draw.line((92, 296, 500, 296), fill=RULE, width=2)
-
-    time_font = _font(ARCHIVO, 20, 760)
-    number_font = _font(ARCHIVO, 44, 820)
-    draw.text((92, 318), "AT 10 P.M.", fill=ACCENT_TEXT, font=time_font)
-    draw.text((92, 352), f"{unrestricted:,}", fill=INK, font=number_font)
-    draw.text(
-        (162, 360),
-        "unrestricted access",
-        fill=INK,
-        font=_fit_size(
-            draw,
-            "unrestricted access",
-            SOURCE_SERIF,
-            520,
-            28,
-            24,
-            330,
-        ),
-    )
-    draw.text(
-        (92, 400),
-        "points documented open.",
-        fill=INK,
-        font=_fit_size(
-            draw,
-            "points documented open.",
-            SOURCE_SERIF,
-            520,
-            28,
-            24,
-            408,
-        ),
-    )
-    draw.text((92, 442), f"{active:,}", fill=INK, font=number_font)
-    draw.text(
-        (225, 450),
-        "grouped transit",
-        fill=INK,
-        font=_fit_size(
-            draw,
-            "grouped transit",
-            SOURCE_SERIF,
-            520,
-            28,
-            24,
-            275,
-        ),
-    )
-    draw.text(
-        (92, 490),
-        "points still have scheduled activity.",
-        fill=INK,
-        font=_fit_size(
-            draw,
-            "points still have scheduled activity.",
-            SOURCE_SERIF,
-            520,
-            28,
-            22,
-            408,
-        ),
-    )
-
-    footer_font = _font(ARCHIVO, 15, 650)
-    draw.text(
-        (92, 558),
-        f"TUESDAY, {snapshot.name}  /  400 M WALK NETWORK",
-        fill=MUTED,
-        font=footer_font,
-    )
-
-    map_label_font = _font(ARCHIVO, 16, 740)
-    map_label = "VERIFIED 10 P.M. SNAPSHOT"
-    label_box = draw.textbbox((0, 0), map_label, font=map_label_font)
-    label_width = label_box[2] - label_box[0]
-    draw.rectangle((1140 - label_width - 24, 530, 1140, 575), fill=INK)
-    draw.text(
-        (1128 - label_width, 542),
-        map_label,
-        fill=PAPER,
-        font=map_label_font,
-    )
+    snapshot, _manifest = _latest_snapshot()
+    canvas = _map(snapshot.name)
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     canvas.save(
