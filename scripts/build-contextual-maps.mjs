@@ -23,23 +23,25 @@ const H = 600;
 const HALF_M_DEFAULT = 700;
 
 // ── Palette ───────────────────────────────────────────────────────────────────
+// ONE PALETTE V2.0, matching the Hidden Landscapes island map (guide-map.ts).
+// Mixes are named with their ratio; see src/styles/tokens.css.
 const P = {
-  bg:              '#FAF6EC',
-  minorStreet:     '#D3CEC4',
-  majorStreet:     '#B8B2A7',
+  bg:              '#EFE9C9',  // Cream
+  minorStreet:     '#CFC5A2',  // Sand
+  majorStreet:     '#9B947A',  // Sand 75 / Black 25
   // rail removed: buried watercourses are the only dashed device
-  landscape:       '#147D64',
-  landscapeStroke: '#0C6B58',
-  water:           '#3994C1',
-  lakeFill:        'hsl(200,55%,88%)',
-  lakeStroke:      'hsl(200,40%,72%)',
-  marker:          '#DE3A11',
-  markerRing:      '#27241D',
-  markerInner:     '#FFFFFF',
-  ui:              '#857F72',
+  landscape:       '#03C739',  // Green
+  landscapeStroke: '#026D1F',  // Green 55 / Black 45
+  water:           '#0E98FF',  // Blue
+  lakeFill:        '#99ECFF',  // Light Blue
+  lakeStroke:      '#0E98FF',  // Blue
+  marker:          '#0E98FF',  // Blue, the guide's threshold colour
+  markerRing:      '#000000',  // Black
+  markerInner:     '#FFFFFF',  // White
+  ui:              '#646254',  // Black 58 / Cream 42: 5.02 on Cream
   // Boundary and outside-wash: consistent with the island map
-  boundary:        '#A29A8C',  // same as toronto-boundary layer color
-  washOutside:     'rgba(250,246,236,0.78)', // --wash-outside token
+  boundary:        '#48463C',  // same as toronto-boundary layer color
+  washOutside:     'rgba(239,233,201,0.78)', // --wash-outside token
 };
 
 // ── Locations ─────────────────────────────────────────────────────────────────
@@ -63,7 +65,9 @@ function loadGeoJSON(name) {
 // For large MultiPolygon/MultiLineString features, we build a list of
 // sub-geometry bboxes so we can skip clipping for non-overlapping sub-parts.
 function indexCollection(fc) {
-  return fc.features.map(f => {
+  // A feature with null geometry has nothing to draw, and the city's
+  // watercourse layer carries some; skip them rather than crash on them.
+  return fc.features.filter(f => f.geometry).map(f => {
     const bbox = computeFullBbox(f.geometry);
     return { ...f, _bbox: bbox };
   });

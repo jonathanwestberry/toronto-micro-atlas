@@ -46,8 +46,28 @@ DPI = 150
 # the frame with air around it rather than bleeding off the corners.
 PAD = 0.02
 
-INK = "#27241D"
-PAPER = "#FAF6EC"
+# ONE PALETTE V2.0. Each card's thumbnail sits on a field of one palette
+# colour, and GuideCard.astro's --plate-bg names the same colour so a slow
+# image never flashes a different one. Mixes carry their ratio in the name.
+INK = "#000000"            # Black
+PAPER = "#EFE9C9"          # Cream
+LIGHT_BLUE = "#99ECFF"
+BLUE = "#0E98FF"
+GREEN = "#03C739"
+LIGHT_GREEN = "#D2E90F"
+ORANGE = "#FF9D03"
+YELLOW = "#FFCB03"
+NIGHT_EDGE = "#3E3B31"     # Sand 30 / Black 70
+
+# The shaded-hours ramp from src/styles/fg04.css, as (hours, colour) stops.
+SHADE_RAMP = [
+    (0, YELLOW),
+    (3, "#CFB6FF"),        # Purple
+    (6, "#917FB2"),        # Purple 70 / Black 30
+    (9, "#685B80"),        # Purple 50 / Black 50
+    (12, "#342E40"),       # Purple 25 / Black 75
+    (15, INK),
+]
 
 # The CRS the shade surface was computed in. Read once here rather than
 # hardcoded in two places, so the frame follows the data if the pipeline ever
@@ -130,11 +150,11 @@ def city_clip(axes, boundary):
 
 def build_hidden_landscapes(boundary, extent):
     """Ravines and buried water, with the eight thresholds marked."""
-    figure, axes = new_figure(extent, PAPER)
-    draw_land(axes, boundary, "#F0E9D8", INK)
+    figure, axes = new_figure(extent, LIGHT_BLUE)
+    draw_land(axes, boundary, PAPER, INK)
     green = gpd.read_file(
         os.path.join(DATA, "processed", "green-spaces.geojson")).to_crs(boundary.crs)
-    green.plot(ax=axes, facecolor="#45A26A", edgecolor="none", alpha=0.95)
+    green.plot(ax=axes, facecolor=GREEN, edgecolor="none", alpha=0.95)
 
     lats, lngs = [], []
     location_dir = os.path.join(ROOT, "src", "content", "locations")
@@ -149,15 +169,15 @@ def build_hidden_landscapes(boundary, extent):
                     lngs.append(float(line.split(":", 1)[1]))
     marks = gpd.GeoDataFrame(
         geometry=gpd.points_from_xy(lngs, lats), crs="EPSG:4326").to_crs(boundary.crs)
-    marks.plot(ax=axes, color="#2A5BD0", markersize=90,
-               edgecolor=PAPER, linewidth=2.2, zorder=5)
+    marks.plot(ax=axes, color=BLUE, markersize=90,
+               edgecolor=INK, linewidth=1.6, zorder=5)
     return save(figure, "hidden-landscapes")
 
 
 def build_sidewalk_forest(boundary, extent):
     """Every street tree, one dot each, on the guide's own dark ground."""
-    figure, axes = new_figure(extent, "#12331f")
-    draw_land(axes, boundary, "#12331f", "#2f5f42", linewidth=1.4)
+    figure, axes = new_figure(extent, INK)
+    draw_land(axes, boundary, INK, NIGHT_EDGE, linewidth=1.4)
     trees = gpd.read_file(os.path.join(DATA, "raw", "street-trees-4326.geojson"))
     # The city publishes each tree as a single-point MultiPoint, which has no
     # .x, so explode to real points before reading coordinates off them.
@@ -168,18 +188,18 @@ def build_sidewalk_forest(boundary, extent):
     if len(trees) > 90000:
         step = len(trees) // 90000 + 1
         trees = trees.iloc[::step]
-    axes.scatter(trees.geometry.x, trees.geometry.y, s=0.35,
-                 c="#E8A6A0", linewidths=0, alpha=0.9)
+    axes.scatter(trees.geometry.x, trees.geometry.y, s=0.7,
+                 c=LIGHT_GREEN, linewidths=0, alpha=0.9)
     return save(figure, "sidewalk-forest")
 
 
 def build_when_toronto_has_to_go(boundary, extent):
     """Documented public washrooms."""
-    figure, axes = new_figure(extent, PAPER)
-    draw_land(axes, boundary, "#ece4d0", INK)
+    figure, axes = new_figure(extent, ORANGE)
+    draw_land(axes, boundary, PAPER, INK)
     facilities = gpd.read_file(os.path.join(
         PUBLIC, "data", "fg03", "2026-07-21", "facilities.geojson")).to_crs(boundary.crs)
-    facilities.plot(ax=axes, color="#1A2F66", markersize=26,
+    facilities.plot(ax=axes, color=INK, markersize=26,
                     edgecolor=PAPER, linewidth=0.7, zorder=5)
     return save(figure, "when-toronto-has-to-go")
 
@@ -198,11 +218,11 @@ def build_out_of_the_sun(boundary, extent):
     arterials visible structure, and it is the same surface either way.
     """
     figure, axes = new_figure(extent, PAPER)
-    # The land takes the sunlit sand exactly, so ground the flight never
+    # The land takes the sunlit Yellow exactly, so ground the flight never
     # measured is indistinguishable from ground that was measured and sunlit.
     # A land fill one shade off the raster drew a visible rectangle across the
     # thumbnail wherever the raster's own extent ended.
-    draw_land(axes, boundary, "#EAE3C7", INK)
+    draw_land(axes, boundary, YELLOW, INK)
 
     with rasterio.open(SHADE_PATH) as src:
         # Read heavily decimated: the full surface is around 946 million
@@ -224,13 +244,15 @@ def build_out_of_the_sun(boundary, extent):
         hours += ((bits >> position) & 1).astype(np.uint8)
     measured = bits > 0
 
-    # Sand to ink across nought to fifteen hours. Every pixel the flight
-    # measured gets a value, so the field is continuous rather than speckled.
-    sun = np.array([0.918, 0.890, 0.780])
-    ink = np.array([0.153, 0.141, 0.114])
-    t = (hours / 15.0)[..., None]
+    # The guide's own ramp across nought to fifteen hours, blended only
+    # between neighbouring stops. Every pixel the flight measured gets a
+    # value, so the field is continuous rather than speckled.
+    stops_h = [h for h, _ in SHADE_RAMP]
+    stops_rgb = np.array([[int(c[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+                          for _, c in SHADE_RAMP])
     image = np.zeros((*bits.shape, 4), dtype=float)
-    image[..., :3] = sun * (1 - t) + ink * t
+    for channel in range(3):
+        image[..., channel] = np.interp(hours, stops_h, stops_rgb[:, channel])
     image[..., 3] = measured.astype(float)
 
     if raster_crs != boundary.crs:

@@ -178,15 +178,15 @@ def main() -> None:
     # other maples dimmed to context.
     maple = gs == 0
     for name, target, hot in (
-        ("maples-norway", s_norway, "#EB6F5C"),
-        ("maples-sugar", s_sugar, "#FFE9B8"),
+        ("maples-norway", s_norway, "#FC5237"),
+        ("maples-sugar", s_sugar, "#EFE9C9"),
     ):
         sel_hot = maple & np.isin(ss, target)
         sel_dim = maple & ~np.isin(ss, target)
         lng_all = np.concatenate([lngs[sel_dim], lngs[sel_hot]])
         lat_all = np.concatenate([lats[sel_dim], lats[sel_hot]])
         col_all = np.concatenate([
-            np.tile(hex_to_linear("#EB6F5C"), (sel_dim.sum(), 1)),
+            np.tile(hex_to_linear("#FC5237"), (sel_dim.sum(), 1)),
             np.tile(hex_to_linear(hot), (sel_hot.sum(), 1)),
         ])
         w_all = np.concatenate([
