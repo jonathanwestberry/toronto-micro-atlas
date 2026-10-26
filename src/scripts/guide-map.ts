@@ -643,10 +643,14 @@ export class GuideMap {
        * kilometre apart in midtown and cannot be spread out without the map
        * telling a lie about where they are.
        *
-       * The "Equivalent" exception applies and is verified: every one of the
-       * eight markers has a same-page link in the location list, measuring
-       * ~270x135 to ~278x177 at both 320 and 1280. Nothing on this map is
-       * reachable only by hitting a pin.
+       * The "Equivalent" exception applies and is verified: on the guide page
+       * every one of the eight markers has a same-page link in the location
+       * list, measuring ~270x135 to ~278x177 at both 320 and 1280. The /map
+       * route had no list and so no equivalent until 2026-10-26; its panel
+       * now carries the eight names ("Or choose one by name"), each a 28px
+       * row that selects through selectLocation. Nothing on either route is
+       * reachable only by hitting a pin. axe still reports the spacing, since
+       * it cannot see an equivalent control.
        */
       const button = document.createElement('button');
       button.type = 'button';
@@ -1191,6 +1195,19 @@ export function initGuideMap(options: InitGuideMapOptions = {}): void {
 
   const guideMap = new GuideMap('guide-map', baseUrl);
   guideMap.init(locations);
+
+  // The name list on /map: the same-page equivalent for markers that overlap
+  // at narrow widths. Selecting hides the list with the rest of the resting
+  // panel, so focus moves to the preview's close control rather than falling
+  // to the document.
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-select-place]')) {
+    button.addEventListener('click', () => {
+      const slug = button.dataset.selectPlace;
+      if (!slug) return;
+      guideMap.selectLocation(slug);
+      document.getElementById('guide-panel-close')?.focus();
+    });
+  }
 
   const map = guideMap.maplibreMap;
   const failedSources = new Set<string>();
