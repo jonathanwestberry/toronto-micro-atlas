@@ -179,12 +179,12 @@ test('map shell explains keyboard use, symbol shapes, date, and attribution', ()
   // Two of the seven facility marks were named for the wrong symbol: "diamond,
   // a record needing verification" was true of the hollow one and false of the
   // solid one, which is fare-paid; "cross, accessibility retrofit" was true of
-  // the blue plus and false of the amber cross, which means data is missing.
+  // the Black plus and false of the amber cross, which means data is missing.
   // The names now carry fill and colour, so they survive being read aloud.
   assert.match(html, /hollow diamond[\s\S]*needs verification/i);
   assert.match(html, /solid diamond[\s\S]*fare-paid facility/i);
   assert.match(html, /amber cross[\s\S]*data missing/i);
-  assert.match(html, /blue plus[\s\S]*accessibility retrofit/i);
+  assert.match(html, /black plus[\s\S]*accessibility retrofit/i);
   assert.doesNotMatch(html, /a record needing verification/i);
   // The prose that named six shapes and showed none of them is replaced by the
   // drawn swatches, so "How to read this map" and the map agree by construction.
