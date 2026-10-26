@@ -105,6 +105,11 @@ const siteOrigin = Astro.site ?? 'https://torontomicroatlas.com';
 const canonicalURL = new URL(canonicalPath ? `${base}${canonicalPath}` : Astro.url.pathname, siteOrigin);
 // og:image must be an absolute URL; scrapers (X, LinkedIn, Slack) won't resolve relative paths
 const ogImageURL = new URL(`${base}${ogImage ?? '/social/og-default.jpg'}`, Astro.site ?? 'https://torontomicroatlas.com');
+// The default card is a picture too, so it carries its own description when a
+// page falls back to it (built by scripts/build-share-images.mjs).
+const resolvedOgImageAlt = ogImageAlt ?? (ogImage
+  ? undefined
+  : "A map of Toronto with its ravines and valleys in green, the lake in light blue, and blue markers on eight places from the Hidden Landscapes guide.");
 const isArticle = Boolean(articlePublished);
 const articleModified = articleUpdated ?? articlePublished;
 
@@ -235,7 +240,7 @@ const onAbout = path.includes('/about');
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonicalURL.href} />
     <meta property="og:image" content={ogImageURL.href} />
-    {ogImageAlt && <meta property="og:image:alt" content={ogImageAlt} />}
+    {resolvedOgImageAlt && <meta property="og:image:alt" content={resolvedOgImageAlt} />}
     {ogImageWidth && <meta property="og:image:width" content={String(ogImageWidth)} />}
     {ogImageHeight && <meta property="og:image:height" content={String(ogImageHeight)} />}
     {ogImageType && <meta property="og:image:type" content={ogImageType} />}
@@ -248,7 +253,7 @@ const onAbout = path.includes('/about');
     <meta name="twitter:title" content={resolvedOgTitle} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImageURL.href} />
-    {ogImageAlt && <meta name="twitter:image:alt" content={ogImageAlt} />}
+    {resolvedOgImageAlt && <meta name="twitter:image:alt" content={resolvedOgImageAlt} />}
     <script is:inline type="application/ld+json" set:html={jsonLd} />
 
     <style is:global>
