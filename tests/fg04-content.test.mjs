@@ -469,7 +469,7 @@ test('the map shows both surfaces, each named in words', () => {
   for (const label of ['Measured, leaf-off', 'Leaf-on corrected']) {
     assert.ok(
       copy.includes(label),
-      `The map must label each surface in words: "${label}". Mauve and Plum `
+      `The map must label each surface in words: "${label}". Purple 50 and Purple 25 `
       + 'sit 2.11 apart in contrast, so colour alone cannot carry which '
       + 'surface a reader is looking at.',
     );

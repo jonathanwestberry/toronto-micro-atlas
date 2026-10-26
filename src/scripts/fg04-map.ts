@@ -36,8 +36,8 @@ import { filterStops, stopCountLabel } from './fg04-stops.mjs';
  * downtown tower districts; corrected, all three are leafy midtown. A reader
  * shown one surface at a time has to hold the other in memory to see that,
  * which is the entire finding. So both are on screen at once, and each is
- * labelled in words, because Mauve and Plum sit 2.11 apart in contrast and
- * colour alone cannot carry which surface is which.
+ * labelled in words, because Purple 50 and Purple 25 sit 2.11 apart in
+ * contrast and colour alone cannot carry which surface is which.
  *
  * MapLibre cannot evaluate the selected-hour bit expression in a
  * `color-relief` layer. Its style validator accepts the expression, but the

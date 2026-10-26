@@ -477,7 +477,7 @@
   white-space: nowrap;
 }
 
-/* MapLibre's own #ddd divider is the only thing saying the zoom group holds
+/* MapLibre's own pale grey divider is the only thing saying the zoom group holds
    two separate buttons rather than one tall one, and it measured 1.34:1. */
 .map-stage .maplibregl-ctrl-group button + button {
   border-top: 1px solid var(--atlas-control-line);
