@@ -46,7 +46,7 @@ const guideContentPath = new URL(
   import.meta.url,
 );
 const socialPath = new URL(
-  '../public/social/og-out-of-the-sun-v2.jpg',
+  '../public/social/og-out-of-the-sun-v3.jpg',
   import.meta.url,
 );
 const stylePath = new URL('../src/styles/fg04.css', import.meta.url);
@@ -260,13 +260,13 @@ test('the selected-hour browser gate proves visible shaded and sunlit pixels', (
 
 test('the guide publishes an accessible 1200 by 630 social comparison', () => {
   const html = readRoute();
-  const alt = 'The same Toronto streets at 13:00 and 18:00 on 21 July 2026, with shaded ground shown in dark charcoal.';
+  const alt = 'The same Toronto streets at 13:00 and 18:00 on 21 July 2026, with shaded ground shown in dark purple and sunlit ground in yellow.';
 
   assert.equal(existsSync(socialPath), true);
   assert.deepEqual(jpegDimensions(socialPath), { height: 630, width: 1200 });
   assert.match(
     html,
-    /property="og:image" content="https:\/\/torontomicroatlas\.com\/social\/og-out-of-the-sun-v2\.jpg"/,
+    /property="og:image" content="https:\/\/torontomicroatlas\.com\/social\/og-out-of-the-sun-v3\.jpg"/,
   );
   assert.match(html, new RegExp(`property="og:image:alt" content="${alt}"`));
   assert.match(html, /property="og:image:width" content="1200"/);
@@ -274,7 +274,7 @@ test('the guide publishes an accessible 1200 by 630 social comparison', () => {
   assert.match(html, /property="og:image:type" content="image\/jpeg"/);
   assert.match(
     html,
-    /name="twitter:image" content="https:\/\/torontomicroatlas\.com\/social\/og-out-of-the-sun-v2\.jpg"/,
+    /name="twitter:image" content="https:\/\/torontomicroatlas\.com\/social\/og-out-of-the-sun-v3\.jpg"/,
   );
   assert.match(html, new RegExp(`name="twitter:image:alt" content="${alt}"`));
 });

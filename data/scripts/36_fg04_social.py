@@ -62,12 +62,13 @@ TITLE = "Out of the Sun"
 MIN_GROUND = 0.30           # a block that is mostly lake shows nothing
 MIN_ARTERIAL_M = 200.0      # and one nobody can place shows nothing either
 
-# The guide's ramp, both ends. `--fg04-shade-1` is one shaded hour and
-# `--fg04-shade-6` is blocked almost throughout, so a single frame's sunlit
-# and shaded ground belong at those two ends.
-SUNLIT = (0xFB, 0xF8, 0xC8)      # --c-pale-lemon
-SHADED = (0x1A, 0x1F, 0x2A)      # --c-contour
-BUILT = (0xD3, 0xCF, 0xA6)       # --c-kraft, anything not ground
+# The guide's own selected-hour colours (src/styles/fg04.css), so the card
+# looks like the map it advertises: --fg04-selected-sunlit,
+# --fg04-selected-shaded, and the White ground where nothing was sampled.
+# Yellow type on the Purple 25 bars reads at 8.56:1.
+SUNLIT = (0xFF, 0xCB, 0x03)      # Yellow
+SHADED = (0x34, 0x2E, 0x40)      # Purple 25 / Black 75
+BUILT = (0xFF, 0xFF, 0xFF)       # White, anything not ground
 
 DISPLAY_FONTS = (
     "/System/Library/Fonts/Supplemental/DIN Condensed Bold.ttf",
@@ -229,7 +230,10 @@ def main(dry_run):
 
     image = render(best, early, late, SURFACE)
     os.makedirs(SOCIAL, exist_ok=True)
-    out = os.path.join(SOCIAL, "og-out-of-the-sun-v2.jpg")
+    # Versioned because share platforms cache by URL: a recoloured card at the
+    # old path would keep showing the old one. Earlier versions stay in
+    # public/social so posts that already carry them do not break.
+    out = os.path.join(SOCIAL, "og-out-of-the-sun-v3.jpg")
     if dry_run:
         print(f"dry run, not writing {out}")
         return

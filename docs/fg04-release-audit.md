@@ -82,7 +82,7 @@ The release verifier found 455 files and required all of these paths:
 - `guides/out-of-the-sun/index.html`
 - `data/fg04/manifest.json`
 - `data/fg04/street-profiles.json`
-- `social/og-out-of-the-sun-v2.jpg`
+- `social/og-out-of-the-sun-v3.jpg`
 - `_headers`
 
 No shade or classification WebP appears in `dist`. The manifest remains pinned
