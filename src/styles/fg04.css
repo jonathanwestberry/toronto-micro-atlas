@@ -9,30 +9,30 @@
 
 .fg04 {
   /* ----------------------------------------------------------
-     The shaded-hours ramp. Six stops from ONE PALETTE, ordered by
+     The shaded-hours ramp. Six stops from ONE PALETTE V2.0, ordered by
      luminance and nothing else: the sun is blocked or it is not, and the
-     darker the ground the longer it stayed blocked. Measured luminance runs
-     0.918 -> 0.014, strictly downward, so the ramp survives being printed in
-     grey or read by someone who sees no hue at all.
+     darker the ground the longer it stayed blocked. Relative luminance runs
+     0.640, 0.539, 0.244, 0.120, 0.031, 0, strictly downward, so the ramp
+     survives being printed in grey or read by someone who sees no hue.
 
-     Deliberately NOT a two-hue ramp. A ramp with a hue axis invites the reader
-     to decode the hue, and the only hue axis anyone expects on a map like this
-     is the one this guide is not entitled to draw.
+     Deliberately NOT a two-hue ramp. Yellow opens it because the sun reaching
+     the ground is the one fact the light end states; after that a single hue,
+     Purple, deepens into Black.
      ---------------------------------------------------------- */
-  --fg04-shade-1: var(--c-pale-lemon);   /* one shaded hour, sun nearly all day */
-  --fg04-shade-2: var(--c-kraft);        /* 2 to 4 */
-  --fg04-shade-3: var(--c-mustard);      /* 5 to 7 */
-  --fg04-shade-4: var(--c-mauve);        /* 8 to 10 */
-  --fg04-shade-5: var(--c-plum);         /* 11 to 13 */
-  --fg04-shade-6: var(--c-contour);      /* 14 to 15, blocked almost throughout */
-  --fg04-selected-shaded: var(--c-contour);
-  --fg04-selected-sunlit: var(--c-pale-lemon);
+  --fg04-shade-1: var(--c-yellow);       /* one shaded hour, sun nearly all day */
+  --fg04-shade-2: var(--c-purple);       /* 2 to 4 */
+  --fg04-shade-3: var(--c-purple-70);    /* 5 to 7 */
+  --fg04-shade-4: var(--c-purple-50);    /* 8 to 10 */
+  --fg04-shade-5: var(--c-purple-25);    /* 11 to 13 */
+  --fg04-shade-6: var(--c-black);        /* 14 to 15, blocked almost throughout */
+  --fg04-selected-shaded: var(--c-purple-25);
+  --fg04-selected-sunlit: var(--c-yellow);
   --fg04-selected-no-data: transparent;
 
-  /* The first three stops sit at 1.08, 1.36 and 2.02 against the Cream ground,
-     which is under the 3:1 a legend swatch needs to be found at all. They are
-     never drawn bare: .fg04-swatch gives every stop the same hairline so the
-     light end is locatable and the ramp stays one visual object. */
+  /* The first two stops sit at 1.24 and 1.46 against the Cream ground, under
+     the 3:1 a legend swatch needs to be found at all. They are never drawn
+     bare: .fg04-swatch gives every stop the same hairline so the light end is
+     locatable and the ramp stays one visual object. */
   --fg04-swatch-edge: var(--atlas-control-line);
 
   background-color: var(--atlas-ground);
@@ -1393,8 +1393,8 @@
   width: 100%;
   font: inherit;
   color: var(--atlas-ink);
-  background: var(--atlas-card, #FFFDF8);
-  border: 1px solid var(--atlas-line);
+  background: var(--atlas-surface);
+  border: 1px solid var(--atlas-control-line);   /* 3.25 on Cream: a field boundary */
   border-radius: 4px;
   /* SC 2.5.8: a primary control on this rail, so it carries a real target. */
   min-height: 2.75rem;
@@ -1449,7 +1449,7 @@
 
 @media (hover: hover) {
   .fg04-stops__button:hover {
-    background: var(--atlas-hover-surface, rgba(39, 36, 29, 0.06));
+    background: var(--atlas-hover-surface, rgba(0, 0, 0, 0.06));
   }
 }
 
@@ -1478,7 +1478,7 @@
   margin-top: var(--space-8);
   padding: var(--space-4);
   border-left: 3px solid var(--atlas-accent);
-  background: var(--atlas-card, #FFFDF8);
+  background: var(--atlas-surface);
   font-size: var(--text-sm);
   color: var(--atlas-ink-muted);
 }

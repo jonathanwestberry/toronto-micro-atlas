@@ -1,24 +1,24 @@
 /* ============================================================
    Guide theme "Hidden Landscapes" (fg01)
-   Cream ground, Cobalt threshold accent (the grid's edge, water and
-   depth below), Kelly green for the revealed ravine landscapes.
-   Overrides the shell's Tomato threshold within this guide only, and
-   maps the guide onto the shared --atlas-* contract.
+   Cream ground, Blue threshold accent (the grid's edge, water and depth
+   below), Green for the revealed ravine landscapes. Overrides the shell's
+   Red threshold within this guide only, and maps the guide onto the shared
+   --atlas-* contract.
    ============================================================ */
 .fg01 {
-  --threshold: #2A5BD0;           /* Cobalt: threshold markers + accents */
-  --threshold-active: #1A2F66;    /* Deep Navy: active / hover */
-  --landscape: #45A26A;           /* Kelly: revealed ravine + valley fills */
-  --landscape-edge: #1F4F30;      /* Forest: ravine edges */
+  --threshold: var(--c-blue);              /* threshold markers + accents */
+  --threshold-active: var(--c-blue-text);  /* active / hover: 5.13 Cream, White on it 6.27 */
+  --landscape: var(--c-green);             /* revealed ravine + valley fills */
+  --landscape-edge: var(--c-green-text);   /* ravine edges and valley labels: 5.35 Cream */
 
   --atlas-ground: var(--paper);
   --atlas-surface: var(--card);
   --atlas-ink: var(--ink);
   --atlas-ink-muted: var(--ink-2);
   --atlas-line: var(--street-minor);
-  --atlas-accent: #2A5BD0;        /* Cobalt */
-  --atlas-accent-2: #45A26A;      /* Kelly */
-  --atlas-focus: #1A2F66;
+  --atlas-accent: var(--c-blue);
+  --atlas-accent-2: var(--c-green);
+  --atlas-focus: var(--c-blue-text);
 }
 
 /* ============================================================
@@ -32,7 +32,7 @@
    ------------------------------------------------------------ */
 
 .maplibregl-cooperative-gesture-screen {
-  background-color: rgba(250, 246, 236, 0.92); /* --paper, near-opaque */
+  background-color: rgba(239, 233, 201, 0.92); /* Cream, near-opaque */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -46,12 +46,12 @@
   font-family: var(--font-ui);
   font-size: var(--text-base);
   font-weight: 600;
-  color: #27241D; /* --ink; hardcoded, MapLibre injects outside var scope */
+  color: #000000; /* Black; hardcoded, MapLibre injects outside var scope */
   text-align: center;
   max-width: 30ch;
   padding: var(--space-3) var(--space-4);
-  background: #FFFDF8; /* --card */
-  border: 1px solid #27241D;
+  background: #FFFFFF; /* White */
+  border: 1px solid #000000;
 }
 
 /* ------------------------------------------------------------
@@ -84,7 +84,7 @@
   padding: 0;
   border-radius: 50%;
   background-color: var(--threshold);
-  color: #ffffff;
+  color: var(--ink);   /* Black on Blue 6.95; White was 3.02 */
   border: 1.5px solid var(--ink);
   box-shadow: 2px 2px 0 var(--ink);
   cursor: pointer;
@@ -100,12 +100,13 @@
   transform: scale(1.06);
   box-shadow:
     2px 2px 0 var(--ink),
-    0 4px 12px rgba(39, 36, 29, 0.22);
+    0 4px 12px rgba(0, 0, 0, 0.22);
 }
 
 .gm-marker--selected {
   background-color: var(--threshold-active);
-  border-color: #ffffff;
+  color: var(--card);  /* White on Blue text 6.27 */
+  border-color: var(--card);
   box-shadow:
     2px 2px 0 var(--ink),
     0 0 0 2px var(--threshold-active);
@@ -124,7 +125,7 @@
   box-shadow:
     2px 2px 0 var(--ink),
     0 0 0 2px var(--threshold-active),
-    0 4px 12px rgba(39, 36, 29, 0.22);
+    0 4px 12px rgba(0, 0, 0, 0.22);
 }
 
 .gm-marker:focus-visible {
@@ -375,7 +376,7 @@
   height: 20px;
   border-radius: 50%;
   background-color: var(--threshold);
-  color: #ffffff;
+  color: var(--ink);   /* Black on Blue 6.95; White was 3.02 */
   border: 1.5px solid var(--ink);
   box-shadow: 2px 2px 0 var(--ink);
   flex-shrink: 0;
@@ -424,7 +425,7 @@
    ------------------------------------------------------------ */
 
 .maplibregl-ctrl.maplibregl-ctrl-attrib {
-  background-color: rgba(250, 246, 236, 0.85);
+  background-color: rgba(239, 233, 201, 0.85);
   font-family: var(--font-ui);
   font-size: 11px;
   color: var(--ink-2);
